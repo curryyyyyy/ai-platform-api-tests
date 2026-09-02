@@ -1,0 +1,4055 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: ""
+    version: 0.0.1
+paths:
+    /api/v1/batch:
+        get:
+            tags:
+                - Batch
+            operationId: Batch_ListBatch
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: projectId
+                  in: query
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: sortField
+                  in: query
+                  schema:
+                    type: string
+                - name: sortOrder
+                  in: query
+                  schema:
+                    type: string
+                - name: flowName
+                  in: query
+                  schema:
+                    type: string
+                - name: startCreatedAt
+                  in: query
+                  schema:
+                    type: string
+                - name: endCreatedAt
+                  in: query
+                  schema:
+                    type: string
+                - name: flowIds
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+                - name: keyword
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.ListBatchReply'
+        post:
+            tags:
+                - Batch
+            operationId: Batch_CreateBatch
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.CreateBatchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.CreateBatchReply'
+    /api/v1/batch-name/check:
+        get:
+            tags:
+                - Batch
+            operationId: Batch_CheckBatch
+            parameters:
+                - name: projectId
+                  in: query
+                  schema:
+                    type: string
+                - name: name
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.CheckBatchReply'
+    /api/v1/batch/statistics:
+        post:
+            tags:
+                - Batch
+            operationId: Batch_CreateStatisticsBatch
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.CreateStatisticsBatchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.CreateStatisticsBatchReply'
+    /api/v1/batch/statistics/list:
+        get:
+            tags:
+                - Batch
+            operationId: Batch_ListStatisticsBatch
+            parameters:
+                - name: collectionId
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.ListStatisticsBatchReply'
+    /api/v1/batch/statistics/{batchId}/csv:
+        get:
+            tags:
+                - Batch
+            operationId: Batch_GetStatisticsBatchCSV
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.GetStatisticsBatchCSVReply'
+    /api/v1/batch/upload:
+        post:
+            tags:
+                - Batch
+            operationId: Batch_UploadFile
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: string
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.UploadFileReply'
+    /api/v1/batch/upload/multipart/complete:
+        post:
+            tags:
+                - Batch
+            description: 分片上传-完成：按 etag 列表合并所有分片
+            operationId: Batch_CompleteMultipartUpload
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.CompleteMultipartUploadRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.CompleteMultipartUploadReply'
+    /api/v1/batch/upload/multipart/init:
+        post:
+            tags:
+                - Batch
+            description: 分片上传-初始化：申请 uploadId 并返回所有分片的预签名上传地址
+            operationId: Batch_InitMultipartUpload
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.InitMultipartUploadRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.InitMultipartUploadReply'
+    /api/v1/batch/{id}:
+        get:
+            tags:
+                - Batch
+            operationId: Batch_GetBatch
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.GetBatchReply'
+        put:
+            tags:
+                - Batch
+            operationId: Batch_UpdateBatch
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.UpdateBatchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.UpdateBatchReply'
+        delete:
+            tags:
+                - Batch
+            operationId: Batch_DeleteBatch
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.DeleteBatchReply'
+    /api/v1/batch/{id}/flowgraph:
+        get:
+            tags:
+                - Batch
+            description: 获取批次工作流图数据（包含节点状态）
+            operationId: Batch_GetBatchFlowGraph
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.GetBatchFlowGraphReply'
+    /api/v1/batch/{id}/input:
+        put:
+            tags:
+                - Batch
+            description: 修改未启动批次的输入文件或 CID（仅 Init 状态可改）
+            operationId: Batch_UpdateBatchInput
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.UpdateBatchInputRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.UpdateBatchInputReply'
+    /api/v1/batch/{id}/status:
+        put:
+            tags:
+                - Batch
+            description: 更新批次状态（仅更新状态字段）
+            operationId: Batch_UpdateBatchStatus
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.UpdateBatchStatusRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.UpdateBatchStatusReply'
+    /api/v1/batch/{sourceId}/copy:
+        post:
+            tags:
+                - Batch
+            description: 复制批次：以源批次为模板新建批次，沿用全部配置，仅重填名称与输入(CSV/CID)
+            operationId: Batch_CopyBatch
+            parameters:
+                - name: sourceId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.CopyBatchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.CopyBatchReply'
+    /api/v1/common-template:
+        get:
+            tags:
+                - Transfer
+            operationId: Transfer_ListCommonTemplate
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.ListCommonTemplateReply'
+    /api/v1/credential:
+        get:
+            tags:
+                - Credential
+            operationId: Credential_ListCredential
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.credential.v1.ListCredentialReply'
+        post:
+            tags:
+                - Credential
+            operationId: Credential_CreateCredential
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.credential.v1.CreateCredentialRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.credential.v1.CreateCredentialReply'
+    /api/v1/credential/{id}:
+        put:
+            tags:
+                - Credential
+            operationId: Credential_UpdateCredential
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.credential.v1.UpdateCredentialRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.credential.v1.UpdateCredentialReply'
+        delete:
+            tags:
+                - Credential
+            operationId: Credential_DeleteCredential
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.credential.v1.DeleteCredentialReply'
+    /api/v1/files/download-url:
+        post:
+            tags:
+                - Batch
+            description: 生成TOS文件下载链接
+            operationId: Batch_GenTosDownloadURL
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.batch.v1.GenTosDownloadURLRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.GenTosDownloadURLReply'
+    /api/v1/files/temp:
+        get:
+            tags:
+                - Batch
+            description: 列出临时上传目录中的文件
+            operationId: Batch_ListTempFiles
+            parameters:
+                - name: prefix
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.batch.v1.ListTempFilesReply'
+    /api/v1/flow:
+        get:
+            tags:
+                - Flow
+            operationId: Flow_ListFlow
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: flowName
+                  in: query
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: keywords
+                  in: query
+                  schema:
+                    type: string
+                - name: sortField
+                  in: query
+                  schema:
+                    type: string
+                - name: sortOrder
+                  in: query
+                  schema:
+                    type: string
+                - name: canOffline
+                  in: query
+                  schema:
+                    type: boolean
+                - name: stageName
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.ListFlowReply'
+        post:
+            tags:
+                - Flow
+            operationId: Flow_CreateFlow
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.flow.v1.CreateFlowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.CreateFlowReply'
+    /api/v1/flow/{id}:
+        get:
+            tags:
+                - Flow
+            operationId: Flow_GetFlow
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.GetFlowReply'
+        put:
+            tags:
+                - Flow
+            operationId: Flow_UpdateFlow
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.flow.v1.UpdateFlowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.UpdateFlowReply'
+        delete:
+            tags:
+                - Flow
+            operationId: Flow_DeleteFlow
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.DeleteFlowReply'
+    /api/v1/hawk/done-end-alert/delete/{batchId}:
+        get:
+            tags:
+                - BatchOperationService
+            description: 从结束异常告警卡片删除批次
+            operationId: BatchOperationService_DeleteBatchFromDoneEndAlert
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: actionToken
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.DeleteBatchFromDoneEndAlertResponse'
+    /api/v1/hawk/done-end-alert/rollback/{batchId}:
+        get:
+            tags:
+                - BatchOperationService
+            description: 从结束异常告警卡片将批次从导出中回退到已完成
+            operationId: BatchOperationService_RollbackBatchFromDoneEndAlert
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: actionToken
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.RollbackBatchFromDoneEndAlertResponse'
+    /api/v1/hawk/error-log/{batchId}:
+        get:
+            tags:
+                - BatchOperationService
+            description: 查看批次错误日志（导出错误 CSV 并读取前 100 行数据）
+            operationId: BatchOperationService_GetBatchErrorLog
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.GetBatchErrorLogResponse'
+    /api/v1/hawk/key-fields/{batchId}:
+        get:
+            tags:
+                - BatchOperationService
+            description: 获取批次可选主键字段，字段来源为批次输入文件表头
+            operationId: BatchOperationService_ListBatchKeyFields
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.ListBatchKeyFieldsResponse'
+    /api/v1/hawk/operate:
+        post:
+            tags:
+                - BatchOperationService
+            description: 单个批次操作RPC方法
+            operationId: BatchOperationService_OperateBatch
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.hawk.v1.OperateBatchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.OperateBatchResponse'
+    /api/v1/hawk/output:
+        post:
+            tags:
+                - BatchOperationService
+            description: 中途导出批次当前输出，不暂停批次、不修改批次状态
+            operationId: BatchOperationService_ExportBatchOutput
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.hawk.v1.ExportBatchOutputRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.ExportBatchOutputResponse'
+    /api/v1/hawk/output-fields/{batchId}:
+        get:
+            tags:
+                - BatchOperationService
+            description: 获取批次可选输出字段
+            operationId: BatchOperationService_ListBatchOutputFields
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.ListBatchOutputFieldsResponse'
+    /api/v1/hawk/stat/{batchId}:
+        get:
+            tags:
+                - BatchOperationService
+            description: 获取单个批次统计信息
+            operationId: BatchOperationService_GetBatchStat
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.GetBatchStatResponse'
+    /api/v1/hawk/stats:
+        post:
+            tags:
+                - BatchOperationService
+            description: 批量获取批次统计信息
+            operationId: BatchOperationService_GetBatchStats
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.hawk.v1.GetBatchStatsRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.GetBatchStatsResponse'
+    /api/v1/hawk/system-load:
+        get:
+            tags:
+                - BatchOperationService
+            description: 获取系统资源负载
+            operationId: BatchOperationService_GetSystemLoad
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.GetSystemLoadResponse'
+    /api/v1/hawk/task-stream:
+        get:
+            tags:
+                - BatchOperationService
+            description: 获取全局实时任务流
+            operationId: BatchOperationService_ListTaskStream
+            parameters:
+                - name: status
+                  in: query
+                  schema:
+                    type: string
+                - name: onlyMine
+                  in: query
+                  schema:
+                    type: boolean
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.ListTaskStreamResponse'
+    /api/v1/hawk/task-stream/hidden:
+        post:
+            tags:
+                - BatchOperationService
+            description: 隐藏当前用户自己的已完成任务流批次
+            operationId: BatchOperationService_HideTaskStreamBatch
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.hawk.v1.HideTaskStreamBatchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.HideTaskStreamBatchResponse'
+    /api/v1/hawk/task-stream/stats:
+        post:
+            tags:
+                - BatchOperationService
+            description: 刷新运行中的任务流统计
+            operationId: BatchOperationService_RefreshTaskStream
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.hawk.v1.RefreshTaskStreamRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.RefreshTaskStreamResponse'
+    /api/v1/project:
+        get:
+            tags:
+                - Project
+            operationId: Project_ListProject
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: name
+                  in: query
+                  schema:
+                    type: string
+                - name: startCreatedAt
+                  in: query
+                  schema:
+                    type: string
+                - name: endCreatedAt
+                  in: query
+                  schema:
+                    type: string
+                - name: startDeliveryTime
+                  in: query
+                  schema:
+                    type: string
+                - name: endDeliveryTime
+                  in: query
+                  schema:
+                    type: string
+                - name: materialType
+                  in: query
+                  schema:
+                    type: string
+                - name: sortField
+                  in: query
+                  schema:
+                    type: string
+                - name: sortOrder
+                  in: query
+                  schema:
+                    type: string
+                - name: onlyMine
+                  in: query
+                  schema:
+                    type: boolean
+                - name: batchId
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.project.v1.ListProjectReply'
+        post:
+            tags:
+                - Project
+            operationId: Project_CreateProject
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.project.v1.CreateProjectRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.project.v1.CreateProjectReply'
+    /api/v1/project/feishu/info:
+        get:
+            tags:
+                - Project
+            description: 通过飞书链接获取飞书项目基础信息
+            operationId: Project_GetFeishuProjectInfo
+            parameters:
+                - name: link
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.project.v1.GetFeishuProjectInfoReply'
+    /api/v1/project/{id}:
+        get:
+            tags:
+                - Project
+            operationId: Project_GetProject
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.project.v1.GetProjectReply'
+        put:
+            tags:
+                - Project
+            operationId: Project_UpdateProject
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.project.v1.UpdateProjectRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.project.v1.UpdateProjectReply'
+        delete:
+            tags:
+                - Project
+            operationId: Project_DeleteProject
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.project.v1.DeleteProjectReply'
+    /api/v1/stage:
+        get:
+            tags:
+                - Stage
+            operationId: Stage_ListStage
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: name
+                  in: query
+                  schema:
+                    type: string
+                - name: domain
+                  in: query
+                  schema:
+                    type: string
+                - name: type
+                  in: query
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: keywords
+                  in: query
+                  schema:
+                    type: string
+                - name: sortField
+                  in: query
+                  schema:
+                    type: string
+                - name: sortOrder
+                  in: query
+                  schema:
+                    type: string
+                - name: canOffline
+                  in: query
+                  schema:
+                    type: boolean
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.stage.v1.ListStageReply'
+        post:
+            tags:
+                - Stage
+            operationId: Stage_CreateStage
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.stage.v1.CreateStageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.stage.v1.CreateStageReply'
+    /api/v1/stage/{id}:
+        get:
+            tags:
+                - Stage
+            operationId: Stage_GetStage
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.stage.v1.GetStageReply'
+        put:
+            tags:
+                - Stage
+            operationId: Stage_UpdateStage
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.stage.v1.UpdateStageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.stage.v1.UpdateStageReply'
+        delete:
+            tags:
+                - Stage
+            operationId: Stage_DeleteStage
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.stage.v1.DeleteStageReply'
+    /api/v1/tools/csv_first_row:
+        get:
+            tags:
+                - Tools
+            operationId: Tools_CsvFirstRow
+            parameters:
+                - name: tosPath
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.tools.CsvFirstRowReply'
+    /api/v1/tools/daily_metrics/trigger:
+        post:
+            tags:
+                - Tools
+            operationId: Tools_TriggerDailyMetrics
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.tools.TriggerDailyMetricsRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.tools.TriggerDailyMetricsReply'
+    /api/v1/tools/hbase_ddl:
+        get:
+            tags:
+                - Tools
+            operationId: Tools_GetHBaseDDL
+            parameters:
+                - name: datatype
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.tools.GetHBaseDDLReply'
+    /api/v1/tools/stage/ref_counts/refresh:
+        post:
+            tags:
+                - Tools
+            operationId: Tools_RefreshStageRefCounts
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.tools.RefreshStageRefCountsRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.tools.RefreshStageRefCountsReply'
+    /api/v1/tools/tos_file_ext:
+        get:
+            tags:
+                - Tools
+            operationId: Tools_TosFileExt
+            parameters:
+                - name: tosPath
+                  in: query
+                  schema:
+                    type: string
+                - name: tosPrefix
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.tools.TosFileExtReply'
+    /api/v1/tpl/wf:
+        get:
+            tags:
+                - Template
+            operationId: Template_ListTemplateWorkflow
+            parameters:
+                - name: tplIds
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+                - name: projectId
+                  in: query
+                  schema:
+                    type: string
+                - name: name
+                  in: query
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: creator
+                  in: query
+                  schema:
+                    type: string
+                - name: startCreatedAt
+                  in: query
+                  schema:
+                    type: string
+                - name: endCreatedAt
+                  in: query
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.ListTemplateWorkflowReply'
+        post:
+            tags:
+                - Template
+            operationId: Template_CreateTemplateWorkflow
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.template.CreateTemplateWorkflowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.CreateTemplateWorkflowReply'
+    /api/v1/tpl/wf/metric:
+        get:
+            tags:
+                - Template
+            operationId: Template_GetTemplateMetric
+            parameters:
+                - name: ids
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.GetTemplateMetricReply'
+    /api/v1/tpl/wf/{id}:
+        get:
+            tags:
+                - Template
+            operationId: Template_GetTemplateWorkflow
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.GetTemplateWorkflowReply'
+        put:
+            tags:
+                - Template
+            operationId: Template_UpdateTemplateWorkflow
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.template.UpdateTemplateWorkflowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.UpdateTemplateWorkflowReply'
+    /api/v1/tpl/wf/{id}/download:
+        get:
+            tags:
+                - Template
+            operationId: Template_GetTemplateWorkflowDownload
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.GetTemplateWorkflowDownloadReply'
+    /api/v1/transfer/task:
+        get:
+            tags:
+                - Transfer
+            operationId: Transfer_ListTransferTask
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: status
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: name
+                  in: query
+                  schema:
+                    type: string
+                - name: onlyMine
+                  in: query
+                  schema:
+                    type: boolean
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.ListTransferTaskReply'
+        post:
+            tags:
+                - Transfer
+            operationId: Transfer_CreateTransferTask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.CreateTransferTaskRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.CreateTransferTaskReply'
+    /api/v1/transfer/task/{id}:
+        get:
+            tags:
+                - Transfer
+            operationId: Transfer_GetTransferTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.GetTransferTaskReply'
+    /api/v1/transfer/task/{id}/cancel:
+        post:
+            tags:
+                - Transfer
+            operationId: Transfer_CancelTransferTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.CancelTransferTaskRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.CancelTransferTaskReply'
+    /api/v1/transfer/task/{id}/close:
+        post:
+            tags:
+                - Transfer
+            operationId: Transfer_CloseTransferTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.CloseTransferTaskRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.CloseTransferTaskReply'
+    /api/v1/transfer/task/{id}/config:
+        put:
+            tags:
+                - Transfer
+            operationId: Transfer_UpdateTransferTaskConfig
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.UpdateTransferTaskConfigRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.UpdateTransferTaskConfigReply'
+    /api/v1/transfer/task/{id}/pause:
+        post:
+            tags:
+                - Transfer
+            operationId: Transfer_PauseTransferTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.PauseTransferTaskRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.PauseTransferTaskReply'
+    /api/v1/transfer/task/{id}/run:
+        post:
+            tags:
+                - Transfer
+            operationId: Transfer_RunTransferTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.RunTransferTaskRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.RunTransferTaskReply'
+    /api/v1/transfer/task/{id}/snapshot:
+        post:
+            tags:
+                - Transfer
+            operationId: Transfer_DownloadTransferTaskSnapshot
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.DownloadTransferTaskSnapshotRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.DownloadTransferTaskSnapshotReply'
+    /api/v1/transfer/task/{id}/step/{stepNo}/continue:
+        post:
+            tags:
+                - Transfer
+            operationId: Transfer_ContinueTransferStep
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: stepNo
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: int32
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.ContinueTransferStepRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.ContinueTransferStepReply'
+    /api/v1/transfer/task/{id}/step/{stepNo}/retry:
+        post:
+            tags:
+                - Transfer
+            operationId: Transfer_RetryTransferStep
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: stepNo
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: int32
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.transfer.v1.RetryTransferStepRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.transfer.v1.RetryTransferStepReply'
+    /api/v1/user/auth:
+        post:
+            tags:
+                - User
+            description: User authentication
+            operationId: User_UserAuth
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/user.v1.UserAuthRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/user.v1.UserAuthReply'
+    /api/v1/user/login:
+        post:
+            tags:
+                - User
+            description: User login
+            operationId: User_UserLogin
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/user.v1.UserLoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/user.v1.UserLoginReply'
+    /api/v1/user/logout:
+        post:
+            tags:
+                - User
+            description: User logout
+            operationId: User_UserExit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/user.v1.UserExitRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/user.v1.UserExitReply'
+    /api/v1/user/rsa:
+        get:
+            tags:
+                - User
+            description: Get RSA public key
+            operationId: User_UserRsa
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/user.v1.UserRsaReply'
+components:
+    schemas:
+        api.batch.v1.BatchData:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                projectId:
+                    type: string
+                totalCount:
+                    type: integer
+                    format: int32
+                materialType:
+                    type: string
+                inputFilePath:
+                    type: string
+                storeFilePath:
+                    type: string
+                deliveryFilePath:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                successCount:
+                    type: integer
+                    format: int32
+                failedCount:
+                    type: integer
+                    format: int32
+                abortCount:
+                    type: integer
+                    format: int32
+                progress:
+                    type: number
+                    format: double
+                deliveryTime:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                createdUserID:
+                    type: string
+                updatedUserID:
+                    type: string
+                createdUserName:
+                    type: string
+                updatedUserName:
+                    type: string
+                projectName:
+                    type: string
+                    description: 关联字段
+                flowName:
+                    type: string
+                flowSchema:
+                    type: string
+                config:
+                    type: string
+                version:
+                    type: integer
+                    format: int32
+                errorFilePath:
+                    type: string
+                configTemplate:
+                    type: string
+                cidPath:
+                    type: string
+                realPath:
+                    type: string
+        api.batch.v1.CSVRow:
+            type: object
+            properties:
+                values:
+                    type: array
+                    items:
+                        type: string
+        api.batch.v1.CheckBatchData:
+            type: object
+            properties:
+                exists:
+                    type: boolean
+        api.batch.v1.CheckBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.CheckBatchData'
+        api.batch.v1.CompleteMultipartUploadReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.UploadFileData'
+        api.batch.v1.CompleteMultipartUploadRequest:
+            type: object
+            properties:
+                uploadId:
+                    type: string
+                key:
+                    type: string
+                parts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.CompletedPart'
+        api.batch.v1.CompletedPart:
+            type: object
+            properties:
+                partNumber:
+                    type: integer
+                    format: int32
+                etag:
+                    type: string
+            description: 已上传分片
+        api.batch.v1.CopyBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                id:
+                    type: string
+        api.batch.v1.CopyBatchRequest:
+            type: object
+            properties:
+                sourceId:
+                    type: string
+                name:
+                    type: string
+                inputFilePath:
+                    type: string
+                    description: |-
+                        输入文件路径：CID:// 前缀直接引用已有物料，其余为待复制到批次 input 目录的文件路径
+                         与 listTosDirs 二选一必填
+                inputBody:
+                    type: string
+                materialType:
+                    type: string
+        api.batch.v1.CreateBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                id:
+                    type: string
+        api.batch.v1.CreateBatchRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                projectId:
+                    type: string
+                flowName:
+                    type: string
+                inputFilePath:
+                    type: string
+                materialType:
+                    type: string
+                deliveryTime:
+                    type: string
+                createdUserID:
+                    type: string
+                createdUserName:
+                    type: string
+                config:
+                    type: string
+                inputBody:
+                    type: string
+        api.batch.v1.CreateStatisticsBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                batchId:
+                    type: string
+        api.batch.v1.CreateStatisticsBatchRequest:
+            type: object
+            properties:
+                collectionId:
+                    type: string
+                fields:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.StatisticsField'
+        api.batch.v1.DeleteBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.batch.v1.FlowGraphData:
+            type: object
+            properties:
+                schema:
+                    type: string
+                nodeStatus:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.FlowNodeStatus'
+            description: 工作流图数据
+        api.batch.v1.FlowNodeStatus:
+            type: object
+            properties:
+                nodeId:
+                    type: string
+                status:
+                    type: string
+                progress:
+                    type: integer
+                    format: int32
+                totalCount:
+                    type: integer
+                    format: int32
+                successCount:
+                    type: integer
+                    format: int32
+                failedCount:
+                    type: integer
+                    format: int32
+                abortCount:
+                    type: integer
+                    format: int32
+            description: 工作流节点状态数据
+        api.batch.v1.GenTosDownloadURLReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.TosDownloadURLData'
+            description: 生成TOS文件下载链接响应
+        api.batch.v1.GenTosDownloadURLRequest:
+            type: object
+            properties:
+                tosUrl:
+                    type: string
+                expires:
+                    type: string
+            description: 生成TOS文件下载链接请求
+        api.batch.v1.GetBatchFlowGraphReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.FlowGraphData'
+            description: 获取批次工作流图数据响应
+        api.batch.v1.GetBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.BatchData'
+        api.batch.v1.GetStatisticsBatchCSVReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.StatisticsBatchCSVData'
+        api.batch.v1.InitMultipartUploadData:
+            type: object
+            properties:
+                uploadId:
+                    type: string
+                key:
+                    type: string
+                partSize:
+                    type: string
+                partCount:
+                    type: integer
+                    format: int32
+                expiresAt:
+                    type: string
+                parts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.PartUploadURL'
+        api.batch.v1.InitMultipartUploadReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.InitMultipartUploadData'
+        api.batch.v1.InitMultipartUploadRequest:
+            type: object
+            properties:
+                fileName:
+                    type: string
+                fileSize:
+                    type: string
+                partSize:
+                    type: string
+        api.batch.v1.ListBatchData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.BatchData'
+                total:
+                    type: integer
+                    format: int32
+        api.batch.v1.ListBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.ListBatchData'
+        api.batch.v1.ListStatisticsBatchData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.StatisticsBatchData'
+                total:
+                    type: integer
+                    format: int32
+        api.batch.v1.ListStatisticsBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.ListStatisticsBatchData'
+        api.batch.v1.ListTempFilesReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.TempFilesData'
+            description: 列出临时文件响应
+        api.batch.v1.PartUploadURL:
+            type: object
+            properties:
+                partNumber:
+                    type: integer
+                    format: int32
+                url:
+                    type: string
+            description: 单个分片的预签名上传地址
+        api.batch.v1.StatisticsBatchCSVData:
+            type: object
+            properties:
+                headers:
+                    type: array
+                    items:
+                        type: string
+                rows:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.CSVRow'
+                csvContent:
+                    type: string
+                fileName:
+                    type: string
+                deliveryFilePath:
+                    type: string
+        api.batch.v1.StatisticsBatchData:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                projectId:
+                    type: string
+                flowName:
+                    type: string
+                cidPath:
+                    type: string
+                deliveryFilePath:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                createdUserID:
+                    type: string
+                createdUserName:
+                    type: string
+                fields:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.StatisticsField'
+                config:
+                    type: string
+        api.batch.v1.StatisticsField:
+            type: object
+            properties:
+                name:
+                    type: string
+                displayName:
+                    type: string
+                dataType:
+                    type: string
+                aggregation:
+                    type: string
+                sort:
+                    type: integer
+                    format: int32
+        api.batch.v1.TempFileInfo:
+            type: object
+            properties:
+                fileName:
+                    type: string
+                filePath:
+                    type: string
+                size:
+                    type: string
+                lastModified:
+                    type: string
+            description: 临时文件信息
+        api.batch.v1.TempFilesData:
+            type: object
+            properties:
+                files:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.batch.v1.TempFileInfo'
+            description: 临时文件列表数据
+        api.batch.v1.TosDownloadURLData:
+            type: object
+            properties:
+                url:
+                    type: string
+                expires:
+                    type: string
+                fileName:
+                    type: string
+            description: TOS下载链接数据
+        api.batch.v1.UpdateBatchInputReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                inputFilePath:
+                    type: string
+                    description: 回填后的输入文件路径（复制场景为 tos:// 路径）
+        api.batch.v1.UpdateBatchInputRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                inputFilePath:
+                    type: string
+                    description: 输入文件路径：CID:// 前缀直接引用已有物料，其余为待复制到批次 input 目录的文件路径
+                inputBody:
+                    type: string
+                materialType:
+                    type: string
+        api.batch.v1.UpdateBatchReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.batch.v1.UpdateBatchRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                config:
+                    type: string
+                name:
+                    type: string
+                materialType:
+                    type: string
+        api.batch.v1.UpdateBatchStatusReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.batch.v1.UpdateBatchStatusRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+        api.batch.v1.UploadFileData:
+            type: object
+            properties:
+                url:
+                    type: string
+                rowCount:
+                    type: integer
+                    format: int32
+                filePath:
+                    type: string
+                fileName:
+                    type: string
+        api.batch.v1.UploadFileReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                url:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.batch.v1.UploadFileData'
+        api.credential.v1.CreateCredentialReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.credential.v1.CredentialData'
+        api.credential.v1.CreateCredentialRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                platform:
+                    type: string
+                expireDays:
+                    type: integer
+                    format: int32
+                ak:
+                    type: string
+                sk:
+                    type: string
+                region:
+                    type: string
+                endpoint:
+                    type: string
+        api.credential.v1.CredentialData:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                platform:
+                    type: string
+                expireDays:
+                    type: integer
+                    format: int32
+                expireAt:
+                    type: string
+                region:
+                    type: string
+                endpoint:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        api.credential.v1.DeleteCredentialReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.credential.v1.ListCredentialData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.credential.v1.CredentialData'
+                total:
+                    type: integer
+                    format: int32
+        api.credential.v1.ListCredentialReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.credential.v1.ListCredentialData'
+        api.credential.v1.UpdateCredentialReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.credential.v1.CredentialData'
+        api.credential.v1.UpdateCredentialRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                platform:
+                    type: string
+                expireDays:
+                    type: integer
+                    format: int32
+                ak:
+                    type: string
+                sk:
+                    type: string
+                region:
+                    type: string
+                endpoint:
+                    type: string
+        api.flow.v1.CreateFlowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                id:
+                    type: string
+        api.flow.v1.CreateFlowRequest:
+            type: object
+            properties:
+                flowName:
+                    type: string
+                alias:
+                    type: string
+                desc:
+                    type: string
+                domain:
+                    type: string
+                type:
+                    type: string
+                extendInfo:
+                    type: object
+                schema:
+                    type: string
+                config:
+                    type: string
+                configTemplate:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                inputFields:
+                    type: string
+                outputFields:
+                    type: string
+        api.flow.v1.DeleteFlowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.flow.v1.FlowData:
+            type: object
+            properties:
+                id:
+                    type: string
+                flowName:
+                    type: string
+                alias:
+                    type: string
+                desc:
+                    type: string
+                domain:
+                    type: string
+                type:
+                    type: string
+                extendInfo:
+                    type: object
+                schema:
+                    type: string
+                config:
+                    type: string
+                configTemplate:
+                    type: string
+                lastUsedAt:
+                    type: string
+                callCnt30d:
+                    type: integer
+                    format: int32
+                callCnt7d:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: int32
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                inputFields:
+                    type: string
+                outputFields:
+                    type: string
+                stages:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.flow.v1.StageRelation'
+        api.flow.v1.GetFlowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.flow.v1.FlowData'
+        api.flow.v1.ListFlowData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.flow.v1.FlowData'
+                total:
+                    type: integer
+                    format: int32
+        api.flow.v1.ListFlowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.flow.v1.ListFlowData'
+        api.flow.v1.StageRelation:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                alias:
+                    type: string
+        api.flow.v1.UpdateFlowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.flow.v1.UpdateFlowRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                alias:
+                    type: string
+                desc:
+                    type: string
+                domain:
+                    type: string
+                type:
+                    type: string
+                extendInfo:
+                    type: object
+                status:
+                    type: integer
+                    format: int32
+        api.hawk.v1.BatchErrorLogData:
+            type: object
+            properties:
+                headers:
+                    type: array
+                    items:
+                        type: string
+                rows:
+                    type: array
+                    items:
+                        type: object
+                total:
+                    type: integer
+                    format: int32
+                tosPath:
+                    type: string
+                truncated:
+                    type: boolean
+            description: 批次错误日志数据
+        api.hawk.v1.BatchStatItem:
+            type: object
+            properties:
+                batchId:
+                    type: integer
+                    format: int32
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.GetBatchStatData'
+            description: 单个批次统计结果
+        api.hawk.v1.DeleteBatchFromDoneEndAlertResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+            description: 从结束异常告警卡片删除批次响应
+        api.hawk.v1.ExportBatchOutputData:
+            type: object
+            properties:
+                deliveryTosPath:
+                    type: string
+                storeTosPath:
+                    type: string
+                errorTosPath:
+                    type: string
+                zipTosPath:
+                    type: string
+            description: 中途导出批次输出数据
+        api.hawk.v1.ExportBatchOutputRequest:
+            type: object
+            properties:
+                batchId:
+                    type: string
+            description: 中途导出批次输出请求，不会暂停批次或修改批次状态
+        api.hawk.v1.ExportBatchOutputResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.ExportBatchOutputData'
+            description: 中途导出批次输出响应
+        api.hawk.v1.GetBatchErrorLogResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.BatchErrorLogData'
+            description: 查看批次错误日志响应
+        api.hawk.v1.GetBatchStatData:
+            type: object
+            properties:
+                stats:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.hawk.v1.StageStat'
+                schema:
+                    type: string
+                totalCount:
+                    type: integer
+                    description: 总体信息
+                    format: int32
+                successCount:
+                    type: integer
+                    format: int32
+                failedCount:
+                    type: integer
+                    format: int32
+                abortedCount:
+                    type: integer
+                    format: int32
+                progress:
+                    type: number
+                    format: double
+                status:
+                    type: integer
+                    format: int32
+                masterIp:
+                    type: string
+                rpcError:
+                    type: string
+            description: 批次统计数据
+        api.hawk.v1.GetBatchStatResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.GetBatchStatData'
+            description: 单个批次操作响应
+        api.hawk.v1.GetBatchStatsRequest:
+            type: object
+            properties:
+                batchIds:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+            description: 批量查询批次统计请求
+        api.hawk.v1.GetBatchStatsResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.hawk.v1.BatchStatItem'
+            description: 批量查询批次统计响应
+        api.hawk.v1.GetSystemLoadResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.SystemLoadData'
+        api.hawk.v1.HideTaskStreamBatchRequest:
+            type: object
+            properties:
+                batchId:
+                    type: string
+        api.hawk.v1.HideTaskStreamBatchResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+        api.hawk.v1.ListBatchKeyFieldsResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                keyFields:
+                    type: array
+                    items:
+                        type: string
+            description: 批次主键字段列表响应
+        api.hawk.v1.ListBatchOutputFieldsResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                outputFields:
+                    type: array
+                    items:
+                        type: string
+            description: 批次输出字段列表响应
+        api.hawk.v1.ListTaskStreamData:
+            type: object
+            properties:
+                myBatches:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.hawk.v1.MyTaskStreamBatch'
+                otherBatches:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.hawk.v1.OtherTaskStreamBatch'
+        api.hawk.v1.ListTaskStreamResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.ListTaskStreamData'
+        api.hawk.v1.MyTaskStreamBatch:
+            type: object
+            properties:
+                batchId:
+                    type: string
+                batchName:
+                    type: string
+                projectId:
+                    type: string
+                creatorName:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                createdAt:
+                    type: string
+                stats:
+                    $ref: '#/components/schemas/api.hawk.v1.TaskStreamStat'
+            description: 当前用户创建的批次，可跳转详情
+        api.hawk.v1.OperateBatchRequest:
+            type: object
+            properties:
+                batchId:
+                    type: string
+                operation:
+                    type: integer
+                    format: enum
+            description: 单个批次操作请求
+        api.hawk.v1.OperateBatchResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+            description: 单个批次操作响应
+        api.hawk.v1.OtherTaskStreamBatch:
+            type: object
+            properties:
+                batchId:
+                    type: string
+                creatorName:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                createdAt:
+                    type: string
+                stats:
+                    $ref: '#/components/schemas/api.hawk.v1.TaskStreamStat'
+            description: 其他用户批次，严格脱敏且不可跳转详情
+        api.hawk.v1.RefreshTaskStreamRequest:
+            type: object
+            properties:
+                batchIds:
+                    type: array
+                    items:
+                        type: string
+        api.hawk.v1.RefreshTaskStreamResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.hawk.v1.TaskStreamRefreshItem'
+        api.hawk.v1.RollbackBatchFromDoneEndAlertResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+            description: 从结束异常告警卡片将批次从导出中回退到已完成响应
+        api.hawk.v1.StageStat:
+            type: object
+            properties:
+                name:
+                    type: string
+                totalCnt:
+                    type: integer
+                    format: int32
+                doneCnt:
+                    type: integer
+                    format: int32
+                failedCnt:
+                    type: integer
+                    format: int32
+                abortedCnt:
+                    type: integer
+                    format: int32
+                status:
+                    type: string
+                    description: 算子状态：pending / running / completed，透传自执行侧
+        api.hawk.v1.SystemLoadData:
+            type: object
+            properties:
+                loadPercent:
+                    type: number
+                    format: double
+                cpuPercent:
+                    type: number
+                    format: double
+                memoryPercent:
+                    type: number
+                    format: double
+                status:
+                    type: string
+                statusText:
+                    type: string
+                tip:
+                    type: string
+                updatedAt:
+                    type: string
+        api.hawk.v1.TaskStreamRefreshItem:
+            type: object
+            properties:
+                batchId:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                stats:
+                    $ref: '#/components/schemas/api.hawk.v1.TaskStreamStat'
+        api.hawk.v1.TaskStreamStat:
+            type: object
+            properties:
+                totalCount:
+                    type: integer
+                    format: int32
+                successCount:
+                    type: integer
+                    format: int32
+                failedCount:
+                    type: integer
+                    format: int32
+                abortedCount:
+                    type: integer
+                    format: int32
+                progress:
+                    type: number
+                    format: double
+                rpcError:
+                    type: string
+            description: 实时任务流统计数据
+        api.project.v1.CreateProjectReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                id:
+                    type: string
+        api.project.v1.CreateProjectRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                materialType:
+                    type: string
+                deliveryTime:
+                    type: string
+                description:
+                    type: string
+                feishuLink:
+                    type: string
+                createdUserID:
+                    type: string
+                createdUserName:
+                    type: string
+                deliveryCount:
+                    type: string
+                adminUserIds:
+                    type: array
+                    items:
+                        type: string
+                developerUserIds:
+                    type: array
+                    items:
+                        type: string
+                notificationLevel:
+                    type: integer
+                    format: int32
+        api.project.v1.DeleteProjectReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.project.v1.FeishuProjectData:
+            type: object
+            properties:
+                projectID:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+            description: 飞书项目数据
+        api.project.v1.GetFeishuProjectInfoReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.project.v1.FeishuProjectData'
+        api.project.v1.GetProjectReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.project.v1.ProjectData'
+        api.project.v1.ListProjectData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.project.v1.ProjectData'
+                total:
+                    type: integer
+                    format: int32
+                accessDenied:
+                    type: boolean
+        api.project.v1.ListProjectReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.project.v1.ListProjectData'
+        api.project.v1.ProjectData:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                completeTime:
+                    type: string
+                materialType:
+                    type: string
+                deliveryTime:
+                    type: string
+                description:
+                    type: string
+                feishuLink:
+                    type: string
+                createdUserID:
+                    type: string
+                createdUserName:
+                    type: string
+                createdAt:
+                    type: string
+                deliveryCount:
+                    type: string
+                users:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.project.v1.ProjectUserData'
+                notificationLevel:
+                    type: integer
+                    format: int32
+        api.project.v1.ProjectUserData:
+            type: object
+            properties:
+                userId:
+                    type: string
+                roleCode:
+                    type: string
+        api.project.v1.UpdateProjectReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.project.v1.UpdateProjectRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                materialType:
+                    type: string
+                deliveryTime:
+                    type: string
+                description:
+                    type: string
+                feishuLink:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                deliveryCount:
+                    type: string
+                ownerUserId:
+                    type: string
+                adminUserIds:
+                    type: array
+                    items:
+                        type: string
+                developerUserIds:
+                    type: array
+                    items:
+                        type: string
+                notificationLevel:
+                    type: integer
+                    format: int32
+        api.stage.v1.CreateStageReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                id:
+                    type: string
+        api.stage.v1.CreateStageRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                alias:
+                    type: string
+                desc:
+                    type: string
+                configTemplate:
+                    type: object
+                domain:
+                    type: string
+                type:
+                    type: string
+                extendInfo:
+                    type: object
+                status:
+                    type: integer
+                    format: int32
+        api.stage.v1.DeleteStageReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.stage.v1.FlowRelation:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                alias:
+                    type: string
+        api.stage.v1.GetStageReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.stage.v1.StageData'
+        api.stage.v1.ListStageData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.stage.v1.StageData'
+                total:
+                    type: integer
+                    format: int32
+        api.stage.v1.ListStageReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.stage.v1.ListStageData'
+        api.stage.v1.StageData:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                alias:
+                    type: string
+                desc:
+                    type: string
+                configTemplate:
+                    type: object
+                domain:
+                    type: string
+                type:
+                    type: string
+                extendInfo:
+                    type: object
+                status:
+                    type: integer
+                    format: int32
+                refCount:
+                    type: string
+                callCnt30d:
+                    type: integer
+                    format: int32
+                callCnt7d:
+                    type: integer
+                    format: int32
+                avgDurationSec:
+                    type: number
+                    format: double
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                flows:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.stage.v1.FlowRelation'
+        api.stage.v1.UpdateStageReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.stage.v1.UpdateStageRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                alias:
+                    type: string
+                desc:
+                    type: string
+                domain:
+                    type: string
+                type:
+                    type: string
+                extendInfo:
+                    type: object
+                status:
+                    type: integer
+                    format: int32
+        api.template.BatchData:
+            type: object
+            properties:
+                page:
+                    type: integer
+                    format: int32
+                pageSize:
+                    type: integer
+                    format: int32
+                total:
+                    type: string
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.template.TemplateWorkflow'
+        api.template.CreateTemplateWorkflowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    type: string
+        api.template.CreateTemplateWorkflowRequest:
+            type: object
+            properties:
+                tplId:
+                    type: string
+                projectId:
+                    type: string
+                info:
+                    type: object
+                input:
+                    type: object
+        api.template.GetTemplateMetricReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.template.TemplateMetric'
+        api.template.GetTemplateWorkflowDownloadReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    type: string
+        api.template.GetTemplateWorkflowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.template.TemplateWorkflow'
+        api.template.ListTemplateWorkflowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.template.BatchData'
+        api.template.TemplateMetric:
+            type: object
+            properties:
+                total:
+                    type: string
+                running:
+                    type: string
+                finished:
+                    type: string
+                resourceNum:
+                    type: string
+        api.template.TemplateWorkflow:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                info:
+                    type: object
+                input:
+                    type: object
+                output:
+                    type: object
+                currentStep:
+                    type: integer
+                    format: int32
+                steps:
+                    type: array
+                    items:
+                        type: object
+                projectId:
+                    type: string
+                projectName:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                errMsg:
+                    type: string
+                creator:
+                    type: string
+                createdAt:
+                    type: string
+        api.template.UpdateTemplateWorkflowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.template.UpdateTemplateWorkflowRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                info:
+                    type: object
+                input:
+                    type: object
+        api.tools.CsvFirstRowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    type: object
+                    additionalProperties:
+                        type: string
+                totalRows:
+                    type: string
+        api.tools.FileExtItem:
+            type: object
+            properties:
+                name:
+                    type: string
+                num:
+                    type: string
+        api.tools.GetHBaseDDLReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.tools.HBaseDDLColumn'
+        api.tools.HBaseDDLColumn:
+            type: object
+            properties:
+                qualifier:
+                    type: string
+                value:
+                    type: string
+                wRule:
+                    type: string
+                columnType:
+                    type: string
+                columnOptions:
+                    type: array
+                    items:
+                        type: string
+                displayFormat:
+                    type: string
+                required:
+                    type: boolean
+                name:
+                    type: string
+                asFrom:
+                    type: string
+        api.tools.RefreshStageRefCountsReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.tools.RefreshStageRefCountsRequest:
+            type: object
+            properties: {}
+        api.tools.TosFileExtReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.tools.FileExtItem'
+        api.tools.TriggerDailyMetricsReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                accepted:
+                    type: boolean
+        api.tools.TriggerDailyMetricsRequest:
+            type: object
+            properties: {}
+        api.transfer.v1.CancelTransferTaskReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.transfer.v1.CancelTransferTaskRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.transfer.v1.CloseTransferTaskReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.transfer.v1.CloseTransferTaskRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.transfer.v1.CommonTemplateData:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                flowGroup:
+                    type: string
+                flowGroupConfig:
+                    type: string
+                createdUserID:
+                    type: string
+                createdUserName:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        api.transfer.v1.ContinueTransferStepReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.transfer.v1.ContinueTransferStepRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                stepNo:
+                    type: integer
+                    format: int32
+        api.transfer.v1.CreateTransferTaskReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                id:
+                    type: string
+        api.transfer.v1.CreateTransferTaskRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                templateId:
+                    type: string
+                inputType:
+                    type: integer
+                    format: int32
+                sourcePath:
+                    type: string
+                projectId:
+                    type: string
+                materialType:
+                    type: string
+                deliveryTime:
+                    type: string
+                totalCount:
+                    type: integer
+                    format: int32
+                config:
+                    type: string
+        api.transfer.v1.DownloadTransferTaskSnapshotReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.transfer.v1.TransferTaskSnapshotData'
+        api.transfer.v1.DownloadTransferTaskSnapshotRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.transfer.v1.GetTransferTaskReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.transfer.v1.TransferTaskData'
+        api.transfer.v1.ListCommonTemplateData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.transfer.v1.CommonTemplateData'
+        api.transfer.v1.ListCommonTemplateReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.transfer.v1.ListCommonTemplateData'
+        api.transfer.v1.ListTransferTaskData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.transfer.v1.TransferTaskData'
+                total:
+                    type: integer
+                    format: int32
+        api.transfer.v1.ListTransferTaskReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.transfer.v1.ListTransferTaskData'
+        api.transfer.v1.PauseTransferTaskReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.transfer.v1.PauseTransferTaskRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.transfer.v1.RetryTransferStepReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.transfer.v1.RetryTransferStepRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                stepNo:
+                    type: integer
+                    format: int32
+        api.transfer.v1.RunTransferTaskReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.transfer.v1.RunTransferTaskRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.transfer.v1.TransferTaskData:
+            type: object
+            properties:
+                id:
+                    type: string
+                templateId:
+                    type: string
+                name:
+                    type: string
+                inputType:
+                    type: integer
+                    format: int32
+                sourcePath:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                currentStepNo:
+                    type: integer
+                    format: int32
+                errorMessage:
+                    type: string
+                projectId:
+                    type: string
+                materialType:
+                    type: string
+                deliveryTime:
+                    type: string
+                totalCount:
+                    type: integer
+                    format: int32
+                config:
+                    type: string
+                createdUserID:
+                    type: string
+                createdUserName:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                steps:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.transfer.v1.TransferTaskStepData'
+        api.transfer.v1.TransferTaskSnapshotData:
+            type: object
+            properties:
+                url:
+                    type: string
+                fileName:
+                    type: string
+        api.transfer.v1.TransferTaskStepData:
+            type: object
+            properties:
+                id:
+                    type: string
+                taskId:
+                    type: string
+                stepNo:
+                    type: integer
+                    format: int32
+                flowName:
+                    type: string
+                batchId:
+                    type: string
+                inputFilePath:
+                    type: string
+                outputFilePath:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                autoRun:
+                    type: boolean
+                successCount:
+                    type: integer
+                    format: int32
+                failedCount:
+                    type: integer
+                    format: int32
+                abortCount:
+                    type: integer
+                    format: int32
+                statUpdatedAt:
+                    type: string
+                statErrorMessage:
+                    type: string
+                errorMessage:
+                    type: string
+                batchStatus:
+                    type: integer
+                    format: int32
+                batchName:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+        api.transfer.v1.UpdateTransferTaskConfigReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.transfer.v1.UpdateTransferTaskConfigRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                config:
+                    type: string
+                name:
+                    type: string
+                inputType:
+                    type: integer
+                    format: int32
+        user.v1.Role:
+            type: object
+            properties:
+                name:
+                    type: string
+                keyword:
+                    type: string
+                app:
+                    type: string
+        user.v1.RsaInfo:
+            type: object
+            properties:
+                rsa:
+                    type: string
+        user.v1.UserAuthReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/user.v1.UserInfo'
+            description: User auth reply
+        user.v1.UserAuthRequest:
+            type: object
+            properties:
+                token:
+                    type: string
+            description: User auth request
+        user.v1.UserExitReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+            description: User exit reply
+        user.v1.UserExitRequest:
+            type: object
+            properties:
+                token:
+                    type: string
+            description: User exit request
+        user.v1.UserInfo:
+            type: object
+            properties:
+                username:
+                    type: string
+                token:
+                    type: string
+                userId:
+                    type: string
+                isAdmin:
+                    type: boolean
+                roleKeyword:
+                    type: string
+                roles:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/user.v1.Role'
+        user.v1.UserLoginInfo:
+            type: object
+            properties:
+                token:
+                    type: string
+                expires:
+                    type: string
+                userId:
+                    type: string
+                isAdmin:
+                    type: boolean
+                roleKeyword:
+                    type: string
+                roles:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/user.v1.Role'
+        user.v1.UserLoginReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/user.v1.UserLoginInfo'
+            description: User login reply
+        user.v1.UserLoginRequest:
+            type: object
+            properties:
+                username:
+                    type: string
+                password:
+                    type: string
+            description: User login request
+        user.v1.UserRsaReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/user.v1.RsaInfo'
+            description: User RSA reply
+tags:
+    - name: Batch
+    - name: BatchOperationService
+      description: 批次操作服务接口
+    - name: Credential
+    - name: Flow
+    - name: Project
+    - name: Stage
+    - name: Template
+    - name: Tools
+    - name: Transfer
+    - name: User
+      description: User service definition.

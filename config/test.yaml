@@ -1,0 +1,8 @@
+auth:
+  base_url: "https://ai-node-test.tucdev.com"
+  rsa_path: "/api/auth/rsa"
+  login_path: "/api/auth/login"
+
+platforms:
+  hawk_admin:
+    base_url: "https://test-hawk-admin.tucdev.com/api/v1"

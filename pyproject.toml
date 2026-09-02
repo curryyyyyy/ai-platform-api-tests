@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-platform-api-tests"
+version = "0.1.0"
+description = "AI 总平台及各业务子平台接口自动化测试"
+requires-python = ">=3.9"
+dependencies = [
+  "pytest>=8.0,<9",
+  "requests>=2.31,<3",
+  "PyYAML>=6.0,<7",
+  "jsonschema>=4.20,<5",
+  "cryptography>=41,<44",
+  "allure-pytest>=2.13,<3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+  "live: 访问在线测试环境",
+  "smoke: 主链路冒烟测试",
+  "contract: OpenAPI 契约检查",
+  "hawk_admin: 机器标注平台测试",
+]
+
+[tool.setuptools.packages.find]
+include = ["framework*", "platforms*"]
