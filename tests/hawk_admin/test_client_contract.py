@@ -1,25 +1,29 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
+from requests import Response
 
 from platforms.hawk_admin.client import HawkAdminClient
 
 
+pytestmark = [pytest.mark.contract, pytest.mark.hawk_admin]
+
+
 class FakeHawkClient(HawkAdminClient):
-    def __init__(self, bodies: list[dict]):
+    def __init__(self, bodies: list[dict[str, Any]]):
         super().__init__("http://hawk.invalid", retries=0)
         self.bodies = iter(bodies)
         self.calls = 0
 
-    def operate_batch(self, batch_id, operation):
+    def operate_batch(self, batch_id: int, operation: int) -> Response:
         self.calls += 1
         body = next(self.bodies)
-        return SimpleNamespace(status_code=200, json=lambda: body, text=str(body))
+        return cast(Response, SimpleNamespace(status_code=200, json=lambda: body, text=str(body)))
 
 
-@pytest.mark.contract
 def test_operate_batch_with_retry_retries_transient_node_lock(monkeypatch):
     client = FakeHawkClient([
         {"code": 1, "message": "lock already taken, locked nodes: [0]"},
@@ -35,7 +39,6 @@ def test_operate_batch_with_retry_retries_transient_node_lock(monkeypatch):
     assert client.json(response)["code"] == 0
 
 
-@pytest.mark.contract
 def test_operate_batch_with_retry_does_not_retry_other_business_errors(monkeypatch):
     client = FakeHawkClient([{"code": 1, "message": "invalid operation"}])
     monkeypatch.setattr("platforms.hawk_admin.client.time.sleep", lambda _: pytest.fail("不应等待"))

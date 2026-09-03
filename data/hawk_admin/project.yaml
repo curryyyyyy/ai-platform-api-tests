@@ -1,0 +1,41 @@
+defaults:
+  materialType: "图片"
+  notificationLevel: 0
+  description: "自动化接口测试项目"
+  deliveryCount: 10
+
+cases:
+  invalid_notification_levels:
+    - id: negative
+      level: -1
+    - id: unsupported
+      level: 9
+    - id: too_large
+      level: 99
+
+  create:
+    - id: core
+      materialType: "图片"
+      description: "核心链路项目"
+      deliveryCount: 10
+      notificationLevel: 0
+    - id: consistency
+      materialType: "图片"
+      description: "读写一致性"
+      notificationLevel: 0
+
+  update:
+    - id: standard
+      materialType: "视频"
+      description: "已更新描述"
+      notificationLevel: 1
+    - id: without_owner
+      materialType: "图片"
+      description: ""
+      notificationLevel: 0
+
+  invalid_owner:
+    - id: empty_users
+      adminUserIds: []
+      developerUserIds: []
+      ownerUserId: 0

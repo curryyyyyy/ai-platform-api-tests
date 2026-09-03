@@ -6,37 +6,28 @@ from typing import Any
 
 import pytest
 
+from framework.data.dataset import dataset_defaults
 from framework.data.scope import DataScope
 from platforms.hawk_admin.client import HawkAdminClient
 
 
 def make_project(scope: DataScope, **overrides: Any) -> dict[str, Any]:
-    payload: dict[str, Any] = {"name": scope.unique_name("project", max_length=64)}
+    payload: dict[str, Any] = dataset_defaults("hawk_admin", "project")
+    payload["name"] = scope.unique_name("project", max_length=64)
     payload.update(overrides)
     return payload
 
 
 def make_stage(scope: DataScope, **overrides: Any) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "name": scope.unique_name("stage", max_length=48),
-        "alias": "automation-stage",
-        "domain": "vision",
-        "type": "operator",
-        "status": 1,
-    }
+    payload: dict[str, Any] = dataset_defaults("hawk_admin", "stage")
+    payload["name"] = scope.unique_name("stage", max_length=48)
     payload.update(overrides)
     return payload
 
 
 def make_flow(scope: DataScope, **overrides: Any) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "flowName": scope.unique_name("flow", max_length=48),
-        "alias": "automation-flow",
-        "desc": "自动化接口测试流程",
-        "schema": '{"input":["image_url"]}',
-        "config": '{"stages":[]}',
-        "status": 1,
-    }
+    payload: dict[str, Any] = dataset_defaults("hawk_admin", "flow")
+    payload["flowName"] = scope.unique_name("flow", max_length=48)
     payload.update(overrides)
     return payload
 
@@ -109,14 +100,13 @@ class HawkDataFactory:
             raise AssertionError(f"删除测试流程失败: {response.status_code} {body}")
 
     def create_batch(self, *, project_id: str, flow_name: str, input_file_path: str, **overrides: Any) -> tuple[str, dict[str, Any]]:
-        payload = {
+        payload = dataset_defaults("hawk_admin", "batch")
+        payload.update({
             "name": self.scope.unique_name("batch", max_length=48),
             "projectId": int(project_id),
             "flowName": flow_name,
             "inputFilePath": input_file_path,
-            "materialType": "图片",
-            "config": '{"stages":[]}',
-        }
+        })
         payload.update(overrides)
         response = self.client.create_batch(**payload)
         body = self.client.json(response)

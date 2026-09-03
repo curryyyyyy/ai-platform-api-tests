@@ -40,11 +40,15 @@ framework/                         通用框架能力
   http/                            统一 requests 客户端
   assertions.py                    通用响应断言
   settings.py                      YAML 配置和环境变量覆盖
+  data/                            测试数据集加载与资源生命周期
+    dataset.py                     按平台加载可执行 YAML 数据集
 platforms/                         业务平台适配器
   registry.py                      自动发现和注册平台定义
   hawk_admin/                      机器标注平台客户端
     definition.py                  客户端、数据工厂、报告元数据声明
 contracts/                         各平台 OpenAPI 快照和接口清单
+data/                               按平台隔离的可执行测试数据
+  hawk_admin/                       项目、阶段、流程、批次、认证、执行数据集
 tests/
   smoke/                           跨平台主链路冒烟
   hawk_admin/                      机器标注平台业务测试
@@ -177,6 +181,17 @@ brew install allure              # macOS
 
 `reports/` 已加入 `.gitignore`，报告不提交到代码仓库。
 
+### 可执行测试数据
+
+运行时测试数据统一放在 `data/<platform>/`，按平台和资源拆分 YAML 文件。每个文件包含
+`defaults`（工厂默认请求字段）和 `cases`（可参数化场景），场景记录必须有稳定的 `id`。
+测试通过 `framework.data.dataset` 的 `dataset_defaults`、`dataset_cases` 或
+`dataset_case_map` 加载，使用 `case_payload` 去除仅供报告追踪的 `id` 字段。
+
+平台数据与平台适配器一一对应：新增平台只需新增 `data/<platform>/` 数据文件，并在该平台
+测试中加载；动态名称、服务端 ID、清理动作和依赖线上状态仍由平台 `factories.py` /
+`presets.py` 负责。这样静态场景、动态资源和环境状态各自有明确边界，不会把固定编号写入数据集。
+
 ### 报告中的用例信息
 
 报告不是一长串函数名，而是按用例清单的维度组织，直接对应 `test-cases/<platform>/` 里的 Schema：
@@ -260,6 +275,14 @@ test-cases/hawk_admin/                  手工用例及 Schema
 tests/hawk_admin/                       pytest + requests 接口测试
 ```
 
+Hawk 适配层契约测试也位于 `tests/hawk_admin/`，包括客户端重试、数据工厂清理和状态预置。原 `tests/framework/test_hawk_*.py` 路径已移除，避免把平台实现混入公共框架测试。
+
+```bash
+pytest tests/hawk_admin/test_client_contract.py \
+       tests/hawk_admin/test_factory_contract.py \
+       tests/hawk_admin/test_presets_contract.py -m contract -v
+```
+
 执行 Hawk 接口测试（需要总平台账号或 `API_TOKEN`）：
 
 ```bash
@@ -270,7 +293,9 @@ pytest tests/hawk_admin -m "live and hawk_admin" -v
 
 ```text
 HAWK_INIT_BATCH_ID       未启动批次，用于 START
-HAWK_RUNNING_BATCH_ID    处理中批次，用于 PAUSE、输出导出、输入修改
+HAWK_RUNNING_BATCH_ID    处理中批次，用于 PAUSE
+HAWK_INPUT_UPDATE_RUNNING_BATCH_ID  处理中批次，用于修改运行中批次输入
+HAWK_EXPORT_RUNNING_BATCH_ID  已有任务运行的批次，用于中途导出
 HAWK_END_RUNNING_BATCH_ID 独立的处理中批次，用于 END（避免与 PAUSE 用例共享状态）
 HAWK_STOPPED_BATCH_ID    已暂停批次，用于 RESTART
 HAWK_FAILED_BATCH_ID     失败批次，用于 RETRY
@@ -287,10 +312,10 @@ HAWK_VIEWER_PASSWORD     查看者账号密码
 
 批次生命周期用例的普通前置数据也只复用环境内已有流程，不调用当前环境不可用的流程创建接口；环境没有可用流程时会明确跳过。
 
-- 每条用例使用**独立批次**：状态机会改变批次状态，复用同一个批次会让用例互相干扰。END 用例单独使用 `HAWK_END_RUNNING_BATCH_ID`；该变量未配置时会明确跳过（现场造数批次没有可结束任务）。其他可造数批次的项目/批次在用例结束时由 `DataScope` 清理。
+- 每条用例使用**独立批次**：状态机会改变批次状态，复用同一个批次会让用例互相干扰。PAUSE、输入修改和中途导出分别使用 `HAWK_RUNNING_BATCH_ID`、`HAWK_INPUT_UPDATE_RUNNING_BATCH_ID` 和 `HAWK_EXPORT_RUNNING_BATCH_ID`；END 用例单独使用 `HAWK_END_RUNNING_BATCH_ID`。END 未配置时会明确跳过（现场造数批次没有可结束任务），其他可造数批次的项目/批次在用例结束时由 `DataScope` 清理。
 - 造数不创建流程（流程创建接口当前不可用），而是复用环境内已有的流程（只读）。默认使用 `flow.exif.get` 与素材集合 `CID://966`，并复用同流程存量批次的 `config`，保证批次启动后能持续运行一段时间；均可用 `HAWK_PRESET_FLOW_NAME`、`HAWK_PRESET_INPUT_PATH` 覆盖。
 - 需要复现某个特定批次时，用环境变量覆盖即可，造数逻辑不会执行。
-- `failed`（需要真实执行失败）、`running_with_tasks`（06_11 中途导出要求批次已有任务在执行）和 `running_end`（06_05 END 要求批次已有可结束任务）三种状态无法靠造数得到，仍须配置对应环境变量。
+- `failed`（需要真实执行失败）、`running_with_tasks`（06_11 中途导出要求批次已有任务在执行）和 `running_end`（06_05 END 要求批次已有可结束任务）三种状态无法靠造数得到，仍须配置对应环境变量；中途导出使用独立的 `HAWK_EXPORT_RUNNING_BATCH_ID`，避免与 PAUSE 共享批次。
 - 造数批次仍可能比真实批次执行得快，`running` 相关用例偶发竞态属于预期；需要 100% 稳定的回归时配置 `HAWK_RUNNING_BATCH_ID` 指向一个持续运行的批次。
 - `PAUSE` / `RESTART` 后端节点释放存在短暂窗口，客户端对 `lock already taken` 做有限退避重试；超过重试窗口仍失败时才报告真实业务错误。
 - 若状态预置返回 `no healthy upstream`，表示网关下游 `tc-hawk` 没有健康实例，测试会标记为跳过；恢复执行服务后重新运行即可。

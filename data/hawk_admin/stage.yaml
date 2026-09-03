@@ -1,0 +1,19 @@
+defaults:
+  alias: "automation-stage"
+  domain: "vision"
+  type: "operator"
+  status: 1
+
+cases:
+  create:
+    - id: default
+      alias: "stage01"
+      domain: "vision"
+      type: "operator"
+      status: 1
+
+  update:
+    - id: standard
+      alias: "stage01-updated"
+      desc: "更新阶段"
+      status: 1

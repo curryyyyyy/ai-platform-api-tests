@@ -3,18 +3,25 @@ from __future__ import annotations
 import pytest
 
 from framework.assertions import assert_envelope
+from framework.data.dataset import case_payload, dataset_case_map, dataset_cases, dataset_defaults
 from platforms.hawk_admin.presets import existing_flow_name
 
 
 pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
+BATCH_CREATE_CASES = {case["id"]: case for case in dataset_cases("hawk_admin", "batch", "create")}
+BATCH_CASES = dataset_case_map("hawk_admin", "batch", "create")
+BATCH_DEFAULTS = dataset_defaults("hawk_admin", "batch")
+INVALID_BATCH_CASES = {case["id"]: case for case in dataset_cases("hawk_admin", "batch", "invalid_create")}
+INVALID_STATUS_CASES = dataset_cases("hawk_admin", "batch", "invalid_status")
 
 
 def test_hawk_05_07_running_batch_rejects_input_update(platform_client, platform_state):
     """处理中批次禁止修改输入文件：仅未启动批次允许修改，应拒绝且提示未启动。"""
-    batch_id = platform_state("running", "HAWK_RUNNING_BATCH_ID")
+    batch_id = platform_state("running", "HAWK_INPUT_UPDATE_RUNNING_BATCH_ID")
     body = assert_envelope(
         platform_client.update_batch_input(
-            int(batch_id), inputFilePath="CID://collection/automation-0507", materialType="图片"
+            int(batch_id), inputFilePath=BATCH_CASES["update_input"]["updatedInputFilePath"],
+            materialType=BATCH_DEFAULTS["materialType"]
         ),
         expected_code=None,
     )
@@ -40,7 +47,7 @@ def test_hawk_05_01_create_batch_defaults_to_init(platform_data_factory, platfor
     batch_id, payload = platform_data_factory.create_batch(
         project_id=project_id,
         flow_name=flow_name,
-        input_file_path="CID://collection/automation-0501",
+        input_file_path=BATCH_CREATE_CASES["default_init"]["inputFilePath"],
     )
     data = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
     assert data["status"] == 0
@@ -49,29 +56,21 @@ def test_hawk_05_01_create_batch_defaults_to_init(platform_data_factory, platfor
     assert data["name"] == payload["name"]
 
 
-def test_hawk_05_02_create_batch_without_project(platform_client, platform_data_factory):
-    """创建批次未选择项目：projectId=0 应被拒绝。"""
-    flow_name = _existing_flow_name(platform_client)
-    body = assert_envelope(
-        platform_client.create_batch(
-            name="TC-05-02-no-project", projectId=0, flowName=flow_name,
-            inputFilePath="CID://collection/automation-0502", config='{"stages":[]}'
-        ),
-        expected_code=None,
-    )
-    assert body["code"] != 0
-
-
-def test_hawk_05_03_create_batch_with_missing_flow(platform_client, platform_data_factory):
-    """创建批次使用不存在的流程：flowName 不存在应被拒绝。"""
-    project_id, _ = platform_data_factory.create_project(materialType="图片", notificationLevel=0)
-    body = assert_envelope(
-        platform_client.create_batch(
-            name="TC-05-03-no-flow", projectId=int(project_id), flowName="flow-not-exist-20260902",
-            inputFilePath="CID://collection/automation-0503", config='{"stages":[]}'
-        ),
-        expected_code=None,
-    )
+@pytest.mark.parametrize(
+    "case",
+    tuple(INVALID_BATCH_CASES.values()),
+    ids=lambda case: case["id"],
+)
+def test_hawk_05_02_create_batch_invalid_reference(case, platform_client, platform_data_factory):
+    """创建批次引用非法项目或流程：每种非法引用均应被拒绝。"""
+    payload = case_payload(case)
+    payload.setdefault("config", BATCH_DEFAULTS["config"])
+    if "flowName" not in payload:
+        payload["flowName"] = _existing_flow_name(platform_client)
+    if payload.get("projectId") is None:
+        project_id, _ = platform_data_factory.create_project(materialType="图片", notificationLevel=0)
+        payload["projectId"] = int(project_id)
+    body = assert_envelope(platform_client.create_batch(**payload), expected_code=None)
     assert body["code"] != 0
 
 
@@ -80,7 +79,7 @@ def test_hawk_05_04_batch_name_check(platform_client, platform_data_factory):
     project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
     batch_id, payload = platform_data_factory.create_batch(
         project_id=project_id, flow_name=flow_name,
-        input_file_path="CID://collection/automation-0504",
+        input_file_path=BATCH_CREATE_CASES["name_check"]["inputFilePath"],
     )
     assert batch_id
     body = assert_envelope(platform_client.check_batch_name(project_id, payload["name"]), required_keys=("data",))
@@ -92,7 +91,7 @@ def test_hawk_05_05_list_batches(platform_client, platform_data_factory):
     project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
     _, payload = platform_data_factory.create_batch(
         project_id=project_id, flow_name=flow_name,
-        input_file_path="CID://collection/automation-0505",
+        input_file_path=BATCH_CREATE_CASES["list_filter"]["inputFilePath"],
     )
     body = assert_envelope(
         platform_client.list_batches(page=1, pageSize=10, projectId=project_id, status=0, keyword=payload["name"]),
@@ -106,10 +105,14 @@ def test_hawk_05_06_update_init_batch_input(platform_client, platform_data_facto
     project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
     batch_id, _ = platform_data_factory.create_batch(
         project_id=project_id, flow_name=flow_name,
-        input_file_path="CID://collection/automation-0506",
+        input_file_path=BATCH_CREATE_CASES["update_input"]["inputFilePath"],
     )
     body = assert_envelope(
-        platform_client.update_batch_input(batch_id, inputFilePath="CID://collection/automation-0506-updated", materialType="图片")
+        platform_client.update_batch_input(
+            batch_id,
+            inputFilePath=BATCH_CREATE_CASES["update_input"]["updatedInputFilePath"],
+            materialType=BATCH_DEFAULTS["materialType"],
+        )
     )
     assert body.get("inputFilePath") or body.get("data")
 
@@ -119,21 +122,22 @@ def test_hawk_05_09_update_batch_status(platform_client, platform_data_factory):
     project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
     batch_id, _ = platform_data_factory.create_batch(
         project_id=project_id, flow_name=flow_name,
-        input_file_path="CID://collection/automation-0509",
+        input_file_path=BATCH_CREATE_CASES["status_update"]["inputFilePath"],
     )
     assert_envelope(platform_client.update_batch_status(batch_id, 1))
     data = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
     assert data["status"] == 1
 
 
-def test_hawk_05_10_invalid_batch_status(platform_client, platform_data_factory):
-    """提交无效批次状态：把已创建的批次状态改回未启动应被拒绝。"""
+@pytest.mark.parametrize("case", INVALID_STATUS_CASES, ids=lambda case: case["id"])
+def test_hawk_05_10_invalid_batch_status(case, platform_client, platform_data_factory):
+    """提交非法批次状态：每个不支持的状态值均应被拒绝。"""
     project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
     batch_id, _ = platform_data_factory.create_batch(
         project_id=project_id, flow_name=flow_name,
-        input_file_path="CID://collection/automation-0510",
+        input_file_path=BATCH_CREATE_CASES["invalid_status"]["inputFilePath"],
     )
-    body = assert_envelope(platform_client.update_batch_status(batch_id, 0), expected_code=None)
+    body = assert_envelope(platform_client.update_batch_status(batch_id, case["status"]), expected_code=None)
     assert body["code"] != 0
 
 
@@ -142,7 +146,7 @@ def test_hawk_05_11_delete_batch_then_get(platform_client, platform_data_factory
     project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
     batch_id, _ = platform_data_factory.create_batch(
         project_id=project_id, flow_name=flow_name,
-        input_file_path="CID://collection/automation-0511",
+        input_file_path=BATCH_CREATE_CASES["delete"]["inputFilePath"],
     )
     assert_envelope(platform_client.delete_batch(batch_id))
     body = assert_envelope(platform_client.get_batch(batch_id), expected_code=None)

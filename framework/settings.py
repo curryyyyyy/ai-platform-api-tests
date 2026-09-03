@@ -37,12 +37,11 @@ def load_settings(root: Path, environment: str = "test") -> dict[str, Any]:
     auth["login_path"] = os.getenv("AUTH_LOGIN_PATH", auth.get("login_path", "/api/auth/login"))
     credentials["username"] = os.getenv("API_USER", credentials.get("username", ""))
     credentials["password"] = os.getenv("API_PASSWORD", credentials.get("password", ""))
-    # 平台地址按配置键通用覆盖，避免每接入一个平台就修改框架代码。
-    # 保留旧的 HAWK_ADMIN_BASE_URL 作为兼容别名。
+    # 平台地址按配置键通用覆盖，兼容别名由各平台配置声明，避免框架绑定具体平台。
     for name, platform in platforms.items():
         if not isinstance(platform, dict):
             continue
         env_name = "PLATFORM_" + "_".join(part.upper() for part in name.replace("-", "_").split("_")) + "_BASE_URL"
-        legacy_env = "HAWK_ADMIN_BASE_URL" if name == "hawk_admin" else ""
+        legacy_env = str(platform.get("legacy_base_url_env", ""))
         platform["base_url"] = os.getenv(env_name, os.getenv(legacy_env, platform.get("base_url", "")))
     return settings

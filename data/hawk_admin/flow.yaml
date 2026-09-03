@@ -1,0 +1,29 @@
+defaults:
+  alias: "automation-flow"
+  desc: "自动化接口测试流程"
+  schema: '{"input":["image_url"]}'
+  config: '{"stages":[]}'
+  status: 1
+
+cases:
+  create:
+    - id: valid
+      config: '{"stages":[{"name":"Stage1", "type":"manual"}]}'
+
+  invalid_config:
+    - id: malformed_json
+      flowName: "TC-04-02-invalid-flow"
+      config: "{stages:"
+      schema: "{}"
+      status: 1
+    - id: malformed_array
+      flowName: "TC-04-02-invalid-array"
+      config: "[stages:"
+      schema: "{}"
+      status: 1
+
+  update:
+    - id: standard
+      alias: "flow01-updated"
+      desc: "更新流程"
+      status: 1

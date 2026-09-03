@@ -1,0 +1,15 @@
+defaults:
+  missingBatchId: 999999999
+
+cases:
+  operations:
+    - id: start
+      operation: 1
+    - id: pause
+      operation: 2
+    - id: restart
+      operation: 3
+    - id: retry
+      operation: 4
+    - id: end
+      operation: 5

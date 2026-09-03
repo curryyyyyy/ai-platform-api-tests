@@ -1,0 +1,40 @@
+defaults:
+  materialType: "图片"
+  config: '{"stages":[]}'
+
+cases:
+  create:
+    - id: default_init
+      inputFilePath: "CID://collection/automation-0501"
+    - id: name_check
+      inputFilePath: "CID://collection/automation-0504"
+    - id: list_filter
+      inputFilePath: "CID://collection/automation-0505"
+    - id: update_input
+      inputFilePath: "CID://collection/automation-0506"
+      updatedInputFilePath: "CID://collection/automation-0506-updated"
+    - id: status_update
+      inputFilePath: "CID://collection/automation-0509"
+    - id: invalid_status
+      inputFilePath: "CID://collection/automation-0510"
+    - id: delete
+      inputFilePath: "CID://collection/automation-0511"
+
+  invalid_create:
+    - id: without_project
+      projectId: 0
+      inputFilePath: "CID://collection/automation-0502"
+      name: "TC-05-02-no-project"
+    - id: missing_flow
+      projectId: null
+      flowName: "flow-not-exist-20260902"
+      inputFilePath: "CID://collection/automation-0503"
+      name: "TC-05-03-no-flow"
+
+  invalid_status:
+    - id: zero
+      status: 0
+    - id: negative
+      status: -1
+    - id: unsupported
+      status: 99
