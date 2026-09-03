@@ -1,0 +1,27 @@
+[
+  {
+    "name": "环境未配置（已跳过）",
+    "matchedStatuses": ["skipped"],
+    "messageRegex": ".*(未配置|跳过|pytest.skip).*"
+  },
+  {
+    "name": "鉴权与权限失败",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(401|403|身份令牌|OWNER|查看者).*"
+  },
+  {
+    "name": "接口响应不符合契约",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(响应不是 JSON|顶层应为对象|不符合 JSON Schema).*"
+  },
+  {
+    "name": "造数或清理失败",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(创建测试|删除测试|响应缺少).*"
+  },
+  {
+    "name": "被测服务不可用",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": ".*(ConnectionError|Timeout|ReadTimeout|Max retries|50[0-9]).*"
+  }
+]

@@ -5,11 +5,15 @@ from types import SimpleNamespace
 import pytest
 
 from framework.data.scope import DataScope
+from platforms.hawk_admin.client import HawkAdminClient
 from platforms.hawk_admin.factories import HawkDataFactory
 
 
-class FakeClient:
+class FakeClient(HawkAdminClient):
+    """继承真实客户端保证类型一致，只重写请求出口以记录调用，不发起网络请求。"""
+
     def __init__(self) -> None:
+        super().__init__("http://hawk.invalid", retries=0)
         self.calls: list[tuple[str, str, dict]] = []
 
     def post(self, path: str, **kwargs):
@@ -25,8 +29,15 @@ class FakeClient:
         return {"code": 0, "id": "project-1"} if response.status_code == 200 else {}
 
 
+class FlowSchemaUnavailableClient(FakeClient):
+    @staticmethod
+    def json(response) -> dict:
+        return {"code": 1, "message": "数据库操作失败"}
+
+
 @pytest.mark.contract
 def test_hawk_factory_registers_project_cleanup() -> None:
+    """工厂创建项目后应在 DataScope 登记删除动作，保证用例结束自动清理。"""
     client = FakeClient()
     scope = DataScope("TC-HAWK-PROJECT-001")
     factory = HawkDataFactory(client, scope)
@@ -40,3 +51,12 @@ def test_hawk_factory_registers_project_cleanup() -> None:
         ("POST", "/api/v1/project"),
         ("DELETE", "/api/v1/project/project-1"),
     ]
+
+
+@pytest.mark.contract
+def test_hawk_factory_skips_known_flow_schema_failure() -> None:
+    """已知 flow schema 不可用时标记跳过，不把环境缺陷误报为用例失败。"""
+    factory = HawkDataFactory(FlowSchemaUnavailableClient(), DataScope("TC-HAWK-FLOW-001"))
+
+    with pytest.raises(pytest.skip.Exception, match="flow 数据库 schema"):
+        factory.create_flow()

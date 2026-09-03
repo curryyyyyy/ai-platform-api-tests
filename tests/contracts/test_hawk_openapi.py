@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.mark.contract
 @pytest.mark.hawk_admin
 def test_hawk_openapi_snapshot_is_valid() -> None:
+    """契约快照是合法的 OpenAPI 3.0.3 文档，且包含非空 paths。"""
     with (ROOT / "contracts/hawk_admin/openapi.yaml").open(encoding="utf-8") as stream:
         spec = yaml.safe_load(stream)
     assert isinstance(spec, dict)
@@ -23,6 +24,7 @@ def test_hawk_openapi_snapshot_is_valid() -> None:
 @pytest.mark.contract
 @pytest.mark.hawk_admin
 def test_hawk_inventory_matches_openapi() -> None:
+    """接口清单与 OpenAPI 快照一致：method + path + operationId 一一对应。"""
     with (ROOT / "contracts/hawk_admin/openapi.yaml").open(encoding="utf-8") as stream:
         spec = yaml.safe_load(stream)
     inventory = json.loads((ROOT / "contracts/hawk_admin/api_inventory.json").read_text(encoding="utf-8"))

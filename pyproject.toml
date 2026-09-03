@@ -23,8 +23,19 @@ markers = [
   "live: 访问在线测试环境",
   "smoke: 主链路冒烟测试",
   "contract: OpenAPI 契约检查",
-  "hawk_admin: 机器标注平台测试",
 ]
 
 [tool.setuptools.packages.find]
 include = ["framework*", "platforms*"]
+
+# 类型检查必须指向项目虚拟环境，否则 pytest / allure / requests 等依赖无法解析，
+# 会报出大量“无法解析导入”“属性未知”的假阳性。
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.9"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.9"
