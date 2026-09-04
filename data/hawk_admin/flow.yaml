@@ -27,3 +27,9 @@ cases:
       alias: "flow01-updated"
       desc: "更新流程"
       status: 1
+
+  list_filter:
+    - id: name_status_sorted
+      status: 1
+      sortField: "createdAt"
+      sortOrder: "desc"

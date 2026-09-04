@@ -1,0 +1,50 @@
+version: 1
+schema: test-cases/hawk_admin/机器标注平台_测试用例.schema.yaml
+platform: hawk_admin
+entries:
+  - {id: TC-01-01, tests: [tests/smoke/test_central_login.py::test_central_login_returns_token], level: partial, note: "总平台登录 smoke 链路覆盖，无独立 Hawk 编号测试"}
+  - {id: TC-01-02, tests: [tests/hawk_admin/test_auth.py::test_hawk_project_requires_token], level: full}
+  - {id: TC-01-03, tests: [tests/hawk_admin/test_auth.py::test_hawk_invalid_token_rejected], level: full}
+  - {id: TC-01-04, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_07_viewer_cannot_write], level: full}
+  - {id: TC-02-01, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_01_create_project], level: full}
+  - {id: TC-02-02, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_02_get_project_matches_create], level: full}
+  - {id: TC-02-03, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_03_list_project_filters_and_defaults], level: full}
+  - {id: TC-02-04, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_04_update_project], level: full}
+  - {id: TC-02-05, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_05_update_project_without_owner_is_rejected], level: full}
+  - {id: TC-02-06, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_06_invalid_notification_level], level: full}
+  - {id: TC-02-07, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_07_viewer_cannot_write], level: partial, env: [HAWK_VIEWER_PROJECT_ID], note: "查看/更新他人项目需预置资源；写入拒绝已覆盖"}
+  - {id: TC-02-08, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_08_delete_project_then_get], level: full}
+  - {id: TC-03-01, tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_01_create_stage], level: full}
+  - {id: TC-03-02, tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_02_list_stage_filters], level: full}
+  - {id: TC-03-03, tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_03_update_stage], level: full}
+  - {id: TC-03-04, tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_04_get_missing_stage], level: full}
+  - {id: TC-03-05, tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_05_delete_stage_then_get], level: full}
+  - {id: TC-04-01, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_01_create_flow], level: full}
+  - {id: TC-04-02, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_02_invalid_json_config], level: full}
+  - {id: TC-04-03, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_03_list_flow_filters], level: full}
+  - {id: TC-04-04, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_04_update_flow], level: full}
+  - {id: TC-04-05, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_05_delete_flow_then_get], level: partial, note: "尚未构造被阶段/批次引用的流程"}
+  - {id: TC-04-06, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_06_get_missing_flow], level: full}
+  - {id: TC-05-01, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_01_create_batch_defaults_to_init], level: partial, note: "依赖环境已有合法流程"}
+  - {id: TC-05-02, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_02_create_batch_invalid_reference], level: full}
+  - {id: TC-05-03, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_02_create_batch_invalid_reference], level: full, note: "与 TC-05-02 共用参数化入口"}
+  - {id: TC-05-04, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_04_batch_name_check], level: full}
+  - {id: TC-05-05, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_05_list_batches], level: full}
+  - {id: TC-05-06, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_06_update_init_batch_input], level: full}
+  - {id: TC-05-07, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_07_running_batch_rejects_input_update], level: full, note: "默认现场独立造 running 批次；可用环境变量覆盖"}
+  - {id: TC-05-08, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_08_create_batch_preserves_cid_input], level: full}
+  - {id: TC-05-09, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_09_update_batch_status], level: full}
+  - {id: TC-05-10, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_10_invalid_batch_status], level: full}
+  - {id: TC-05-11, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_11_delete_batch_then_get], level: full}
+  - {id: TC-06-01, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_01_start_init_batch], level: full, note: "默认现场独立造 init 批次；可用环境变量覆盖"}
+  - {id: TC-06-02, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_02_pause_running_batch], level: full, note: "默认现场独立造 running 批次；可用环境变量覆盖"}
+  - {id: TC-06-03, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_03_restart_stopped_batch], level: full, note: "默认现场独立造 stopped 批次；可用环境变量覆盖"}
+  - {id: TC-06-04, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_04_retry_failed_batch], level: partial, env: [HAWK_FAILED_BATCH_ID]}
+  - {id: TC-06-05, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_05_end_running_batch], level: partial, env: [HAWK_END_RUNNING_BATCH_ID]}
+  - {id: TC-06-06, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_06_operate_missing_batch], level: full}
+  - {id: TC-06-07, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_07_batch_stat_missing_batch, tests/hawk_admin/test_hawk_execution_api.py::test_hawk_batch_stat_matches_batch_detail], level: partial, env: [HAWK_STATS_BATCH_ID]}
+  - {id: TC-06-08, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_08_task_stream_status_validation, tests/hawk_admin/test_hawk_execution_api.py::test_hawk_task_stream_accepts_valid_filters], level: partial, note: "当前未覆盖普通用户对他人任务字段的脱敏断言"}
+  - {id: TC-06-09, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_09_fields_for_missing_batch_are_not_fabricated, tests/hawk_admin/test_hawk_execution_api.py::test_hawk_fields_for_existing_batch_have_list_shape], level: full, note: "默认现场独立造 running 批次；可用环境变量覆盖"}
+  - {id: TC-06-10, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_10_error_log_for_missing_batch, tests/hawk_admin/test_hawk_execution_api.py::test_hawk_error_log_is_bounded_for_configured_batch], level: partial, env: [HAWK_ERROR_LOG_BATCH_ID]}
+  - {id: TC-06-11, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_11_export_running_batch_preserves_status], level: partial, env: [HAWK_EXPORT_RUNNING_BATCH_ID]}
+  - {id: TC-06-12, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_12_batch_stats_preserves_valid_item, tests/hawk_admin/test_hawk_execution_api.py::test_hawk_batch_stats_accepts_valid_batch], level: partial, env: [HAWK_STATS_BATCH_ID]}

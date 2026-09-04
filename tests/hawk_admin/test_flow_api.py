@@ -10,8 +10,10 @@ pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
 INVALID_CONFIG_CASES = dataset_cases("hawk_admin", "flow", "invalid_config")
 FLOW_UPDATE_CASES = dataset_case_map("hawk_admin", "flow", "update")
 FLOW_CREATE_CASES = dataset_cases("hawk_admin", "flow", "create")
+FLOW_LIST_CASES = dataset_case_map("hawk_admin", "flow", "list_filter")
 
 
+@pytest.mark.core
 def test_hawk_04_01_create_flow(platform_data_factory):
     """创建包含有效配置的流程：创建后回查详情，flowName 与 config 应与创建值一致。"""
 
@@ -21,6 +23,7 @@ def test_hawk_04_01_create_flow(platform_data_factory):
     assert data["config"] == payload["config"]
 
 
+# TC-04-02：配置格式边界
 @pytest.mark.parametrize("case", INVALID_CONFIG_CASES, ids=lambda case: case["id"])
 def test_hawk_04_02_invalid_json_config(case, platform_client):
     """创建流程时配置不是合法 JSON：每种非法结构均应被拒绝。"""
@@ -30,13 +33,17 @@ def test_hawk_04_02_invalid_json_config(case, platform_client):
 
 
 def test_hawk_04_03_list_flow_filters(platform_client, platform_data_factory):
-    """按名称和状态查询流程：过滤条件应命中刚创建的流程。"""
+    """TC-04-03：按名称、状态和创建时间排序查询流程。"""
     _, payload = platform_data_factory.create_flow()
+    query = case_payload(FLOW_LIST_CASES["name_status_sorted"])
+    query["flowName"] = payload["flowName"]
     body = assert_envelope(
-        platform_client.list_flows(page=1, pageSize=10, flowName=payload["flowName"], status=1),
+        platform_client.list_flows(page=1, pageSize=10, **query),
         required_keys=("data",),
     )
-    assert any(item["flowName"] == payload["flowName"] for item in body["data"]["list"])
+    items = body["data"]["list"]
+    assert any(item["flowName"] == payload["flowName"] for item in items)
+    assert all(item["status"] == query["status"] for item in items)
 
 
 def test_hawk_04_04_update_flow(platform_client, platform_data_factory):

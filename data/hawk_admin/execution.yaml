@@ -1,5 +1,8 @@
 defaults:
   missingBatchId: 999999999
+  statsBatchIdEnv: "HAWK_STATS_BATCH_ID"
+  fieldsBatchIdEnv: "HAWK_RUNNING_BATCH_ID"
+  errorLogBatchIdEnv: "HAWK_ERROR_LOG_BATCH_ID"
 
 cases:
   operations:
@@ -13,3 +16,8 @@ cases:
       operation: 4
     - id: end
       operation: 5
+
+  task_stream:
+    - id: all_tasks
+      status: "all"
+      onlyMine: false

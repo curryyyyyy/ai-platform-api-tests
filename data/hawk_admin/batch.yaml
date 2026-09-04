@@ -19,6 +19,8 @@ cases:
       inputFilePath: "CID://collection/automation-0510"
     - id: delete
       inputFilePath: "CID://collection/automation-0511"
+    - id: cid_input
+      inputFilePath: "CID://collection/automation-0508"
 
   invalid_create:
     - id: without_project
@@ -32,9 +34,7 @@ cases:
       name: "TC-05-03-no-flow"
 
   invalid_status:
-    - id: zero
-      status: 0
     - id: negative
       status: -1
     - id: unsupported
-      status: 99
+      status: 999

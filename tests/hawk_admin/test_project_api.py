@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from framework.assertions import assert_envelope
 from framework.data.dataset import case_payload, dataset_case_map, dataset_cases, dataset_defaults
+from framework.http.client import ApiClient
 
 
 pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
@@ -16,6 +19,15 @@ PROJECT_DEFAULTS = dataset_defaults("hawk_admin", "project")
 AUTH_DEFAULTS = dataset_defaults("hawk_admin", "auth")
 
 
+def _assert_forbidden(response) -> None:
+    """Hawk 权限失败可能使用 HTTP 401/403，也可能以 HTTP 200 + 业务错误返回。"""
+    if response.status_code in {401, 403}:
+        return
+    body = ApiClient.json(response)
+    assert body.get("code") != 0, f"查看者请求未被拒绝: {response.status_code} {body}"
+
+
+@pytest.mark.core
 def test_hawk_02_01_create_project(platform_data_factory):
     """创建项目并返回编号：创建图片项目后回查，编号、名称、素材类型、交付数量一致。"""
     case = PROJECT_CREATE_CASES[0]
@@ -29,6 +41,7 @@ def test_hawk_02_01_create_project(platform_data_factory):
     assert int(data["deliveryCount"]) == 10
 
 
+@pytest.mark.core
 def test_hawk_02_02_get_project_matches_create(platform_data_factory):
     """查询项目详情与创建数据一致：回查名称与描述应与创建值一致。"""
     case = PROJECT_CREATE_CASES[1]
@@ -99,14 +112,23 @@ def test_hawk_02_06_invalid_notification_level(case, platform_client):
 
 
 def test_hawk_02_07_viewer_cannot_write(viewer_platform_client):
-    """非超级管理员访问无权限项目：查看者执行写操作应返回 401/403。"""
+    """非超级管理员访问无权限项目：写入、读取和更新均不得越权。"""
     response = viewer_platform_client.create_project(
         name=AUTH_DEFAULTS["viewerProjectName"], materialType=PROJECT_DEFAULTS["materialType"],
         notificationLevel=PROJECT_DEFAULTS["notificationLevel"]
     )
-    assert response.status_code in {401, 403}
+    _assert_forbidden(response)
+    project_id_env = AUTH_DEFAULTS["viewerProjectIdEnv"]
+    project_id = os.getenv(project_id_env, "")
+    if not project_id:
+        return
+    read_response = viewer_platform_client.get_project(project_id)
+    _assert_forbidden(read_response)
+    update_response = viewer_platform_client.update_project(project_id, description="forbidden-update")
+    _assert_forbidden(update_response)
 
 
+@pytest.mark.core
 def test_hawk_02_08_delete_project_then_get(platform_client, platform_data_factory):
     """删除项目后不可查询：删除后再查询应返回非 0 业务码。"""
     project_id, _ = platform_data_factory.create_project()

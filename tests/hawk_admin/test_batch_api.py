@@ -41,6 +41,7 @@ def _batch_prerequisites(platform_data_factory, platform_client):
     return project_id, _existing_flow_name(platform_client)
 
 
+@pytest.mark.core
 def test_hawk_05_01_create_batch_defaults_to_init(platform_data_factory, platform_client):
     """创建批次并默认为未启动：回查 status 应为 0，projectId 与名称与创建值一致。"""
     project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
@@ -56,13 +57,26 @@ def test_hawk_05_01_create_batch_defaults_to_init(platform_data_factory, platfor
     assert data["name"] == payload["name"]
 
 
+# TC-05-08：CID 输入数据一致性
+def test_hawk_05_08_create_batch_preserves_cid_input(platform_data_factory, platform_client):
+    """使用 CID 创建批次：创建和详情均应保留 CID 输入路径。"""
+    project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
+    input_path = BATCH_CREATE_CASES["cid_input"]["inputFilePath"]
+    batch_id, payload = platform_data_factory.create_batch(
+        project_id=project_id, flow_name=flow_name, input_file_path=input_path,
+    )
+    data = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
+    assert payload["inputFilePath"] == input_path
+    assert data.get("inputFilePath") == input_path
+
+
 @pytest.mark.parametrize(
     "case",
     tuple(INVALID_BATCH_CASES.values()),
     ids=lambda case: case["id"],
 )
 def test_hawk_05_02_create_batch_invalid_reference(case, platform_client, platform_data_factory):
-    """创建批次引用非法项目或流程：每种非法引用均应被拒绝。"""
+    """TC-05-02/03：创建批次引用非法项目或流程。"""
     payload = case_payload(case)
     payload.setdefault("config", BATCH_DEFAULTS["config"])
     if "flowName" not in payload:
@@ -139,6 +153,8 @@ def test_hawk_05_10_invalid_batch_status(case, platform_client, platform_data_fa
     )
     body = assert_envelope(platform_client.update_batch_status(batch_id, case["status"]), expected_code=None)
     assert body["code"] != 0
+    data = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
+    assert int(data["status"]) == 0
 
 
 def test_hawk_05_11_delete_batch_then_get(platform_client, platform_data_factory):

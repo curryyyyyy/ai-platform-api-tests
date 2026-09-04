@@ -1,0 +1,126 @@
+name: API Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * *"
+
+concurrency:
+  group: api-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install .
+      - name: Run offline contract suite
+        run: ./scripts/run_tests.sh -m contract
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-reports
+          path: reports/
+          if-no-files-found: ignore
+
+  core:
+    name: Core live regression
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AUTH_BASE_URL: ${{ secrets.AUTH_BASE_URL }}
+      PLATFORM_HAWK_ADMIN_BASE_URL: ${{ secrets.PLATFORM_HAWK_ADMIN_BASE_URL }}
+      API_TOKEN: ${{ secrets.API_TOKEN }}
+      API_USER: ${{ secrets.API_USER }}
+      API_PASSWORD: ${{ secrets.API_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install .
+      - name: Validate live test secrets
+        shell: bash
+        run: |
+          test -n "$PLATFORM_HAWK_ADMIN_BASE_URL" || { echo "Missing PLATFORM_HAWK_ADMIN_BASE_URL" >&2; exit 1; }
+          if [[ -z "$API_TOKEN" ]]; then
+            test -n "$AUTH_BASE_URL" || { echo "Missing AUTH_BASE_URL when API_TOKEN is not set" >&2; exit 1; }
+            if [[ -z "$API_USER" || -z "$API_PASSWORD" ]]; then
+              echo "Set API_TOKEN or both API_USER and API_PASSWORD" >&2
+              exit 1
+            fi
+          fi
+      - name: Run P0 core regression
+        run: ./scripts/run_tests.sh -m "core and live"
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-live-reports
+          path: reports/
+          if-no-files-found: ignore
+
+  hawk-stateful:
+    name: Hawk stateful prerequisites
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AUTH_BASE_URL: ${{ secrets.AUTH_BASE_URL }}
+      PLATFORM_HAWK_ADMIN_BASE_URL: ${{ secrets.PLATFORM_HAWK_ADMIN_BASE_URL }}
+      API_TOKEN: ${{ secrets.API_TOKEN }}
+      API_USER: ${{ secrets.API_USER }}
+      API_PASSWORD: ${{ secrets.API_PASSWORD }}
+      HAWK_FAILED_BATCH_ID: ${{ secrets.HAWK_FAILED_BATCH_ID }}
+      HAWK_EXPORT_RUNNING_BATCH_ID: ${{ secrets.HAWK_EXPORT_RUNNING_BATCH_ID }}
+      HAWK_END_RUNNING_BATCH_ID: ${{ secrets.HAWK_END_RUNNING_BATCH_ID }}
+      HAWK_ERROR_LOG_BATCH_ID: ${{ secrets.HAWK_ERROR_LOG_BATCH_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install .
+      - name: Validate stateful Hawk prerequisites
+        shell: bash
+        run: |
+          test -n "$PLATFORM_HAWK_ADMIN_BASE_URL" || { echo "Missing PLATFORM_HAWK_ADMIN_BASE_URL" >&2; exit 1; }
+          if [[ -z "$API_TOKEN" ]]; then
+            test -n "$AUTH_BASE_URL" || { echo "Missing AUTH_BASE_URL when API_TOKEN is not set" >&2; exit 1; }
+            if [[ -z "$API_USER" || -z "$API_PASSWORD" ]]; then
+              echo "Set API_TOKEN or both API_USER and API_PASSWORD" >&2
+              exit 1
+            fi
+          fi
+          for name in HAWK_FAILED_BATCH_ID HAWK_EXPORT_RUNNING_BATCH_ID HAWK_END_RUNNING_BATCH_ID HAWK_ERROR_LOG_BATCH_ID; do
+            [[ -n "${!name}" ]] || { echo "Missing required stateful prerequisite: $name" >&2; exit 1; }
+          done
+      - name: Run stateful Hawk regression
+        run: >-
+          ./scripts/run_tests.sh
+          tests/hawk_admin/test_hawk_execution_api.py
+          tests/hawk_admin/test_batch_api.py::test_hawk_05_07_running_batch_rejects_input_update
+          -m "live and hawk_admin"
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hawk-stateful-reports
+          path: reports/
+          if-no-files-found: ignore

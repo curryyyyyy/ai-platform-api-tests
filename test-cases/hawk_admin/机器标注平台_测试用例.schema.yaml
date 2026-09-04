@@ -504,9 +504,9 @@ cases:
     type: boundary
     execution_model: dev-collab
     preconditions: ["批次 50001 状态为 0"]
-    steps: ["提交 batchId=50001、status=0"]
-    expected: ["返回状态值无效，状态仍为 0"]
-    test_data: {"1": "batchId=50001 / status=0"}
+    steps: ["提交 batchId=50001、status=-1 或 status=999"]
+    expected: ["返回状态值无效，状态保持原值不变"]
+    test_data: {"1": "batchId=50001 / status=-1、999"}
     code_refs: ["internal/service/batch.go:1347"]
     evidence: {level: E3, source: "批次状态边界校验", confidence: high}
     tags: []

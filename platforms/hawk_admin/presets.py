@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 
 from framework.data.scope import DataScope
 from platforms.hawk_admin.client import HawkAdminClient
@@ -83,6 +84,20 @@ def _batch_status(client: HawkAdminClient, batch_id: int) -> object:
     return (client.json(client.get_batch(batch_id)).get("data") or {}).get("status")
 
 
+def _wait_for_status(client: HawkAdminClient, batch_id: int, expected: int) -> object:
+    """等待异步执行状态落库，避免操作成功后立即回查造成竞态。"""
+    timeout = max(float(os.getenv("HAWK_STATE_TIMEOUT", "15")), 0.5)
+    interval = min(max(float(os.getenv("HAWK_STATE_POLL_INTERVAL", "0.5")), 0.1), 2.0)
+    deadline = time.monotonic() + timeout
+    actual = _batch_status(client, batch_id)
+    while time.monotonic() < deadline:
+        if str(actual) == str(expected):
+            return actual
+        time.sleep(interval)
+        actual = _batch_status(client, batch_id)
+    return actual
+
+
 def prepare_batch(client: HawkAdminClient, scope: DataScope, state: str) -> int:
     """造出一个处于指定状态的批次，并登记清理动作。"""
     # START 只能把批次置为 running，不能保证下游已经创建任务；END
@@ -106,13 +121,18 @@ def prepare_batch(client: HawkAdminClient, scope: DataScope, state: str) -> int:
         **batch_kwargs,
     )
     batch_id = int(batch_id)
-    for operation in _STATE_OPERATIONS[state]:
+    for index, operation in enumerate(_STATE_OPERATIONS[state]):
         body = client.json(client.operate_batch_with_retry(batch_id, operation))
         if body.get("code") != 0:
             raise AssertionError(f"批次 {batch_id} 执行操作 {operation} 失败: {body}")
+        # START 必须先稳定到 running，再继续 PAUSE；否则下游任务尚未建好时会返回 invalid operation。
+        if state == "stopped" and index == 0:
+            running = _wait_for_status(client, batch_id, PROVISIONABLE_STATES["running"])
+            if str(running) != str(PROVISIONABLE_STATES["running"]):
+                raise AssertionError(f"批次 {batch_id} 启动后未进入处理中，实际状态: {running}")
     expected = PROVISIONABLE_STATES[state]
-    actual = _batch_status(client, batch_id)
-    if actual != expected:
+    actual = _wait_for_status(client, batch_id, expected)
+    if str(actual) != str(expected):
         raise AssertionError(
             f"批次 {batch_id} 状态为 {actual}，期望 {expected}；"
             f"批次可能已自动执行完毕，可通过对应的 HAWK_*_BATCH_ID 指定持续运行的批次"
