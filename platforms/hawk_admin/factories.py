@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from framework.data.dataset import dataset_defaults
 from framework.data.scope import DataScope
 from platforms.hawk_admin.client import HawkAdminClient
@@ -81,11 +79,6 @@ class HawkDataFactory:
         response = self.client.create_flow(**payload)
         body = self.client.json(response)
         if response.status_code != 200 or body.get("code") != 0:
-            if body.get("code") == 1 and body.get("message") == "数据库操作失败":
-                pytest.skip(
-                    "Hawk 流程创建依赖的 flow 数据库 schema 不可用（接口返回‘数据库操作失败’）；"
-                    "请先执行服务端 flow 表/字段迁移，或使用已有流程运行批次用例"
-                )
             raise AssertionError(f"创建测试流程失败: {response.status_code} {body}")
         flow_id = body.get("id") or (body.get("data") or {}).get("id")
         if not flow_id:

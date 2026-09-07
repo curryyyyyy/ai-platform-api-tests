@@ -6,6 +6,7 @@ import pytest
 
 from framework.assertions import assert_envelope
 from framework.data.dataset import dataset_case_map, dataset_defaults
+from platforms.hawk_admin.presets import wait_for_batch_status
 
 
 pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
@@ -18,37 +19,49 @@ def _operation(name: str) -> int:
     return int(EXECUTION_OPERATIONS[name]["operation"])
 
 
-def _assert_operation(platform_client, platform_state, state: str, env_name: str, operation: int) -> int:
-    batch_id = platform_state(state, env_name)
+def _assert_operation(
+    platform_client, platform_state, state: str, env_name: str, operation: int,
+    expected_status: int | tuple[int, ...], *, required: bool = False,
+) -> int:
+    batch_id = platform_state(state, env_name, required=required)
     body = assert_envelope(platform_client.operate_batch_with_retry(batch_id, operation))
     assert body["code"] == 0, body
+    actual = wait_for_batch_status(platform_client, batch_id, expected_status)
+    # 先确保 actual 是可转换的类型
+    assert actual is not None, f"批次 {batch_id} 状态为空"
+    assert isinstance(actual, (int, str)), f"批次状态类型异常: {type(actual)}, 值: {actual}"
+    expected_values = (expected_status,) if isinstance(expected_status, int) else expected_status
+    assert int(actual) in expected_values, f"批次 {batch_id} 状态未按操作流转: {actual}"
     return batch_id
 
 
 @pytest.mark.core
 def test_hawk_06_01_start_init_batch(platform_client, platform_state):
     """启动未启动批次：对未启动批次执行 START 应成功。"""
-    _assert_operation(platform_client, platform_state, "init", "HAWK_INIT_BATCH_ID", _operation("start"))
+    _assert_operation(
+        platform_client, platform_state, "init", "HAWK_INIT_BATCH_ID", _operation("start"), 1,
+        required=True,
+    )
 
 
 def test_hawk_06_02_pause_running_batch(platform_client, platform_state):
     """暂停处理中批次：对处理中批次执行 PAUSE 应成功。"""
-    _assert_operation(platform_client, platform_state, "running", "HAWK_RUNNING_BATCH_ID", _operation("pause"))
+    _assert_operation(platform_client, platform_state, "running", "HAWK_RUNNING_BATCH_ID", _operation("pause"), 3)
 
 
 def test_hawk_06_03_restart_stopped_batch(platform_client, platform_state):
     """从已暂停批次重启：对已暂停批次执行 RESTART 应成功。"""
-    _assert_operation(platform_client, platform_state, "stopped", "HAWK_STOPPED_BATCH_ID", _operation("restart"))
+    _assert_operation(platform_client, platform_state, "stopped", "HAWK_STOPPED_BATCH_ID", _operation("restart"), 1)
 
 
 def test_hawk_06_04_retry_failed_batch(platform_client, platform_state):
     """对失败批次执行重试：对失败批次执行 RETRY 应成功。"""
-    _assert_operation(platform_client, platform_state, "failed", "HAWK_FAILED_BATCH_ID", _operation("retry"))
+    _assert_operation(platform_client, platform_state, "failed", "HAWK_FAILED_BATCH_ID", _operation("retry"), 1)
 
 
 def test_hawk_06_05_end_running_batch(platform_client, platform_state):
     """结束批次并验证终态：对处理中批次执行 END 应成功。"""
-    _assert_operation(platform_client, platform_state, "running_end", "HAWK_END_RUNNING_BATCH_ID", _operation("end"))
+    _assert_operation(platform_client, platform_state, "running_end", "HAWK_END_RUNNING_BATCH_ID", _operation("end"), (4, 5))
 
 
 # TC-06-11：处理中批次导出
@@ -102,33 +115,41 @@ def test_hawk_06_07_batch_stat_missing_batch(platform_client):
     assert body["code"] != 0 or data.get("rpcError")
 
 
+@pytest.mark.core
 def test_hawk_batch_stat_matches_batch_detail(platform_client, platform_state):
-    """查询已有批次统计：可用时状态与批次详情一致，异常时保留下游错误信息。"""
-    batch_id = platform_state("running", EXECUTION_DEFAULTS["statsBatchIdEnv"])
+    """查询已有批次统计：状态、计数和进度字段必须与批次详情对应。"""
+    batch_id = platform_state("running", EXECUTION_DEFAULTS["statsBatchIdEnv"], required=True)
     detail = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
-    body = assert_envelope(platform_client.batch_stat(batch_id), expected_code=None)
-    data = body.get("data") or {}
-    if body.get("code") != 0:
-        assert data.get("rpcError") or body.get("message")
-        return
+    body = assert_envelope(platform_client.batch_stat(batch_id), required_keys=("data",))
+    data = body["data"]
     assert data.get("status") == int(detail["status"])
     assert all(key in data for key in ("totalCount", "successCount", "failedCount", "progress"))
+    total_count = int(data["totalCount"])
+    success_count = int(data["successCount"])
+    failed_count = int(data["failedCount"])
+    progress = float(data["progress"])
+    assert total_count >= 0
+    assert success_count >= 0 and failed_count >= 0
+    assert success_count + failed_count <= total_count
+    assert 0 <= progress <= 1
 
 
-def test_hawk_06_12_batch_stats_preserves_valid_item(platform_client):
+def test_hawk_06_12_batch_stats_preserves_valid_item(platform_client, platform_state):
     """批量统计包含不存在批次：整体报错或返回列表，不因单个缺失批次崩溃。"""
-    body = assert_envelope(platform_client.batch_stats([EXECUTION_DEFAULTS["missingBatchId"]]), expected_code=None)
-    assert body["code"] != 0 or isinstance(body.get("data"), list)
+    batch_id = platform_state("running", EXECUTION_DEFAULTS["statsBatchIdEnv"])
+    body = assert_envelope(
+        platform_client.batch_stats([batch_id, EXECUTION_DEFAULTS["missingBatchId"]]), required_keys=("data",)
+    )
+    items = body["data"]
+    assert isinstance(items, list)
+    assert any(str(item.get("batchId")) == str(batch_id) for item in items)
 
 
 def test_hawk_batch_stats_accepts_valid_batch(platform_client, platform_state):
     """批量统计包含有效批次：成功时应返回对应 batchId 的统计项。"""
     batch_id = platform_state("running", EXECUTION_DEFAULTS["statsBatchIdEnv"])
-    body = assert_envelope(platform_client.batch_stats([batch_id]), expected_code=None)
-    if body.get("code") != 0:
-        assert body.get("message") or body.get("data")
-        return
-    items = body.get("data")
+    body = assert_envelope(platform_client.batch_stats([batch_id]), required_keys=("data",))
+    items = body["data"]
     assert isinstance(items, list)
     assert any(str(item.get("batchId")) == str(batch_id) for item in items)
 
@@ -146,14 +167,12 @@ def test_hawk_fields_for_existing_batch_have_list_shape(platform_client, platfor
     # 默认现场独立造 running 批次；CI 可用环境变量覆盖为稳定的长期批次。
     env_name = EXECUTION_DEFAULTS["fieldsBatchIdEnv"]
     batch_id = platform_state("running", env_name)
-    key_body = assert_envelope(platform_client.key_fields(batch_id), expected_code=None)
-    output_body = assert_envelope(platform_client.output_fields(batch_id), expected_code=None)
-    if key_body.get("code") == 0:
-        assert isinstance(key_body.get("keyFields"), list)
-        assert all(isinstance(value, str) for value in key_body["keyFields"])
-    if output_body.get("code") == 0:
-        assert isinstance(output_body.get("outputFields"), list)
-        assert all(isinstance(value, str) for value in output_body["outputFields"])
+    key_body = assert_envelope(platform_client.key_fields(batch_id))
+    output_body = assert_envelope(platform_client.output_fields(batch_id))
+    assert isinstance(key_body.get("keyFields"), list)
+    assert all(isinstance(value, str) for value in key_body["keyFields"])
+    assert isinstance(output_body.get("outputFields"), list)
+    assert all(isinstance(value, str) for value in output_body["outputFields"])
 
 
 def test_hawk_06_10_error_log_for_missing_batch(platform_client):
@@ -168,12 +187,10 @@ def test_hawk_error_log_is_bounded_for_configured_batch(platform_client):
     batch_id = os.getenv(env_name, "")
     if not batch_id:
         pytest.skip(f"未配置 {env_name}，跳过错误日志截断校验")
-    body = assert_envelope(platform_client.error_log(batch_id), required_keys=("data",), expected_code=None)
-    if body.get("code") != 0:
-        assert body.get("message")
-        return
+    body = assert_envelope(platform_client.error_log(batch_id), required_keys=("data",))
     data = body["data"]
-    rows = data.get("rows") or []
+    assert "rows" in data, f"错误日志响应缺少 rows: {data}"
+    rows = data["rows"]
     assert isinstance(rows, list)
     assert len(rows) <= 100
     if data.get("truncated"):

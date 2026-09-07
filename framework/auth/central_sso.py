@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
-from framework.http.client import ApiClient
 from framework.auth.crypto import rsa_encrypt
+from framework.http.client import ApiClient
+
+
+def _object_field(payload: dict[str, Any], field: str) -> dict[str, Any]:
+    """读取对象类型的响应字段，避免 Optional 值继续传入认证流程。"""
+    value = payload.get(field)
+    return cast(dict[str, Any], value) if isinstance(value, dict) else {}
 
 
 class CentralSSO:
@@ -21,7 +27,7 @@ class CentralSSO:
             raise AssertionError(f"总平台 RSA 接口 HTTP 状态异常: {rsa_response.status_code} {rsa_payload}")
         if "code" in rsa_payload and rsa_payload.get("code") != 0:
             raise AssertionError(f"总平台 RSA 接口业务失败: {rsa_payload}")
-        data = rsa_payload.get("data") if isinstance(rsa_payload.get("data"), dict) else {}
+        data = _object_field(rsa_payload, "data")
         public_key = data.get("rsa") or data.get("publicKey") or data.get("public_key")
         if not isinstance(public_key, str) or not public_key.strip():
             raise AssertionError(f"总平台 RSA 响应缺少公钥: {rsa_payload}")
@@ -35,7 +41,7 @@ class CentralSSO:
             raise AssertionError(f"总平台登录 HTTP 状态异常: {response.status_code} {payload}")
         if "code" in payload and payload.get("code") != 0:
             raise AssertionError(f"总平台登录业务失败: {payload}")
-        login_data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        login_data = _object_field(payload, "data")
         token = (
             login_data.get("token")
             or login_data.get("accessToken")

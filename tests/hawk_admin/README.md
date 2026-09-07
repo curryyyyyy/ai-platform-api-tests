@@ -69,4 +69,4 @@ pytest tests/hawk_admin -m "core and live" -v
 
 - `failed`、`running_with_tasks`、`running_end` 依赖真实执行任务或失败产物，未配置前置时会跳过。
 - 网关返回 `no healthy upstream` 表示 `tc-hawk` 下游没有健康实例，属于环境阻塞，不应归因于测试代码。
-- 流程创建接口若返回“数据库操作失败”，说明服务端 flow schema 不可用；相关创建场景会明确跳过，批次场景继续复用已有流程。
+- 流程创建接口若返回“数据库操作失败”，创建场景必须失败并要求排查服务端持久化层；批次场景继续复用已有流程。

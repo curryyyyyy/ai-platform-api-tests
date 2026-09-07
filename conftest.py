@@ -45,13 +45,13 @@ def settings() -> dict[str, Any]:
 
 @pytest.fixture(scope="session")
 def central_token(settings: dict[str, Any]) -> str:
-    token = os.getenv("API_TOKEN", "")
+    token = os.getenv("API_TOKEN", "").strip()
     if token:
         return token
     auth = settings["auth"]
     credentials = settings["credentials"]
     if not credentials.get("username") or not credentials.get("password"):
-        pytest.skip("未配置总平台账号密码，或设置 API_TOKEN")
+        pytest.fail("未配置总平台账号密码，或设置 API_TOKEN；线上用例不能以跳过计为通过")
     return CentralSSO(
         auth["base_url"],
         auth["rsa_path"],
@@ -70,7 +70,7 @@ def platform_client_factory(settings: dict[str, Any]):
         config = settings.get("platforms", {}).get(name) or {}
         base_url = config.get("base_url", "")
         if not base_url:
-            pytest.skip(f"未配置平台 {name} 的 base_url")
+            pytest.fail(f"未配置平台 {name} 的 base_url；线上用例不能以跳过计为通过")
         return definition.client_factory(base_url, token, timeout)
 
     return create
@@ -124,22 +124,29 @@ def platform_batch_state(
     scope = DataScope(request.node.nodeid)
     request.addfinalizer(scope.cleanup)
 
-    def resolve(platform_name: str, state: str, env_name: str) -> int:
+    def resolve(platform_name: str, state: str, env_name: str, *, required: bool = False) -> int:
         definition = get_platform(platform_name)
         if definition.state_resolver is None:
-            pytest.skip(f"平台 {platform_name} 未提供状态预置器")
+            message = f"平台 {platform_name} 未提供状态预置器"
+            if required:
+                raise AssertionError(message)
+            pytest.skip(message)
         value = os.getenv(env_name, "")
         if value:
             return int(value)
         try:
             return definition.state_resolver(client_for(platform_name), scope, state)
-        except Exception as exc:  # 造数失败不应阻断其余用例
+        except Exception as exc:
             if "no healthy upstream" in str(exc).lower():
-                pytest.skip(
+                message = (
                     f"平台 {platform_name} 的下游执行服务不可用（no healthy upstream），"
                     f"无法准备 {state} 状态批次；请恢复 tc-hawk 健康实例后重试"
                 )
-            pytest.skip(f"自动构造 {state} 状态批次失败: {exc}；也可通过 {env_name} 指定")
+            else:
+                message = f"自动构造 {state} 状态批次失败: {exc}；也可通过 {env_name} 指定"
+            if required:
+                raise AssertionError(message) from exc
+            pytest.skip(message)
 
     return resolve
 
@@ -188,7 +195,9 @@ def viewer_platform_client(viewer_for, request: pytest.FixtureRequest):
 @pytest.fixture
 def platform_state(platform_batch_state, request: pytest.FixtureRequest) -> Callable[[str, str], int]:
     platform_name = _platform_name_for_node(request.node)
-    return lambda state, env_name: platform_batch_state(platform_name, state, env_name)
+    return lambda state, env_name, *, required=False: platform_batch_state(
+        platform_name, state, env_name, required=required
+    )
 
 
 @pytest.fixture

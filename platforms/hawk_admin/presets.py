@@ -84,14 +84,17 @@ def _batch_status(client: HawkAdminClient, batch_id: int) -> object:
     return (client.json(client.get_batch(batch_id)).get("data") or {}).get("status")
 
 
-def _wait_for_status(client: HawkAdminClient, batch_id: int, expected: int) -> object:
+def wait_for_batch_status(
+    client: HawkAdminClient, batch_id: int, expected: int | tuple[int, ...]
+) -> object:
     """等待异步执行状态落库，避免操作成功后立即回查造成竞态。"""
     timeout = max(float(os.getenv("HAWK_STATE_TIMEOUT", "15")), 0.5)
     interval = min(max(float(os.getenv("HAWK_STATE_POLL_INTERVAL", "0.5")), 0.1), 2.0)
     deadline = time.monotonic() + timeout
+    expected_values = {str(value) for value in ((expected,) if isinstance(expected, int) else expected)}
     actual = _batch_status(client, batch_id)
     while time.monotonic() < deadline:
-        if str(actual) == str(expected):
+        if str(actual) in expected_values:
             return actual
         time.sleep(interval)
         actual = _batch_status(client, batch_id)
@@ -127,11 +130,11 @@ def prepare_batch(client: HawkAdminClient, scope: DataScope, state: str) -> int:
             raise AssertionError(f"批次 {batch_id} 执行操作 {operation} 失败: {body}")
         # START 必须先稳定到 running，再继续 PAUSE；否则下游任务尚未建好时会返回 invalid operation。
         if state == "stopped" and index == 0:
-            running = _wait_for_status(client, batch_id, PROVISIONABLE_STATES["running"])
+            running = wait_for_batch_status(client, batch_id, PROVISIONABLE_STATES["running"])
             if str(running) != str(PROVISIONABLE_STATES["running"]):
                 raise AssertionError(f"批次 {batch_id} 启动后未进入处理中，实际状态: {running}")
     expected = PROVISIONABLE_STATES[state]
-    actual = _wait_for_status(client, batch_id, expected)
+    actual = wait_for_batch_status(client, batch_id, expected)
     if str(actual) != str(expected):
         raise AssertionError(
             f"批次 {batch_id} 状态为 {actual}，期望 {expected}；"

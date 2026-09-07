@@ -5,32 +5,33 @@ defaults:
 cases:
   create:
     - id: default_init
-      inputFilePath: "CID://collection/automation-0501"
+      inputFilePath: "CID://966"
     - id: name_check
-      inputFilePath: "CID://collection/automation-0504"
+      inputFilePath: "CID://966"
     - id: list_filter
-      inputFilePath: "CID://collection/automation-0505"
+      inputFilePath: "CID://966"
     - id: update_input
-      inputFilePath: "CID://collection/automation-0506"
-      updatedInputFilePath: "CID://collection/automation-0506-updated"
+      inputFilePath: "CID://966"
+      # 仍指向同一圈选集，但保留不同的合法 CID 表示，用于验证写后读回。
+      updatedInputFilePath: "CID://000966"
     - id: status_update
-      inputFilePath: "CID://collection/automation-0509"
+      inputFilePath: "CID://966"
     - id: invalid_status
-      inputFilePath: "CID://collection/automation-0510"
+      inputFilePath: "CID://966"
     - id: delete
-      inputFilePath: "CID://collection/automation-0511"
+      inputFilePath: "CID://966"
     - id: cid_input
-      inputFilePath: "CID://collection/automation-0508"
+      inputFilePath: "CID://966"
 
   invalid_create:
     - id: without_project
       projectId: 0
-      inputFilePath: "CID://collection/automation-0502"
+      inputFilePath: "CID://966"
       name: "TC-05-02-no-project"
     - id: missing_flow
       projectId: null
       flowName: "flow-not-exist-20260902"
-      inputFilePath: "CID://collection/automation-0503"
+      inputFilePath: "CID://966"
       name: "TC-05-03-no-flow"
 
   invalid_status:

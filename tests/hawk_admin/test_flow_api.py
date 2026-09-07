@@ -34,16 +34,22 @@ def test_hawk_04_02_invalid_json_config(case, platform_client):
 
 def test_hawk_04_03_list_flow_filters(platform_client, platform_data_factory):
     """TC-04-03：按名称、状态和创建时间排序查询流程。"""
-    _, payload = platform_data_factory.create_flow()
+    prefix = platform_data_factory.scope.unique_name("flow-filter", max_length=36)
+    _, first = platform_data_factory.create_flow(flowName=f"{prefix}-a")
+    _, second = platform_data_factory.create_flow(flowName=f"{prefix}-b")
     query = case_payload(FLOW_LIST_CASES["name_status_sorted"])
-    query["flowName"] = payload["flowName"]
+    query["flowName"] = prefix
     body = assert_envelope(
         platform_client.list_flows(page=1, pageSize=10, **query),
         required_keys=("data",),
     )
     items = body["data"]["list"]
-    assert any(item["flowName"] == payload["flowName"] for item in items)
-    assert all(item["status"] == query["status"] for item in items)
+    assert len(items) >= 2, "流程筛选至少应返回刚创建的两条流程，用于验证排序"
+    assert {first["flowName"], second["flowName"]} <= {item["flowName"] for item in items}
+    assert all(prefix in item["flowName"] for item in items)
+    assert all(int(item["status"]) == query["status"] for item in items)
+    created_at = [item["createdAt"] for item in items]
+    assert created_at == sorted(created_at, reverse=True), "流程列表未按 createdAt 倒序返回"
 
 
 def test_hawk_04_04_update_flow(platform_client, platform_data_factory):

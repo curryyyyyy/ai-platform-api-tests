@@ -29,22 +29,25 @@ def test_hawk_05_07_running_batch_rejects_input_update(platform_client, platform
     assert "未启动" in body.get("message", "")
 
 
-def _existing_flow_name(platform_client):
+def _existing_flow_name(platform_client, *, required: bool = False):
     try:
         return existing_flow_name(platform_client)
     except Exception as exc:
-        pytest.skip(f"环境内没有可复用流程，跳过批次用例: {exc}")
+        message = f"环境内没有可复用流程: {exc}"
+        if required:
+            raise AssertionError(message) from exc
+        pytest.skip(message)
 
 
-def _batch_prerequisites(platform_data_factory, platform_client):
+def _batch_prerequisites(platform_data_factory, platform_client, *, required: bool = False):
     project_id, _ = platform_data_factory.create_project(materialType="图片", notificationLevel=0)
-    return project_id, _existing_flow_name(platform_client)
+    return project_id, _existing_flow_name(platform_client, required=required)
 
 
 @pytest.mark.core
 def test_hawk_05_01_create_batch_defaults_to_init(platform_data_factory, platform_client):
     """创建批次并默认为未启动：回查 status 应为 0，projectId 与名称与创建值一致。"""
-    project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
+    project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client, required=True)
     batch_id, payload = platform_data_factory.create_batch(
         project_id=project_id,
         flow_name=flow_name,
@@ -111,9 +114,15 @@ def test_hawk_05_05_list_batches(platform_client, platform_data_factory):
         platform_client.list_batches(page=1, pageSize=10, projectId=project_id, status=0, keyword=payload["name"]),
         required_keys=("data",),
     )
-    assert any(item["name"] == payload["name"] for item in body["data"]["list"])
+    items = body["data"]["list"]
+    assert items, "按唯一批次名称筛选不应返回空列表"
+    assert all(str(item["projectId"]) == str(project_id) for item in items)
+    assert all(int(item["status"]) == 0 for item in items)
+    assert all(payload["name"] in item["name"] for item in items)
+    assert any(item["name"] == payload["name"] for item in items)
 
 
+@pytest.mark.core
 def test_hawk_05_06_update_init_batch_input(platform_client, platform_data_factory):
     """未启动批次修改输入文件成功：修改后响应应包含新的输入路径。"""
     project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
@@ -121,14 +130,17 @@ def test_hawk_05_06_update_init_batch_input(platform_client, platform_data_facto
         project_id=project_id, flow_name=flow_name,
         input_file_path=BATCH_CREATE_CASES["update_input"]["inputFilePath"],
     )
+    updated_input = BATCH_CREATE_CASES["update_input"]["updatedInputFilePath"]
     body = assert_envelope(
         platform_client.update_batch_input(
             batch_id,
-            inputFilePath=BATCH_CREATE_CASES["update_input"]["updatedInputFilePath"],
+            inputFilePath=updated_input,
             materialType=BATCH_DEFAULTS["materialType"],
         )
     )
-    assert body.get("inputFilePath") or body.get("data")
+    assert body["inputFilePath"] == updated_input
+    data = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
+    assert data["inputFilePath"] == updated_input
 
 
 def test_hawk_05_09_update_batch_status(platform_client, platform_data_factory):

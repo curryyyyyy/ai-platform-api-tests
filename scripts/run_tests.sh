@@ -6,7 +6,7 @@
 #   ./scripts/run_tests.sh -m contract --open          生成 HTML 并在浏览器打开
 #   ./scripts/run_tests.sh -m contract --serve         用临时目录起服务并打开（不落盘 HTML）
 #   ./scripts/run_tests.sh -m contract --no-clean      保留当前结果目录，用于趋势对比
-#   REPORT_KEEP=5 ./scripts/run_tests.sh -m contract   保留最近 5 次报告（默认值）
+#   REPORT_KEEP=3 ./scripts/run_tests.sh -m contract   保留最近 3 次报告（默认值）
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,7 +18,7 @@ HTML_DIR="reports/allure-report"
 REPORTS_ROOT="reports"
 MODE="results"
 CLEAN=1
-REPORT_KEEP="${REPORT_KEEP:-5}"
+REPORT_KEEP="${REPORT_KEEP:-3}"
 PYTEST_ARGS=()
 
 while [ "$#" -gt 0 ]; do

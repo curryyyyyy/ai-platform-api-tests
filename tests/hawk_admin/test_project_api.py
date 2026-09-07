@@ -60,6 +60,8 @@ def test_hawk_02_03_list_project_filters_and_defaults(platform_client, platform_
     )
     data = body["data"]
     assert isinstance(data["list"], list)
+    assert data["list"], "按唯一项目名称筛选不应返回空列表"
+    assert all(payload["name"] in item["name"] for item in data["list"])
     assert any(item["name"] == payload["name"] for item in data["list"])
 
 

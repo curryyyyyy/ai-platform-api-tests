@@ -26,7 +26,12 @@ def test_hawk_03_02_list_stage_filters(platform_client, platform_data_factory):
         platform_client.list_stages(page=1, pageSize=10, domain="vision", type="operator", keywords=payload["name"]),
         required_keys=("data",),
     )
-    assert any(item["name"] == payload["name"] for item in body["data"]["list"])
+    items = body["data"]["list"]
+    assert items, "按唯一阶段名称筛选不应返回空列表"
+    assert all(item["domain"] == "vision" for item in items)
+    assert all(item["type"] == "operator" for item in items)
+    assert all(payload["name"] in item["name"] for item in items)
+    assert any(item["name"] == payload["name"] for item in items)
 
 
 def test_hawk_03_03_update_stage(platform_client, platform_data_factory):

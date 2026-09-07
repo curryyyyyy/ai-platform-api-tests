@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-DEFAULT_KEEP = 5
+DEFAULT_KEEP = 3
 
 
 def make_run_id(history_dir: Path, now: datetime | None = None) -> str:

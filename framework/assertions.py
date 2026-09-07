@@ -15,7 +15,8 @@ def assert_envelope(response: Any, *, expected_http: int = 200, expected_code: i
     """
     payload = ApiClient.json(response)
     assert response.status_code == expected_http, f"HTTP 状态异常: {response.status_code}, body={payload}"
-    if expected_code is not None and "code" in payload:
+    assert "code" in payload, f"响应缺少业务码 code: {payload}"
+    if expected_code is not None:
         assert payload.get("code") == expected_code, f"业务码异常: {payload}"
     missing = [key for key in required_keys if key not in payload]
     assert not missing, f"响应缺少字段 {missing}: {payload}"

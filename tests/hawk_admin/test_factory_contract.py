@@ -57,9 +57,9 @@ def test_hawk_factory_registers_project_cleanup() -> None:
     ]
 
 
-def test_hawk_factory_skips_known_flow_schema_failure() -> None:
-    """已知 flow schema 不可用时标记跳过，不把环境缺陷误报为用例失败。"""
+def test_hawk_factory_fails_known_flow_schema_failure() -> None:
+    """流程创建的数据库错误必须失败，不能被跳过掩盖。"""
     factory = HawkDataFactory(FlowSchemaUnavailableClient(), DataScope("TC-HAWK-FLOW-001"))
 
-    with pytest.raises(pytest.skip.Exception, match="flow 数据库 schema"):
+    with pytest.raises(AssertionError, match="创建测试流程失败"):
         factory.create_flow()
