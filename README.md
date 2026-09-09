@@ -73,6 +73,10 @@ pytest -m "core and live" -v
 
 推荐 CI 将 `contract` 与线上回归分开。仓库已提供 [`.github/workflows/api-tests.yml`](.github/workflows/api-tests.yml)：PR/主分支推送执行契约门禁，定时或手动触发执行线上回归。
 
+GitLab 项目可使用 [`.gitlab-ci.yml`](.gitlab-ci.yml) 接入 Merge Request 门禁：contract 对所有 MR 执行，同项目受信任 MR 执行 `core_live`。请在 GitLab 受保护分支中将 `core_live` 对应的 pipeline status 设为 Required，并将测试地址和凭证配置为受保护 CI/CD Variables；外部 fork 不应直接执行带线上凭证的测试代码。
+
+契约门禁支持在 CI 中从 GitLab 拉取最新 OpenAPI 和接口清单。平台契约来源由各子平台文档和 CI 配置声明，通用拉取器支持项目地址、分支、文件路径或直接 raw URL。私有项目使用 `CONTRACT_GITLAB_TOKEN`；未配置远程来源时，门禁使用仓库内快照。
+
 ## 数据与清理
 
 写入型测试必须通过平台数据工厂和 `DataScope` 造数，测试结束自动逆序清理。静态参数放在 `data/<platform>/*.yaml`，动态名称、服务端 ID、状态转换和清理逻辑放在平台适配器中。
@@ -103,6 +107,4 @@ pytest -m "core and live" -v
 
 ## 子平台文档
 
-| 子平台 | 文档 |
-| --- | --- |
-| Hawk 机器标注平台 | [`tests/hawk_admin/README.md`](tests/hawk_admin/README.md) |
+各子平台的业务说明、契约来源和环境前置位于 `tests/<platform>/README.md`，新增平台时必须同步创建该文档。

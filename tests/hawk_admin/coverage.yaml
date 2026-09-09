@@ -2,7 +2,7 @@ version: 1
 schema: test-cases/hawk_admin/机器标注平台_测试用例.schema.yaml
 platform: hawk_admin
 entries:
-  - {id: TC-01-01, tests: [tests/smoke/test_central_login.py::test_central_login_returns_token], level: partial, note: "总平台登录 smoke 链路覆盖，无独立 Hawk 编号测试"}
+  - {id: TC-01-01, tests: [tests/smoke/test_central_login.py::test_central_login_returns_token, tests/hawk_admin/test_auth.py::test_hawk_authenticated_project_list], level: full, note: "登录获取 Token，并使用该 Token 请求 Hawk 项目列表"}
   - {id: TC-01-02, tests: [tests/hawk_admin/test_auth.py::test_hawk_project_requires_token], level: full}
   - {id: TC-01-03, tests: [tests/hawk_admin/test_auth.py::test_hawk_invalid_token_rejected], level: full}
   - {id: TC-01-04, tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_07_viewer_cannot_write], level: full}
@@ -21,10 +21,12 @@ entries:
   - {id: TC-03-05, tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_05_delete_stage_then_get], level: full}
   - {id: TC-04-01, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_01_create_flow], level: full}
   - {id: TC-04-02, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_02_invalid_json_config], level: full}
-  - {id: TC-04-03, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_03_list_flow_filters], level: full}
+  - {id: TC-04-03, tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_03_list_flows_by_stage_status_and_calls], level: full, note: "只读查询，不创建流程；依赖环境已有匹配 Stage 和状态的数据"}
   - {id: TC-04-04, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_04_update_flow], level: full}
   - {id: TC-04-05, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_05_delete_flow_then_get], level: partial, note: "尚未构造被阶段/批次引用的流程"}
-  - {id: TC-04-06, tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_06_get_missing_flow], level: full}
+  - {id: TC-04-06, tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_06_get_missing_flow], level: full}
+  - {id: TC-04-07, tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_07_get_existing_flow], level: full, env: [HAWK_FLOW_ID], note: "未配置 HAWK_FLOW_ID 时从已有流程列表读取首条记录"}
+  - {id: TC-04-08, tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_08_list_flows_by_call_count], level: full, note: "只读查询，不创建流程；依赖环境已有流程列表"}
   - {id: TC-05-01, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_01_create_batch_defaults_to_init], level: partial, note: "依赖环境已有合法流程"}
   - {id: TC-05-02, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_02_create_batch_invalid_reference], level: full}
   - {id: TC-05-03, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_02_create_batch_invalid_reference], level: full, note: "与 TC-05-02 共用参数化入口"}
@@ -36,6 +38,7 @@ entries:
   - {id: TC-05-09, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_09_update_batch_status], level: full}
   - {id: TC-05-10, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_10_invalid_batch_status], level: full}
   - {id: TC-05-11, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_11_delete_batch_then_get], level: full}
+  - {id: TC-05-12, tests: [tests/hawk_admin/test_batch_api.py::test_hawk_05_12_update_init_batch_metadata], level: full}
   - {id: TC-06-01, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_01_start_init_batch], level: full, note: "默认现场独立造 init 批次；可用环境变量覆盖"}
   - {id: TC-06-02, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_02_pause_running_batch], level: full, note: "默认现场独立造 running 批次；可用环境变量覆盖"}
   - {id: TC-06-03, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_03_restart_stopped_batch], level: full, note: "默认现场独立造 stopped 批次；可用环境变量覆盖"}
@@ -48,3 +51,15 @@ entries:
   - {id: TC-06-10, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_10_error_log_for_missing_batch, tests/hawk_admin/test_hawk_execution_api.py::test_hawk_error_log_is_bounded_for_configured_batch], level: partial, env: [HAWK_ERROR_LOG_BATCH_ID]}
   - {id: TC-06-11, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_11_export_running_batch_preserves_status], level: partial, env: [HAWK_EXPORT_RUNNING_BATCH_ID]}
   - {id: TC-06-12, tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_12_batch_stats_preserves_valid_item, tests/hawk_admin/test_hawk_execution_api.py::test_hawk_batch_stats_accepts_valid_batch], level: partial, env: [HAWK_STATS_BATCH_ID]}
+  - {id: TC-07-01, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_01_list_common_templates, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_02_list_credentials, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_03_get_system_load, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_04_list_task_stream_stats], level: full}
+  - {id: TC-07-02, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_05_get_feishu_project_info_rejects_invalid_link, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_06_list_temp_files], level: full}
+  - {id: TC-07-03, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_07_get_batch_flowgraph_for_missing_batch, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_09_get_statistics_csv_for_missing_batch], level: full}
+  - {id: TC-07-04, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_11_invalid_extended_write_is_rejected, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_12_missing_credential_operations_are_rejected, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_13_missing_template_operations_are_rejected, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_14_missing_file_operations_are_rejected], level: full}
+  - {id: TC-07-05, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_15_tools_validate_inputs_and_trigger_commands], level: full}
+  - {id: TC-07-06, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_16_done_end_alert_actions_reject_missing_batch], level: full}
+  - {id: TC-07-07, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_10_list_statistics_batches, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_07_17_list_template_workflows], level: full}
+  - {id: TC-08-01, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_08_01_list_transfer_tasks, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_08_02_get_transfer_task, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_08_03_missing_transfer_action_is_rejected, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_08_04_missing_transfer_config_is_rejected, tests/hawk_admin/test_hawk_extended_api.py::test_hawk_08_05_hide_missing_task_stream_batch_is_rejected], level: full}
+  - {id: TC-09-01, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_09_01_user_auth_accepts_central_token], level: full}
+  - {id: TC-09-02, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_09_02_user_rsa_returns_public_key], level: full}
+  - {id: TC-09-03, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_09_03_user_login_rejects_empty_credentials], level: full}
+  - {id: TC-09-04, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_09_04_user_logout_invalid_token_is_idempotent], level: full}

@@ -52,7 +52,7 @@ def dataset_defaults(platform: str, resource: str) -> dict[str, Any]:
 
 
 def dataset_cases(platform: str, resource: str, name: str) -> tuple[dict[str, Any], ...]:
-    """读取一个可参数化场景集合，要求每条记录带稳定的 id。"""
+    """读取一个可参数化场景集合，要求每条记录带稳定a的 id。"""
     dataset = load_dataset(platform, resource)
     cases = dataset.get("cases", {})
     if not isinstance(cases, Mapping) or name not in cases:

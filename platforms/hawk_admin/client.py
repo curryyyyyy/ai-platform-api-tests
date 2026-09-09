@@ -14,6 +14,15 @@ class HawkAdminClient(ApiClient):
     def get_rsa(self):
         return self.get("/api/v1/user/rsa")
 
+    def user_auth(self, *, token: str):
+        return self.post("/api/v1/user/auth", json={"token": token})
+
+    def user_login(self, **payload):
+        return self.post("/api/v1/user/login", json=payload)
+
+    def user_logout(self, *, token: str):
+        return self.post("/api/v1/user/logout", json={"token": token})
+
     # 项目
     def create_project(self, **payload):
         return self.post("/api/v1/project", json=payload)
@@ -87,6 +96,67 @@ class HawkAdminClient(ApiClient):
     def flowgraph(self, batch_id):
         return self.get(f"/api/v1/batch/{batch_id}/flowgraph")
 
+    def batch_statistics(self, **payload):
+        return self.post("/api/v1/batch/statistics", json=payload)
+
+    def list_statistics_batches(self, **params):
+        return self.get("/api/v1/batch/statistics/list", params=params)
+
+    def statistics_batch_csv(self, batch_id):
+        return self.get(f"/api/v1/batch/statistics/{batch_id}/csv")
+
+    def upload_file(self, payload: str = ""):
+        """上传接口的 OpenAPI 请求体是原始 JSON string，而非 JSON object。"""
+        return self.post("/api/v1/batch/upload", json=payload)
+
+    def init_multipart_upload(self, **payload):
+        return self.post("/api/v1/batch/upload/multipart/init", json=payload)
+
+    def complete_multipart_upload(self, **payload):
+        return self.post("/api/v1/batch/upload/multipart/complete", json=payload)
+
+    def copy_batch(self, source_id, **payload):
+        return self.post(f"/api/v1/batch/{source_id}/copy", json=payload)
+
+    def download_url(self, **payload):
+        return self.post("/api/v1/files/download-url", json=payload)
+
+    def list_temp_files(self, **params):
+        return self.get("/api/v1/files/temp", params=params)
+
+    def csv_first_row(self, *, tos_path):
+        return self.get("/api/v1/tools/csv_first_row", params={"tosPath": tos_path})
+
+    def trigger_daily_metrics(self, **payload):
+        return self.post("/api/v1/tools/daily_metrics/trigger", json=payload)
+
+    def hbase_ddl(self, *, datatype):
+        return self.get("/api/v1/tools/hbase_ddl", params={"datatype": datatype})
+
+    def refresh_stage_ref_counts(self, **payload):
+        return self.post("/api/v1/tools/stage/ref_counts/refresh", json=payload)
+
+    def tos_file_ext(self, **params):
+        return self.get("/api/v1/tools/tos_file_ext", params=params)
+
+    def common_templates(self):
+        return self.get("/api/v1/common-template")
+
+    def list_credentials(self, **params):
+        return self.get("/api/v1/credential", params=params)
+
+    def create_credential(self, **payload):
+        return self.post("/api/v1/credential", json=payload)
+
+    def update_credential(self, credential_id, **payload):
+        return self.put(f"/api/v1/credential/{credential_id}", json={"id": credential_id, **payload})
+
+    def delete_credential(self, credential_id):
+        return self.delete(f"/api/v1/credential/{credential_id}")
+
+    def feishu_project_info(self, *, link: str):
+        return self.get("/api/v1/project/feishu/info", params={"link": link})
+
     # Hawk 执行和查询
     def operate_batch(self, batch_id, operation):
         return self.post("/api/v1/hawk/operate", json={"batchId": batch_id, "operation": operation})
@@ -127,3 +197,72 @@ class HawkAdminClient(ApiClient):
 
     def export_output(self, batch_id):
         return self.post("/api/v1/hawk/output", json={"batchId": batch_id})
+
+    def done_end_delete(self, batch_id, *, action_token=""):
+        return self.get(f"/api/v1/hawk/done-end-alert/delete/{batch_id}", params={"actionToken": action_token})
+
+    def done_end_rollback(self, batch_id, *, action_token=""):
+        return self.get(f"/api/v1/hawk/done-end-alert/rollback/{batch_id}", params={"actionToken": action_token})
+
+    def system_load(self):
+        return self.get("/api/v1/hawk/system-load")
+
+    def hide_task_stream_batch(self, **payload):
+        return self.post("/api/v1/hawk/task-stream/hidden", json=payload)
+
+    def refresh_task_stream(self, **payload):
+        return self.post("/api/v1/hawk/task-stream/stats", json=payload)
+
+    def list_templates(self, **params):
+        return self.get("/api/v1/tpl/wf", params=params)
+
+    def create_template(self, **payload):
+        return self.post("/api/v1/tpl/wf", json=payload)
+
+    def template_metric(self, ids):
+        return self.get("/api/v1/tpl/wf/metric", params={"ids": ids})
+
+    def get_template(self, template_id):
+        return self.get(f"/api/v1/tpl/wf/{template_id}")
+
+    def update_template(self, template_id, **payload):
+        return self.put(f"/api/v1/tpl/wf/{template_id}", json={"id": template_id, **payload})
+
+    def download_template(self, template_id):
+        return self.get(f"/api/v1/tpl/wf/{template_id}/download")
+
+    def list_transfer_tasks(self, **params):
+        return self.get("/api/v1/transfer/task", params=params)
+
+    def create_transfer_task(self, **payload):
+        return self.post("/api/v1/transfer/task", json=payload)
+
+    def get_transfer_task(self, task_id):
+        return self.get(f"/api/v1/transfer/task/{task_id}")
+
+    def _transfer_action(self, task_id, action, **payload):
+        return self.post(f"/api/v1/transfer/task/{task_id}/{action}", json=payload)
+
+    def cancel_transfer_task(self, task_id, **payload):
+        return self._transfer_action(task_id, "cancel", **payload)
+
+    def close_transfer_task(self, task_id, **payload):
+        return self._transfer_action(task_id, "close", **payload)
+
+    def update_transfer_config(self, task_id, **payload):
+        return self.put(f"/api/v1/transfer/task/{task_id}/config", json={"id": task_id, **payload})
+
+    def pause_transfer_task(self, task_id, **payload):
+        return self._transfer_action(task_id, "pause", **payload)
+
+    def run_transfer_task(self, task_id, **payload):
+        return self._transfer_action(task_id, "run", **payload)
+
+    def transfer_snapshot(self, task_id, **payload):
+        return self._transfer_action(task_id, "snapshot", **payload)
+
+    def continue_transfer_step(self, task_id, step_no, **payload):
+        return self.post(f"/api/v1/transfer/task/{task_id}/step/{step_no}/continue", json=payload)
+
+    def retry_transfer_step(self, task_id, step_no, **payload):
+        return self.post(f"/api/v1/transfer/task/{task_id}/step/{step_no}/retry", json=payload)

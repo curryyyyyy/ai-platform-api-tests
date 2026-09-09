@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from framework.assertions import assert_envelope
+from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import dataset_case_map, dataset_defaults
 from platforms.hawk_admin.presets import wait_for_batch_status
 
@@ -80,17 +80,14 @@ def test_hawk_06_11_export_running_batch_preserves_status(platform_client, platf
 # TC-06-06/08：执行入口异常与任务流
 def test_hawk_06_06_operate_missing_batch(platform_client):
     """对不存在批次执行操作：应返回非 0 业务码。"""
-    body = assert_envelope(
-        platform_client.operate_batch(EXECUTION_DEFAULTS["missingBatchId"], _operation("start")),
-        expected_code=None,
+    assert_rejected(
+        platform_client.operate_batch(EXECUTION_DEFAULTS["missingBatchId"], _operation("start"))
     )
-    assert body["code"] != 0
 
 
 def test_hawk_06_08_task_stream_status_validation(platform_client):
     """查询实时任务流并验证脱敏：非法 status 参数应被拒绝。"""
-    body = assert_envelope(platform_client.task_stream(status="invalid", onlyMine=False), expected_code=None)
-    assert body["code"] != 0
+    assert_rejected(platform_client.task_stream(status="invalid", onlyMine=False))
 
 
 def test_hawk_task_stream_accepts_valid_filters(platform_client):
@@ -109,10 +106,8 @@ def test_hawk_task_stream_accepts_valid_filters(platform_client):
 
 # TC-06-07/12：单批次与批量统计
 def test_hawk_06_07_batch_stat_missing_batch(platform_client):
-    """查询单批次统计：不存在的批次应报错或返回 rpcError，不虚构数据。"""
-    body = assert_envelope(platform_client.batch_stat(EXECUTION_DEFAULTS["missingBatchId"]), expected_code=None)
-    data = body.get("data") or {}
-    assert body["code"] != 0 or data.get("rpcError")
+    """查询单批次统计：不存在的批次必须返回业务失败，不得用空统计伪装成功。"""
+    assert_rejected(platform_client.batch_stat(EXECUTION_DEFAULTS["missingBatchId"]))
 
 
 @pytest.mark.core
@@ -158,8 +153,7 @@ def test_hawk_batch_stats_accepts_valid_batch(platform_client, platform_state):
 def test_hawk_06_09_fields_for_missing_batch_are_not_fabricated(platform_client):
     """查询批次主键和输出字段：不存在的批次不应虚构 keyFields / outputFields。"""
     for response in (platform_client.key_fields(EXECUTION_DEFAULTS["missingBatchId"]), platform_client.output_fields(EXECUTION_DEFAULTS["missingBatchId"])):
-        body = assert_envelope(response, expected_code=None)
-        assert body["code"] != 0 or not body.get("keyFields") and not body.get("outputFields")
+        assert_rejected(response)
 
 
 def test_hawk_fields_for_existing_batch_have_list_shape(platform_client, platform_state):
@@ -176,9 +170,8 @@ def test_hawk_fields_for_existing_batch_have_list_shape(platform_client, platfor
 
 
 def test_hawk_06_10_error_log_for_missing_batch(platform_client):
-    """查询错误日志最多返回 100 行：不存在的批次返回空数据。"""
-    body = assert_envelope(platform_client.error_log(EXECUTION_DEFAULTS["missingBatchId"]), expected_code=None)
-    assert body["code"] != 0 or body.get("data") == {}
+    """查询错误日志：不存在的批次必须被拒绝，不得用空数据伪装成功。"""
+    assert_rejected(platform_client.error_log(EXECUTION_DEFAULTS["missingBatchId"]))
 
 
 def test_hawk_error_log_is_bounded_for_configured_batch(platform_client):

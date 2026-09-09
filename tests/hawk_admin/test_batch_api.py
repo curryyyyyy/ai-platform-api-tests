@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
-from framework.assertions import assert_envelope
+from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_case_map, dataset_cases, dataset_defaults
 from platforms.hawk_admin.presets import existing_flow_name
 
@@ -18,15 +20,13 @@ INVALID_STATUS_CASES = dataset_cases("hawk_admin", "batch", "invalid_status")
 def test_hawk_05_07_running_batch_rejects_input_update(platform_client, platform_state):
     """处理中批次禁止修改输入文件：仅未启动批次允许修改，应拒绝且提示未启动。"""
     batch_id = platform_state("running", "HAWK_INPUT_UPDATE_RUNNING_BATCH_ID")
-    body = assert_envelope(
+    body = assert_rejected(
         platform_client.update_batch_input(
             int(batch_id), inputFilePath=BATCH_CASES["update_input"]["updatedInputFilePath"],
             materialType=BATCH_DEFAULTS["materialType"]
-        ),
-        expected_code=None,
+        )
     )
-    assert body["code"] != 0
-    assert "未启动" in body.get("message", "")
+    assert "未启动" in body["message"]
 
 
 def _existing_flow_name(platform_client, *, required: bool = False):
@@ -87,8 +87,7 @@ def test_hawk_05_02_create_batch_invalid_reference(case, platform_client, platfo
     if payload.get("projectId") is None:
         project_id, _ = platform_data_factory.create_project(materialType="图片", notificationLevel=0)
         payload["projectId"] = int(project_id)
-    body = assert_envelope(platform_client.create_batch(**payload), expected_code=None)
-    assert body["code"] != 0
+    assert_rejected(platform_client.create_batch(**payload))
 
 
 def test_hawk_05_04_batch_name_check(platform_client, platform_data_factory):
@@ -125,7 +124,9 @@ def test_hawk_05_05_list_batches(platform_client, platform_data_factory):
 @pytest.mark.core
 def test_hawk_05_06_update_init_batch_input(platform_client, platform_data_factory):
     """未启动批次修改输入文件成功：修改后响应应包含新的输入路径。"""
-    project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client)
+    project_id, flow_name = _batch_prerequisites(
+        platform_data_factory, platform_client, required=True
+    )
     batch_id, _ = platform_data_factory.create_batch(
         project_id=project_id, flow_name=flow_name,
         input_file_path=BATCH_CREATE_CASES["update_input"]["inputFilePath"],
@@ -141,6 +142,39 @@ def test_hawk_05_06_update_init_batch_input(platform_client, platform_data_facto
     assert body["inputFilePath"] == updated_input
     data = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
     assert data["inputFilePath"] == updated_input
+
+
+def test_hawk_05_12_update_init_batch_metadata(platform_client, platform_data_factory):
+    """未启动批次通用更新：业务字段写入后可回读，系统补充字段不影响配置语义。"""
+    project_id, flow_name = _batch_prerequisites(platform_data_factory, platform_client, required=True)
+    batch_id, payload = platform_data_factory.create_batch(
+        project_id=project_id,
+        flow_name=flow_name,
+        input_file_path=BATCH_CREATE_CASES["update_input"]["inputFilePath"],
+    )
+    before = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
+    updated_name = f"{payload['name']}-updated"
+    assert_envelope(
+        platform_client.update_batch(
+            batch_id,
+            name=updated_name,
+            config=payload["config"],
+            materialType=payload["materialType"],
+        )
+    )
+    data = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
+    assert data["name"] == updated_name
+    assert data["materialType"] == payload["materialType"]
+    assert data["inputFilePath"] == before["inputFilePath"] == payload["inputFilePath"]
+    assert int(data["status"]) == int(before["status"]) == 0
+
+    # 服务端会向 config 注入通知级别、素材类型和默认输出字段，比较业务语义而非原始字符串。
+    requested_config = json.loads(payload["config"])
+    returned_config = json.loads(data["config"])
+    assert isinstance(requested_config, dict)
+    assert isinstance(returned_config, dict)
+    for key, value in requested_config.items():
+        assert returned_config.get(key) == value
 
 
 def test_hawk_05_09_update_batch_status(platform_client, platform_data_factory):
@@ -163,8 +197,7 @@ def test_hawk_05_10_invalid_batch_status(case, platform_client, platform_data_fa
         project_id=project_id, flow_name=flow_name,
         input_file_path=BATCH_CREATE_CASES["invalid_status"]["inputFilePath"],
     )
-    body = assert_envelope(platform_client.update_batch_status(batch_id, case["status"]), expected_code=None)
-    assert body["code"] != 0
+    assert_rejected(platform_client.update_batch_status(batch_id, case["status"]))
     data = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))["data"]
     assert int(data["status"]) == 0
 
@@ -177,5 +210,4 @@ def test_hawk_05_11_delete_batch_then_get(platform_client, platform_data_factory
         input_file_path=BATCH_CREATE_CASES["delete"]["inputFilePath"],
     )
     assert_envelope(platform_client.delete_batch(batch_id))
-    body = assert_envelope(platform_client.get_batch(batch_id), expected_code=None)
-    assert body["code"] != 0
+    assert_rejected(platform_client.get_batch(batch_id))

@@ -1,0 +1,58 @@
+defaults:
+  missing_id: 999999999
+  transfer_task_id: 116
+  template_id: 999999999
+  credential_id: 999999999
+  batch_id: 999999999
+  statistics_collection_id: "999999999"
+  invalid_user_token: "invalid-user-token-20260909"
+
+cases:
+  invalid_write:
+    - id: empty_statistics
+      endpoint: batch_statistics
+      payload: {}
+    - id: empty_upload
+      endpoint: upload_file
+      # UploadFile 的 request body 是 JSON string，不是对象。
+      payload: ""
+    - id: empty_multipart_init
+      endpoint: init_multipart_upload
+      payload: {}
+    - id: empty_multipart_complete
+      endpoint: complete_multipart_upload
+      payload: {}
+    - id: empty_credential
+      endpoint: create_credential
+      payload: {}
+    - id: empty_template
+      endpoint: create_template
+      payload: {}
+    - id: empty_transfer
+      endpoint: create_transfer_task
+      payload: {}
+
+  transfer_actions:
+    - id: cancel_missing
+      action: cancel
+      client_method: cancel_transfer_task
+    - id: close_missing
+      action: close
+      client_method: close_transfer_task
+    - id: pause_missing
+      action: pause
+      client_method: pause_transfer_task
+    - id: run_missing
+      action: run
+      client_method: run_transfer_task
+    - id: snapshot_missing
+      action: snapshot
+      client_method: transfer_snapshot
+    - id: continue_missing
+      action: continue
+      client_method: continue_transfer_step
+      step_no: 1
+    - id: retry_missing
+      action: retry
+      client_method: retry_transfer_step
+      step_no: 1

@@ -1,0 +1,69 @@
+stages:
+  - contract
+  - core
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - when: never
+
+default:
+  image: python:3.11
+  cache:
+    key: pip-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .cache/pip
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  CORE_EXPECTED_TESTS: "10"
+
+contract:
+  stage: contract
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - python -m pip install .
+    - ./scripts/run_tests.sh -m contract
+  artifacts:
+    when: always
+    expire_in: 14 days
+    reports:
+      junit: reports/junit/results.xml
+    paths:
+      - reports/
+
+core_live:
+  stage: core
+  resource_group: hawk-core-live
+  rules:
+    # Protected CI variables must only be used by a trusted MR from this project.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH == $CI_PROJECT_PATH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  needs:
+    - job: contract
+      artifacts: false
+  script:
+    - test -n "$PLATFORM_HAWK_ADMIN_BASE_URL" || { echo "Missing PLATFORM_HAWK_ADMIN_BASE_URL" >&2; exit 1; }
+    - |
+      if [ -z "$API_TOKEN" ]; then
+        test -n "$AUTH_BASE_URL" || { echo "Missing AUTH_BASE_URL when API_TOKEN is not set" >&2; exit 1; }
+        test -n "$API_USER" || { echo "Missing API_USER when API_TOKEN is not set" >&2; exit 1; }
+        test -n "$API_PASSWORD" || { echo "Missing API_PASSWORD when API_TOKEN is not set" >&2; exit 1; }
+      fi
+    - python -m pip install .
+    - ./scripts/run_tests.sh --no-skips -m "core and live"
+  artifacts:
+    when: always
+    expire_in: 14 days
+    reports:
+      junit: reports/junit/results.xml
+    paths:
+      - reports/

@@ -8,6 +8,16 @@ from typing import Any
 from framework.http.client import ApiClient
 
 
+_SUCCESS_LIKE_MESSAGES = (
+    "success",
+    "操作成功",
+    "执行成功",
+    "请求成功",
+    "批次已删除，后续不再发送结束异常告警",
+    "批次已回退到已完成",
+)
+
+
 def assert_envelope(response: Any, *, expected_http: int = 200, expected_code: int | None = 0, required_keys: Iterable[str] = ()) -> dict[str, Any]:
     """校验响应信封。
 
@@ -21,3 +31,35 @@ def assert_envelope(response: Any, *, expected_http: int = 200, expected_code: i
     missing = [key for key in required_keys if key not in payload]
     assert not missing, f"响应缺少字段 {missing}: {payload}"
     return payload
+
+
+def assert_rejected(
+    response: Any,
+    *,
+    expected_http: int = 200,
+    forbidden_messages: Iterable[str] = (),
+) -> dict[str, Any]:
+    """严格校验非法请求确实被业务层拒绝。
+
+    HTTP 200 是本平台的统一传输约定，不能作为成功证据。负向用例必须同时
+    返回非零业务码和非空错误消息；错误响应也不能夹带非空的成功数据或已知
+    成功文案，否则会把接口的伪成功判成通过。
+    """
+    body = assert_envelope(response, expected_http=expected_http, expected_code=None)
+    assert body["code"] != 0, f"非法或不存在资源请求未被拒绝: {body}"
+
+    message = body.get("message")
+    assert isinstance(message, str) and message.strip(), (
+        f"拒绝响应缺少有效错误消息: {body}"
+    )
+
+    if "data" in body:
+        data = body["data"]
+        assert data in (None, {}, [], ""), f"拒绝响应携带非空 data: {body}"
+
+    normalized = message.casefold()
+    for forbidden in (*_SUCCESS_LIKE_MESSAGES, *forbidden_messages):
+        assert forbidden.casefold() not in normalized, (
+            f"拒绝响应返回了不相关的成功文案 {message!r}: {body}"
+        )
+    return body

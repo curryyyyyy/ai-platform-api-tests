@@ -6,6 +6,7 @@
 #   ./scripts/run_tests.sh -m contract --open          生成 HTML 并在浏览器打开
 #   ./scripts/run_tests.sh -m contract --serve         用临时目录起服务并打开（不落盘 HTML）
 #   ./scripts/run_tests.sh -m contract --no-clean      保留当前结果目录，用于趋势对比
+#   ./scripts/run_tests.sh --no-skips -m "core and live"  将跳过视为门禁失败
 #   REPORT_KEEP=3 ./scripts/run_tests.sh -m contract   保留最近 3 次报告（默认值）
 set -euo pipefail
 
@@ -19,6 +20,7 @@ REPORTS_ROOT="reports"
 MODE="results"
 CLEAN=1
 REPORT_KEEP="${REPORT_KEEP:-3}"
+FAIL_ON_SKIP=0
 PYTEST_ARGS=()
 
 while [ "$#" -gt 0 ]; do
@@ -27,6 +29,7 @@ while [ "$#" -gt 0 ]; do
     --open) MODE="open"; shift ;;
     --serve) MODE="serve"; shift ;;
     --no-clean) CLEAN=0; shift ;;
+    --no-skips) FAIL_ON_SKIP=1; shift ;;
     --keep) REPORT_KEEP="${2:-}"; shift 2 ;;
     -h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) PYTEST_ARGS+=("$1"); shift ;;
@@ -76,6 +79,17 @@ echo
 echo "Allure 原始结果: $ROOT/$ALLURE_DIR"
 echo "JUnit XML:       $ROOT/$JUNIT_DIR/results.xml"
 
+GATE_STATUS=0
+if [ "$FAIL_ON_SKIP" -eq 1 ]; then
+  GATE_ARGS=("$ROOT/$JUNIT_DIR/results.xml" --no-skips)
+  if [ -n "${CORE_EXPECTED_TESTS:-}" ]; then
+    GATE_ARGS+=(--expected-tests "$CORE_EXPECTED_TESTS")
+  fi
+  if ! python3 "$ROOT/scripts/check_junit_gate.py" "${GATE_ARGS[@]}"; then
+    GATE_STATUS=1
+  fi
+fi
+
 case "$MODE" in
   report)
     allure generate "$ALLURE_DIR" --clean -o "$HTML_DIR"
@@ -110,5 +124,9 @@ case "$MODE" in
   open) allure open "$HTML_DIR" ;;
   serve) allure serve "$ALLURE_DIR" ;;
 esac
+
+if [ "$STATUS" -eq 0 ] && [ "$GATE_STATUS" -ne 0 ]; then
+  STATUS="$GATE_STATUS"
+fi
 
 exit "$STATUS"

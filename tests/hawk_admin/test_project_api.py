@@ -4,9 +4,8 @@ import os
 
 import pytest
 
-from framework.assertions import assert_envelope
+from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_case_map, dataset_cases, dataset_defaults
-from framework.http.client import ApiClient
 
 
 pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
@@ -23,8 +22,7 @@ def _assert_forbidden(response) -> None:
     """Hawk 权限失败可能使用 HTTP 401/403，也可能以 HTTP 200 + 业务错误返回。"""
     if response.status_code in {401, 403}:
         return
-    body = ApiClient.json(response)
-    assert body.get("code") != 0, f"查看者请求未被拒绝: {response.status_code} {body}"
+    assert_rejected(response)
 
 
 @pytest.mark.core
@@ -96,9 +94,8 @@ def test_hawk_02_05_update_project_without_owner_is_rejected(case, platform_clie
         name=f"{payload['name']}-no-owner",
         **update_payload,
     )
-    body = assert_envelope(response, expected_code=None)
-    assert body["code"] != 0
-    assert "OWNER" in body.get("message", "")
+    body = assert_rejected(response)
+    assert "OWNER" in body["message"]
 
 
 @pytest.mark.parametrize("case", INVALID_NOTIFICATION_CASES, ids=lambda case: case["id"])
@@ -109,11 +106,10 @@ def test_hawk_02_06_invalid_notification_level(case, platform_client):
         materialType=PROJECT_DEFAULTS["materialType"],
         notificationLevel=case["level"],
     )
-    body = assert_envelope(response, expected_code=None)
-    assert body["code"] != 0
+    assert_rejected(response)
 
 
-def test_hawk_02_07_viewer_cannot_write(viewer_platform_client):
+def test_hawk_02_07_viewer_cannot_write(viewer_platform_client, settings):
     """非超级管理员访问无权限项目：写入、读取和更新均不得越权。"""
     response = viewer_platform_client.create_project(
         name=AUTH_DEFAULTS["viewerProjectName"], materialType=PROJECT_DEFAULTS["materialType"],
@@ -121,9 +117,10 @@ def test_hawk_02_07_viewer_cannot_write(viewer_platform_client):
     )
     _assert_forbidden(response)
     project_id_env = AUTH_DEFAULTS["viewerProjectIdEnv"]
-    project_id = os.getenv(project_id_env, "")
+    hawk_config = settings.get("platforms", {}).get("hawk_admin") or {}
+    project_id = os.getenv(project_id_env, str(hawk_config.get("viewer_project_id", "")))
     if not project_id:
-        return
+        pytest.fail(f"未配置 {project_id_env}，无法完成查看者读取/更新他人项目的越权校验")
     read_response = viewer_platform_client.get_project(project_id)
     _assert_forbidden(read_response)
     update_response = viewer_platform_client.update_project(project_id, description="forbidden-update")
@@ -136,5 +133,4 @@ def test_hawk_02_08_delete_project_then_get(platform_client, platform_data_facto
     project_id, _ = platform_data_factory.create_project()
     assert_envelope(platform_client.delete_project(project_id))
     response = platform_client.get_project(project_id)
-    body = assert_envelope(response, expected_code=None)
-    assert body["code"] != 0
+    assert_rejected(response)

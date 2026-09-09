@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from framework.assertions import assert_envelope
+from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_case_map, dataset_cases
 
 
@@ -48,13 +48,11 @@ def test_hawk_03_03_update_stage(platform_client, platform_data_factory):
 
 def test_hawk_03_04_get_missing_stage(platform_client):
     """查询不存在的阶段：应返回非 0 业务码。"""
-    body = assert_envelope(platform_client.get_stage(999999999), expected_code=None)
-    assert body["code"] != 0
+    assert_rejected(platform_client.get_stage(999999999))
 
 
 def test_hawk_03_05_delete_stage_then_get(platform_client, platform_data_factory):
     """删除阶段后详情不可见：删除后再查询应返回非 0 业务码。"""
     stage_id, _ = platform_data_factory.create_stage(**case_payload(STAGE_CREATE_CASES[0]))
     assert_envelope(platform_client.delete_stage(stage_id))
-    body = assert_envelope(platform_client.get_stage(stage_id), expected_code=None)
-    assert body["code"] != 0
+    assert_rejected(platform_client.get_stage(stage_id))

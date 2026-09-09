@@ -12,7 +12,7 @@ modules:
   - module: "3. 阶段管理接口"
     shared_preconditions:
       - "已用总平台账号登录并取得有效 Token；写入型用例使用唯一名称并在执行后清理"
-  - module: "4. 流程管理接口"
+  - module: "4. 工作流管理接口"
     shared_preconditions:
       - "已用总平台账号登录并取得有效 Token；写入型用例使用唯一名称并在执行后清理"
   - module: "5. 批次基础生命周期"
@@ -21,6 +21,15 @@ modules:
   - module: "6. Hawk 执行、统计与结果查询"
     shared_preconditions:
       - "已用总平台账号登录并取得有效 Token；写入型用例使用唯一名称并在执行后清理"
+  - module: "7. Hawk 辅助查询接口"
+    shared_preconditions:
+      - "已用总平台账号登录并取得有效 Token；缺失资源场景使用隔离的不存在编号"
+  - module: "8. 传输任务接口"
+    shared_preconditions:
+      - "已用总平台账号登录并取得有效 Token；写入型用例使用隔离数据"
+  - module: "9. 用户认证接口"
+    shared_preconditions:
+      - "已取得总平台登录产生的 Token；负向登录和退出场景使用专用无效凭证"
 cases:
   - id: TC-01-01
     title: 使用 RSA 公钥加密密码并登录总平台
@@ -279,22 +288,21 @@ cases:
     status: active
   - id: TC-04-01
     title: 创建包含有效配置的流程
-    module: "4. 流程管理接口"
-    priority: P0
+    module: "4. 工作流管理接口"
+    priority: P1
     type: functional
     execution_model: dev-collab
-    smoke: SMOKE-4
     steps: ["创建流程 TC-04-01-flow，配置包含 stages=TC-03-01-stage 的合法 JSON"]
     expected: ["返回流程编号，详情返回流程配置和阶段关联"]
     test_data: {"1": "TC-04-01-flow / 合法 JSON 配置，stages=TC-03-01-stage"}
     code_refs: ["internal/service/flow.go:21"]
     evidence: {level: E3, source: "流程创建与配置校验实现", confidence: high}
-    tags: []
+    tags: ["[生命周期]"]
     automation: {supported: yes, framework: api}
     status: active
   - id: TC-04-02
     title: 创建流程时配置不是合法 JSON
-    module: "4. 流程管理接口"
+    module: "4. 工作流管理接口"
     priority: P1
     type: exception
     execution_model: dev-collab
@@ -303,26 +311,28 @@ cases:
     test_data: {"1": "TC-04-02-invalid-flow / 非法 JSON 配置 stages:"}
     code_refs: ["internal/service/flow.go:22"]
     evidence: {level: E3, source: "流程配置校验实现", confidence: high}
-    tags: []
+    tags: ["[生命周期]"]
     automation: {supported: yes, framework: api}
     status: active
   - id: TC-04-03
-    title: 按名称和状态查询流程
-    module: "4. 流程管理接口"
-    priority: P1
+    title: 按 Stage、状态和调用次数查询流程
+    module: "4. 工作流管理接口"
+    priority: P0
     type: functional
     execution_model: dev-collab
-    steps: ["按名称 TC-04、状态 1、创建时间倒序查询流程"]
-    expected: ["结果名称匹配且状态为 1，按创建时间倒序"]
-    test_data: {"1": "flowName=TC-04&status=1&sortField=createdAt&sortOrder=desc"}
+    smoke: SMOKE-4
+    preconditions: ["环境中已有 stageName=kuaishou_ip_delivery.extract 且 status=2 的流程"]
+    steps: ["调用 GET /api/v1/flow?page=1&pageSize=5&stageName=kuaishou_ip_delivery.extract&sortField=callCnt30d&sortOrder=desc&status=2"]
+    expected: ["返回非空结果，所有流程状态为 2 且包含指定 Stage，并按 callCnt30d 倒序"]
+    test_data: {"1": "page=1&pageSize=5&stageName=kuaishou_ip_delivery.extract&sortField=callCnt30d&sortOrder=desc&status=2"}
     code_refs: ["internal/service/flow.go:114"]
     evidence: {level: E3, source: "流程列表实现", confidence: high}
-    tags: []
+    tags: ["[只读]"]
     automation: {supported: yes, framework: api}
     status: active
   - id: TC-04-04
     title: 更新流程描述、别名和状态
-    module: "4. 流程管理接口"
+    module: "4. 工作流管理接口"
     priority: P1
     type: functional
     execution_model: dev-collab
@@ -332,12 +342,12 @@ cases:
     test_data: {"1": "flow01-updated / 更新流程 / 1"}
     code_refs: ["internal/service/flow.go:56"]
     evidence: {level: E3, source: "流程更新实现", confidence: high}
-    tags: []
+    tags: ["[生命周期]"]
     automation: {supported: yes, framework: api}
     status: active
   - id: TC-04-05
     title: 删除被阶段引用的流程
-    module: "4. 流程管理接口"
+    module: "4. 工作流管理接口"
     priority: P1
     type: data
     execution_model: dev-collab
@@ -347,12 +357,12 @@ cases:
     test_data: {"1": "流程编号 40002"}
     code_refs: ["internal/service/flow.go:81"]
     evidence: {level: E2, source: "流程删除入口与关联模型", confidence: medium}
-    tags: []
+    tags: ["[生命周期]"]
     automation: {supported: partial, framework: api}
     status: active
   - id: TC-04-06
     title: 查询不存在的流程
-    module: "4. 流程管理接口"
+    module: "4. 工作流管理接口"
     priority: P1
     type: exception
     execution_model: dev-collab
@@ -361,7 +371,37 @@ cases:
     test_data: {"1": "流程编号 999999999"}
     code_refs: ["internal/service/flow.go:97"]
     evidence: {level: E3, source: "流程查询实现", confidence: high}
-    tags: []
+    tags: ["[只读]"]
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-04-07
+    title: 查询已有流程详情
+    module: "4. 工作流管理接口"
+    priority: P1
+    type: functional
+    execution_model: dev-collab
+    preconditions: ["环境中已有流程；可通过 HAWK_FLOW_ID 指定流程编号，未指定时从流程列表读取"]
+    steps: ["调用 GET /api/v1/flow/{id} 查询已有流程详情"]
+    expected: ["返回成功，流程编号、名称、Schema 和配置字段均存在，不创建或修改流程"]
+    test_data: {"1": "HAWK_FLOW_ID 或流程列表首条已有流程编号"}
+    code_refs: ["internal/service/flow.go:97"]
+    evidence: {level: E3, source: "流程详情查询实现", confidence: high}
+    tags: ["[只读]"]
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-04-08
+    title: 按调用次数和可下线条件查询流程
+    module: "4. 工作流管理接口"
+    priority: P1
+    type: functional
+    execution_model: dev-collab
+    preconditions: ["环境中已有流程列表"]
+    steps: ["调用 GET /api/v1/flow?page=1&pageSize=30&sortField=callCnt30d&sortOrder=desc&canOffline=false"]
+    expected: ["返回不超过 30 条流程，结果按 callCnt30d 倒序，查询过程中不创建流程"]
+    test_data: {"1": "page=1&pageSize=30&sortField=callCnt30d&sortOrder=desc&canOffline=false"}
+    code_refs: ["internal/service/flow.go:114"]
+    evidence: {level: E3, source: "流程列表筛选与排序实现", confidence: high}
+    tags: ["[只读]"]
     automation: {supported: yes, framework: api}
     status: active
   - id: TC-05-01
@@ -524,6 +564,21 @@ cases:
     test_data: {"1": "批次编号 50003"}
     code_refs: ["internal/service/batch.go:1327"]
     evidence: {level: E3, source: "批次删除实现", confidence: high}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-05-12
+    title: 更新未启动批次元数据并回读
+    module: "5. 批次基础生命周期"
+    priority: P1
+    type: data
+    execution_model: dev-collab
+    preconditions: ["已创建状态为未启动的独立批次"]
+    steps: ["调用 PUT /api/v1/batch/{id} 更新 name、config 和 materialType，再查询批次详情"]
+    expected: ["更新成功，详情中的三个字段与请求一致，输入路径和状态不被意外修改"]
+    test_data: {"1": "name=<唯一名称>，config={\"stages\":[]}，materialType=图片"}
+    code_refs: ["internal/service/batch.go"]
+    evidence: {level: E3, source: "批次通用更新接口实现", confidence: high}
     tags: []
     automation: {supported: yes, framework: api}
     status: active
@@ -704,4 +759,172 @@ cases:
     evidence: {level: E2, source: "批量统计入口", confidence: medium}
     tags: []
     automation: {supported: partial, framework: api}
+    status: active
+  - id: TC-07-01
+    title: 查询公共模板、凭证和系统负载
+    module: "7. Hawk 辅助查询接口"
+    priority: P1
+    type: functional
+    execution_model: dev-collab
+    steps: ["查询公共模板、凭证列表、系统资源负载并刷新任务流统计"]
+    expected: ["接口返回成功响应信封，列表字段、资源对象和任务流统计数组结构正确"]
+    test_data: {"1": "GET /api/v1/common-template", "2": "GET /api/v1/credential", "3": "GET /api/v1/hawk/system-load", "4": "POST /api/v1/hawk/task-stream/stats"}
+    code_refs: ["internal/service/transfer.go:134", "internal/service/credential.go", "internal/service/hawk_system_load.go:26"]
+    evidence: {level: E3, source: "辅助查询接口实现", confidence: high}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-07-02
+    title: 查询项目外部链接和临时文件
+    module: "7. Hawk 辅助查询接口"
+    priority: P1
+    type: exception
+    execution_model: dev-collab
+    steps: ["使用非法飞书链接查询项目，并查询临时文件目录"]
+    expected: ["非法链接被拒绝；临时文件接口返回合法业务响应"]
+    test_data: {"1": "link=not-a-feishu-link", "2": "prefix=automation-test"}
+    code_refs: ["internal/service/project.go", "internal/service/batch.go"]
+    evidence: {level: E3, source: "项目和文件辅助接口实现", confidence: high}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-07-03
+    title: 查询缺失批次流程图和统计文件
+    module: "7. Hawk 辅助查询接口"
+    priority: P1
+    type: exception
+    execution_model: dev-collab
+    steps: ["查询不存在批次 999999999 的流程图和统计 CSV"]
+    expected: ["返回非 0 业务码，不生成伪造数据"]
+    test_data: {"1": "batchId=999999999"}
+    code_refs: ["internal/service/batch.go", "internal/service/hawk.go"]
+    evidence: {level: E3, source: "缺失批次查询实现", confidence: high}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-07-04
+    title: 非法辅助写入请求被拒绝
+    module: "7. Hawk 辅助查询接口"
+    priority: P1
+    type: exception
+    execution_model: dev-collab
+    steps: ["向统计、上传、分片上传、凭证、模板接口提交空请求"]
+    expected: ["所有请求返回非 0 业务码，不创建资源"]
+    test_data: {"1": "空 JSON 请求体"}
+    code_refs: ["internal/service/batch.go", "internal/service/credential.go", "internal/service/template.go"]
+    evidence: {level: E2, source: "请求参数校验实现", confidence: medium}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-07-05
+    title: 工具接口参数校验与无参触发
+    module: "7. Hawk 辅助查询接口"
+    priority: P1
+    type: exception
+    execution_model: dev-collab
+    steps: ["调用 CSV 首行、HBase DDL、TOS 扩展名接口，不提供必要参数；再调用每日指标和阶段引用计数刷新"]
+    expected: ["前三个接口返回非 0 业务码；两个无参刷新命令返回成功信封"]
+    test_data: {"1": "tosPath=", "2": "datatype=", "3": "空查询参数", "4": "空 JSON 刷新请求"}
+    code_refs: ["internal/service/tools.go", "internal/service/daily_metrics.go"]
+    evidence: {level: E3, source: "工具接口参数校验实现", confidence: high}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-07-06
+    title: 结束告警缺失批次操作被拒绝
+    module: "7. Hawk 辅助查询接口"
+    priority: P1
+    type: exception
+    execution_model: dev-collab
+    steps: ["对不存在批次调用结束告警删除和回滚接口"]
+    expected: ["返回非 0 业务码，不改变任何批次状态"]
+    test_data: {"1": "batchId=999999999"}
+    code_refs: ["internal/service/hawk.go"]
+    evidence: {level: E3, source: "结束告警操作实现", confidence: high}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-07-07
+    title: 查询统计批次和模板工作流列表
+    module: "7. Hawk 辅助查询接口"
+    priority: P1
+    type: functional
+    execution_model: dev-collab
+    steps: ["查询统计批次列表和模板工作流列表"]
+    expected: ["两个接口返回成功响应信封和正确列表结构，不因当前没有数据而伪造记录"]
+    test_data: {"1": "GET /api/v1/batch/statistics/list?collectionId=999999999", "2": "GET /api/v1/tpl/wf?page=1&pageSize=10"}
+    code_refs: ["internal/service/batch.go", "internal/service/template.go"]
+    evidence: {level: E3, source: "统计批次和模板列表接口实现", confidence: high}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-08-01
+    title: 查询和操作传输任务接口
+    module: "8. 传输任务接口"
+    priority: P1
+    type: functional
+    execution_model: dev-collab
+    steps: ["查询传输任务列表和任务 116 详情，并对不存在任务调用取消、关闭、暂停、运行、快照、步骤继续、步骤重试和配置更新"]
+    expected: ["列表返回合法信封；不存在任务的详情和操作返回非 0 业务码"]
+    test_data: {"1": "taskId=116", "2": "taskId=999999999"}
+    code_refs: ["internal/service/transfer.go"]
+    evidence: {level: E3, source: "传输任务接口实现", confidence: high}
+    tags: []
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-09-01
+    title: 使用总平台 Token 调用 Hawk 用户认证
+    module: "9. 用户认证接口"
+    priority: P1
+    type: security
+    execution_model: dev-collab
+    steps: ["调用 POST /api/v1/user/auth，提交总平台登录返回的 Token"]
+    expected: ["返回成功信封和用户信息对象，不泄露密码等敏感字段"]
+    test_data: {"1": "token=central_token"}
+    code_refs: ["internal/middleware/auth.go"]
+    evidence: {level: E3, source: "用户认证接口定义与鉴权中间件", confidence: high}
+    tags: ["[安全]"]
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-09-02
+    title: 用户 RSA 接口返回公钥
+    module: "9. 用户认证接口"
+    priority: P1
+    type: security
+    execution_model: dev-collab
+    steps: ["无需业务 Token 调用 GET /api/v1/user/rsa"]
+    expected: ["返回非空 rsa 公钥字符串"]
+    test_data: {"1": "GET /api/v1/user/rsa"}
+    code_refs: ["internal/service/user.go"]
+    evidence: {level: E3, source: "RSA 公钥接口定义", confidence: high}
+    tags: ["[安全]"]
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-09-03
+    title: 用户登录拒绝空账号密码
+    module: "9. 用户认证接口"
+    priority: P1
+    type: exception
+    execution_model: dev-collab
+    steps: ["向 POST /api/v1/user/login 提交空 JSON 请求"]
+    expected: ["返回非 0 业务码，不创建登录会话"]
+    test_data: {"1": "{}"}
+    code_refs: ["internal/service/user.go"]
+    evidence: {level: E2, source: "登录参数校验", confidence: medium}
+    tags: ["[安全]"]
+    automation: {supported: yes, framework: api}
+    status: active
+  - id: TC-09-04
+    title: 用户退出对无效 Token 幂等且不影响有效会话
+    module: "9. 用户认证接口"
+    priority: P1
+    type: exception
+    execution_model: dev-collab
+    steps: ["向 POST /api/v1/user/logout 提交伪造 Token"]
+    expected: ["无效 Token 注销请求按幂等成功处理，不影响其他有效会话"]
+    test_data: {"1": "token=invalid-user-token-20260909"}
+    code_refs: ["internal/service/user.go"]
+    evidence: {level: E2, source: "退出参数校验", confidence: medium}
+    tags: ["[安全]"]
+    automation: {supported: yes, framework: api}
     status: active

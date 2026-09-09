@@ -28,8 +28,17 @@ cases:
       desc: "更新流程"
       status: 1
 
-  list_filter:
-    - id: name_status_sorted
-      status: 1
-      sortField: "createdAt"
+  read:
+    - id: stage_status_sort
+      page: 1
+      pageSize: 5
+      stageName: "kuaishou_ip_delivery.extract"
+      sortField: "callCnt30d"
       sortOrder: "desc"
+      status: 2
+    - id: call_count_sort
+      page: 1
+      pageSize: 30
+      sortField: "callCnt30d"
+      sortOrder: "desc"
+      canOffline: false

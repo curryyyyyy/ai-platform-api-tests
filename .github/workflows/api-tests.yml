@@ -2,6 +2,7 @@ name: API Tests
 
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
   workflow_dispatch:
@@ -16,6 +17,14 @@ jobs:
   contract:
     name: Contract tests
     runs-on: ubuntu-latest
+    env:
+      CONTRACT_GITLAB_PROJECT: https://gitlab.ituchong.com/ai-dataset/tc-hawk-admin
+      CONTRACT_GITLAB_REF: master
+      CONTRACT_OPENAPI_PATH: openapi.yaml
+      CONTRACT_INVENTORY_PATH: api-tests/api_inventory.json
+      CONTRACT_GITLAB_TOKEN: ${{ secrets.CONTRACT_GITLAB_TOKEN }}
+      HAWK_CONTRACT_OPENAPI_URL: ${{ secrets.HAWK_CONTRACT_OPENAPI_URL }}
+      HAWK_CONTRACT_INVENTORY_URL: ${{ secrets.HAWK_CONTRACT_INVENTORY_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,7 +33,15 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: python -m pip install .
-      - name: Run offline contract suite
+      - name: Fetch latest remote contract when configured
+        shell: bash
+        run: |
+          if [[ -n "$CONTRACT_GITLAB_PROJECT" || -n "$HAWK_CONTRACT_OPENAPI_URL" ]]; then
+            python scripts/fetch_contracts.py --platform hawk_admin --required
+          else
+            echo "未配置 GitLab 契约来源，使用仓库内契约快照"
+          fi
+      - name: Run contract suite
         run: ./scripts/run_tests.sh -m contract
       - name: Upload test reports
         if: always()
@@ -36,7 +53,12 @@ jobs:
 
   core:
     name: Core live regression
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -45,6 +67,7 @@ jobs:
       API_TOKEN: ${{ secrets.API_TOKEN }}
       API_USER: ${{ secrets.API_USER }}
       API_PASSWORD: ${{ secrets.API_PASSWORD }}
+      CORE_EXPECTED_TESTS: "10"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -65,7 +88,7 @@ jobs:
             fi
           fi
       - name: Run P0 core regression
-        run: ./scripts/run_tests.sh -m "core and live"
+        run: ./scripts/run_tests.sh --no-skips -m "core and live"
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
