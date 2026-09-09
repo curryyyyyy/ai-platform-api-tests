@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pytest
 
 from framework.assertions import assert_envelope, assert_rejected
-from framework.data.dataset import case_payload, dataset_cases, dataset_defaults
+from framework.data.dataset import dataset_cases, dataset_defaults
 
 
 pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
@@ -26,6 +28,15 @@ _SUCCESS_MESSAGES = (
 
 def _assert_rejected(response) -> None:
     assert_rejected(response, forbidden_messages=_SUCCESS_MESSAGES)
+
+
+def _invoke_invalid_write(case, platform_client):
+    """调用 ``endpoint + payload`` 结构的数据集场景。"""
+    method = getattr(platform_client, case["endpoint"])
+    payload = case.get("payload", {})
+    if isinstance(payload, Mapping):
+        return method(**payload)
+    return method(payload=payload)
 
 
 def test_hawk_07_01_list_common_templates(platform_client):
@@ -96,8 +107,7 @@ def test_hawk_07_17_list_template_workflows(platform_client):
 
 @pytest.mark.parametrize("case", INVALID_WRITES, ids=lambda case: case["id"])
 def test_hawk_07_11_invalid_extended_write_is_rejected(case, platform_client):
-    method = getattr(platform_client, case["endpoint"])
-    _assert_rejected(method(**case_payload(case)))
+    _assert_rejected(_invoke_invalid_write(case, platform_client))
 
 
 def test_hawk_07_12_missing_credential_operations_are_rejected(platform_client):
