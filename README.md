@@ -75,7 +75,7 @@ pytest -m "core and live" -v
 
 GitLab 项目可使用 [`.gitlab-ci.yml`](.gitlab-ci.yml) 接入 Merge Request 门禁：contract 对所有 MR 执行，同项目受信任 MR 执行 `core_live`。请在 GitLab 受保护分支中将 `core_live` 对应的 pipeline status 设为 Required，并将测试地址和凭证配置为受保护 CI/CD Variables；外部 fork 不应直接执行带线上凭证的测试代码。
 
-契约门禁支持在 CI 中从 GitLab 拉取最新 OpenAPI 和接口清单。平台契约来源由各子平台文档和 CI 配置声明，通用拉取器支持项目地址、分支、文件路径或直接 raw URL。私有项目使用 `CONTRACT_GITLAB_TOKEN`；未配置远程来源时，门禁使用仓库内快照。
+契约门禁支持在 CI 中从 GitLab 拉取最新 OpenAPI 和接口清单。平台契约来源由各子平台文档和 CI 配置声明，通用拉取器支持项目地址、分支、文件路径或直接 raw URL。私有项目使用 `CONTRACT_GITLAB_TOKEN`；未配置远程来源时，门禁使用仓库内快照。GitHub Actions 仅在配置仓库 Variables `CONTRACT_GITLAB_PROJECT`（或 Secrets `HAWK_CONTRACT_OPENAPI_URL` 与 `HAWK_CONTRACT_INVENTORY_URL`）时启用远程拉取，避免 PR 因未配置内部契约源而失败。
 
 ## 数据与清理
 
