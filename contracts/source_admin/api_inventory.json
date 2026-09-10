@@ -1,0 +1,558 @@
+{
+  "platform": "source_admin",
+  "title": "资源管理平台 API 接口清单",
+  "source": {
+    "repository": "https://gitlab.ituchong.com/ai-dataset/ai-source-admin",
+    "branch": "master",
+    "commit": "55040a84d1d711ed4198215bc61be43b93ab1d85",
+    "primary_document": "docs/api.md",
+    "structured_documents": [
+      "docs/data-manage-api.json",
+      "docs/filesystem-api.json",
+      "docs/scheme-api.json",
+      "docs/share-api.json",
+      "docs/audit-api.json"
+    ],
+    "analyzed_at": "2026-09-10"
+  },
+  "counts": {
+    "primary_document_operations": 40,
+    "structured_contract_operations": 49,
+    "primary_document_gaps": 9
+  },
+  "common_contract": {
+    "login_header": "Authorization",
+    "login_header_documented_format": "<token>",
+    "primary_route_auth": "middleware.Auth()",
+    "success_code_documented": 0,
+    "async_statuses": {
+      "job": {
+        "0": "PENDING",
+        "1": "RUNNING",
+        "2": "SUCCESS",
+        "3": "FAILED",
+        "4": "CANCELED"
+      },
+      "original_download": {
+        "0": "PENDING",
+        "1": "RUNNING",
+        "2": "SUCCESS",
+        "3": "FAILED"
+      }
+    }
+  },
+  "operations": [
+    {
+      "id": "DM-01",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/original-downloads",
+      "source": "docs/api.md:33",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["type", "rowkeys"]},
+      "summary": "创建原始图片 ZIP 下载任务"
+    },
+    {
+      "id": "DM-02",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/original-downloads/{task_id}",
+      "source": "docs/api.md:56",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["task_id"]},
+      "summary": "查询原始图片下载任务"
+    },
+    {
+      "id": "DM-03",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/query/build-selection",
+      "source": "docs/api.md:101",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["table_name", "conditions"]},
+      "summary": "构建圈选 SQL"
+    },
+    {
+      "id": "DM-04",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/query/submit",
+      "source": "docs/api.md:180",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["sql", "name", "file_node_id", "config_snapshot"], "body_optional": ["table_name", "partition"]},
+      "summary": "提交圈选任务"
+    },
+    {
+      "id": "DM-05",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/set-operation/submit",
+      "source": "docs/api.md:229",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["operation", "a_collection_ids", "b_collection_ids", "name", "file_node_id"]},
+      "summary": "提交集合运算任务"
+    },
+    {
+      "id": "DM-06",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections",
+      "source": "docs/api.md:265",
+      "documented_in_primary": true,
+      "inputs": {"query_optional": ["name", "status", "data_type", "start_at_from", "start_at_to", "limit", "offset", "source", "id", "operator", "business_sources"]},
+      "summary": "查询圈选集列表"
+    },
+    {
+      "id": "DM-07",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections/{collection_id}",
+      "source": "docs/api.md:308",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "查询圈选元数据"
+    },
+    {
+      "id": "DM-08",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections/{collection_id}/labels",
+      "source": "docs/api.md:337",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "查询圈选集列定义"
+    },
+    {
+      "id": "DM-09",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/collections/{collection_id}/data",
+      "source": "docs/api.md:380",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"], "body_required": ["fields"], "body_optional": ["page", "page_size"]},
+      "summary": "查询圈选集分页数据"
+    },
+    {
+      "id": "DM-10",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections/{collection_id}/node-path",
+      "source": "docs/api.md:423",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "查询圈选 Node 面包屑路径"
+    },
+    {
+      "id": "DM-11",
+      "module": "data_manage",
+      "method": "PUT",
+      "path": "/api/v1/collections/{collection_id}/columns",
+      "source": "docs/api.md:457",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"], "body_required": ["show_col"]},
+      "summary": "更新圈选集列设置"
+    },
+    {
+      "id": "DM-12",
+      "module": "data_manage",
+      "method": "PUT",
+      "path": "/api/v1/collections/{collection_id}/set-type",
+      "source": "docs/api.md:486",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"], "body_required": ["set_type"]},
+      "summary": "更新圈选集类型"
+    },
+    {
+      "id": "DM-13",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections/{collection_id}/preview-sql",
+      "source": "docs/data-manage-api.json#/paths/~1api~1v1~1collections~1{collection_id}~1preview-sql",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "获取圈选集原始 SQL"
+    },
+    {
+      "id": "DM-14",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/collections/{collection_id}/download",
+      "source": "docs/data-manage-api.json#/paths/~1api~1v1~1collections~1{collection_id}~1download",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "下载圈选集全量数据"
+    },
+    {
+      "id": "DM-15",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/collections/csv-upload-url",
+      "source": "docs/data-manage-api.json#/paths/~1api~1v1~1collections~1csv-upload-url",
+      "documented_in_primary": false,
+      "inputs": {"body_required": ["file_name"]},
+      "summary": "获取 CSV 预签名上传地址"
+    },
+    {
+      "id": "DM-16",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/collections/import",
+      "source": "docs/data-manage-api.json#/paths/~1api~1v1~1collections~1import",
+      "documented_in_primary": false,
+      "inputs": {"body_required": ["tos_paths", "collection_name", "set_type"]},
+      "summary": "异步导入 CSV 创建圈选集"
+    },
+    {
+      "id": "DM-17",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/collections/check-csv",
+      "source": "docs/data-manage-api.json#/paths/~1api~1v1~1collections~1check-csv",
+      "documented_in_primary": false,
+      "inputs": {"body_required": ["tos_path"]},
+      "summary": "检查 CSV 文件格式及必需字段"
+    },
+    {
+      "id": "DM-18",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections/{collection_id}/import-status",
+      "source": "docs/data-manage-api.json#/paths/~1api~1v1~1collections~1{collection_id}~1import-status",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "查询 CSV 导入进度"
+    },
+    {
+      "id": "DM-19",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections/{collection_id}/import-errors",
+      "source": "docs/data-manage-api.json#/paths/~1api~1v1~1collections~1{collection_id}~1import-errors",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "获取导入失败明细下载地址"
+    },
+    {
+      "id": "DM-20",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/composite/preview",
+      "source": "docs/data-manage-api.json#/paths/~1api~1v1~1composite~1preview",
+      "documented_in_primary": false,
+      "inputs": {"query_required": ["node_type"], "body_optional": true},
+      "summary": "复合数据预览"
+    },
+    {
+      "id": "FS-01",
+      "module": "filesystem",
+      "method": "GET",
+      "path": "/api/v1/nodes/{id}/list",
+      "source": "docs/api.md:535",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"], "query_optional": ["type"]},
+      "summary": "列出目录内容"
+    },
+    {
+      "id": "FS-02",
+      "module": "filesystem",
+      "method": "GET",
+      "path": "/api/v1/nodes/{id}",
+      "source": "docs/api.md:575",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"]},
+      "summary": "获取节点元数据"
+    },
+    {
+      "id": "FS-03",
+      "module": "filesystem",
+      "method": "POST",
+      "path": "/api/v1/nodes",
+      "source": "docs/api.md:581",
+      "documented_in_primary": true,
+      "inputs": {"header_optional": ["X-Owner-ID"], "body_required": ["name", "type", "parent_id"], "body_optional": ["resource_id"]},
+      "summary": "创建节点"
+    },
+    {
+      "id": "FS-04",
+      "module": "filesystem",
+      "method": "PUT",
+      "path": "/api/v1/nodes/{id}",
+      "source": "docs/api.md:605",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"], "body_optional": ["name", "resource_id"]},
+      "summary": "更新节点名称或资源绑定"
+    },
+    {
+      "id": "FS-05",
+      "module": "filesystem",
+      "method": "DELETE",
+      "path": "/api/v1/nodes/{id}",
+      "source": "docs/api.md:620",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"]},
+      "summary": "删除节点"
+    },
+    {
+      "id": "FS-06",
+      "module": "filesystem",
+      "method": "POST",
+      "path": "/api/v1/nodes/{id}/move",
+      "source": "docs/api.md:626",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"], "body_required": ["target_parent_id"]},
+      "summary": "移动节点"
+    },
+    {
+      "id": "FS-07",
+      "module": "filesystem",
+      "method": "GET",
+      "path": "/api/v1/nodes/search",
+      "source": "docs/api.md:640",
+      "documented_in_primary": true,
+      "inputs": {"header_optional": ["X-Owner-ID"], "query_required": ["q"], "query_optional": ["scope"]},
+      "summary": "搜索节点"
+    },
+    {
+      "id": "FS-08",
+      "module": "filesystem",
+      "method": "GET",
+      "path": "/api/v1/nodes/batch",
+      "source": "docs/filesystem-api.json#/paths/~1api~1v1~1nodes~1batch",
+      "documented_in_primary": false,
+      "inputs": {"query_required": ["ids"]},
+      "summary": "批量查询节点"
+    },
+    {
+      "id": "SC-01",
+      "module": "schema",
+      "method": "POST",
+      "path": "/api/v1/schema",
+      "source": "docs/api.md:657",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["name"]},
+      "summary": "创建 Schema"
+    },
+    {
+      "id": "SC-02",
+      "module": "schema",
+      "method": "PUT",
+      "path": "/api/v1/schema",
+      "source": "docs/api.md:674",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["id"]},
+      "summary": "更新 Schema"
+    },
+    {
+      "id": "SC-03",
+      "module": "schema",
+      "method": "DELETE",
+      "path": "/api/v1/schema/{id}",
+      "source": "docs/api.md:690",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"]},
+      "summary": "删除 Schema"
+    },
+    {
+      "id": "SC-04",
+      "module": "schema",
+      "method": "GET",
+      "path": "/api/v1/schema/{id}",
+      "source": "docs/api.md:696",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"]},
+      "summary": "获取 Schema 详情"
+    },
+    {
+      "id": "SC-05",
+      "module": "schema",
+      "method": "GET",
+      "path": "/api/v1/schema/by-name",
+      "source": "docs/api.md:702",
+      "documented_in_primary": true,
+      "inputs": {"query_required": ["name"]},
+      "summary": "通过名称获取 Schema 及字段"
+    },
+    {
+      "id": "SC-06",
+      "module": "schema",
+      "method": "GET",
+      "path": "/api/v1/schema/list",
+      "source": "docs/api.md:708",
+      "documented_in_primary": true,
+      "inputs": {"query_optional": ["page", "page_size"]},
+      "summary": "获取 Schema 列表"
+    },
+    {
+      "id": "SC-07",
+      "module": "schema",
+      "method": "POST",
+      "path": "/api/v1/schema/field",
+      "source": "docs/api.md:714",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["schema_id", "qualifier", "type"], "body_optional": ["name", "options", "w_rule", "as_from", "display_format", "sort_order"]},
+      "summary": "创建字段"
+    },
+    {
+      "id": "SC-08",
+      "module": "schema",
+      "method": "PUT",
+      "path": "/api/v1/schema/field",
+      "source": "docs/api.md:745",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["id", "schema_id", "qualifier", "type"]},
+      "summary": "更新字段"
+    },
+    {
+      "id": "SC-09",
+      "module": "schema",
+      "method": "DELETE",
+      "path": "/api/v1/schema/field/{id}",
+      "source": "docs/api.md:751",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"]},
+      "summary": "删除字段"
+    },
+    {
+      "id": "SC-10",
+      "module": "schema",
+      "method": "GET",
+      "path": "/api/v1/schema/field/{id}",
+      "source": "docs/api.md:757",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"]},
+      "summary": "获取字段详情"
+    },
+    {
+      "id": "SC-11",
+      "module": "schema",
+      "method": "GET",
+      "path": "/api/v1/schema/field/list",
+      "source": "docs/api.md:763",
+      "documented_in_primary": true,
+      "inputs": {"query_required": ["schema_id"], "query_optional": ["page", "page_size", "scene"]},
+      "summary": "获取字段列表"
+    },
+    {
+      "id": "SC-12",
+      "module": "schema",
+      "method": "PUT",
+      "path": "/api/v1/schema/field/batch",
+      "source": "docs/api.md:774",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["schema_id", "fields"], "body_optional": ["delete_ids"]},
+      "summary": "批量更新字段"
+    },
+    {
+      "id": "SC-13",
+      "module": "schema",
+      "method": "POST",
+      "path": "/api/v1/schema/field/sync-tos",
+      "source": "docs/api.md:797",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["schema_id"]},
+      "summary": "同步字段到 TOS"
+    },
+    {
+      "id": "SC-14",
+      "module": "schema",
+      "method": "GET",
+      "path": "/api/v1/schema/field/versions",
+      "source": "docs/api.md:811",
+      "documented_in_primary": true,
+      "inputs": {"query_required": ["schema_id"]},
+      "summary": "获取字段版本列表"
+    },
+    {
+      "id": "SC-15",
+      "module": "schema",
+      "method": "GET",
+      "path": "/api/v1/schema/field/versions/{version_id}/snapshot",
+      "source": "docs/api.md:817",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["version_id"]},
+      "summary": "获取版本快照"
+    },
+    {
+      "id": "SC-16",
+      "module": "schema",
+      "method": "POST",
+      "path": "/api/v1/schema/field/versions/{version_id}/rollback",
+      "source": "docs/api.md:823",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["version_id"], "body_optional": true},
+      "summary": "回滚到指定版本"
+    },
+    {
+      "id": "SH-01",
+      "module": "share",
+      "method": "POST",
+      "path": "/api/v1/share/link",
+      "source": "docs/api.md:831",
+      "documented_in_primary": true,
+      "inputs": {"body_required_primary": ["name", "collection_id"], "body_required_structured": ["name", "collection_id", "expire_at"], "body_optional_structured": ["share_name", "max_count"]},
+      "summary": "创建分享链接"
+    },
+    {
+      "id": "SH-02",
+      "module": "share",
+      "method": "GET",
+      "path": "/api/v1/share/link/{id}",
+      "source": "docs/api.md:863",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"]},
+      "summary": "获取分享链接详情"
+    },
+    {
+      "id": "SH-03",
+      "module": "share",
+      "method": "GET",
+      "path": "/api/v1/share/link/list",
+      "source": "docs/api.md:869",
+      "documented_in_primary": true,
+      "inputs": {"query_optional": ["name", "status", "collection_id", "limit", "offset", "creator"]},
+      "summary": "查询分享链接列表"
+    },
+    {
+      "id": "SH-04",
+      "module": "share",
+      "method": "PUT",
+      "path": "/api/v1/share/link/{id}/terminate",
+      "source": "docs/api.md:885",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["id"]},
+      "summary": "终止分享链接"
+    },
+    {
+      "id": "AU-01",
+      "module": "audit",
+      "method": "GET",
+      "path": "/api/v1/audit/logs",
+      "source": "docs/api.md:893",
+      "documented_in_primary": true,
+      "inputs": {"query_optional": ["operation_type", "operator", "start_time", "end_time", "limit", "offset"]},
+      "summary": "查询审计日志列表"
+    }
+  ],
+  "documented_gaps": [
+    "DM-13",
+    "DM-14",
+    "DM-15",
+    "DM-16",
+    "DM-17",
+    "DM-18",
+    "DM-19",
+    "DM-20",
+    "FS-08"
+  ],
+  "open_questions": [
+    "测试 Base URL、Token 获取方式和 Authorization 前缀",
+    "写操作权限、现场造数和清理方式",
+    "异步任务轮询超时、最终状态和失败码",
+    "错误码、错误体和资源不存在的 HTTP 状态码",
+    "分页、字符串、SQL、CSV 和请求体边界",
+    "composite/preview 的认证规则",
+    "分享 expire_at、时间单位及时区、max_count=0 语义",
+    "审计操作类型枚举的最终版本",
+    "HBase/TOS/Hive/LanceDB/RPC 的测试依赖或替身"
+  ]
+}

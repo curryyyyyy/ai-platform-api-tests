@@ -168,6 +168,7 @@ class HawkAdminClient(ApiClient):
         ``lock already taken``。该响应不是非法状态转换，短暂等待后重试即可；
         其他业务错误保持原样返回，避免掩盖真实失败。
         """
+        response = None
         for attempt in range(retries + 1):
             response = self.operate_batch(batch_id, operation)
             body = self.json(response)
