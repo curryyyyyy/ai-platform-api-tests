@@ -1,0 +1,27 @@
+defaults:
+  missing_collection_id: 999999999
+  missing_task_id: 999999999
+  invalid_node_type: 99
+  valid_table_env: "SOURCE_ADMIN_TABLE_NAME"
+  writable_collection_env: "SOURCE_ADMIN_WRITABLE_COLLECTION_ID"
+  query_collection_env: "SOURCE_ADMIN_QUERY_COLLECTION_ID"
+
+cases:
+  invalid_original_download:
+    - id: unsupported_type
+      type: 99
+      rowkeys: ["api-test-rowkey"]
+    - id: empty_rowkeys
+      type: 2
+      rowkeys: []
+  invalid_set_operation:
+    - id: unsupported_operation
+      operation: 99
+      a_collection_ids: []
+      b_collection_ids: []
+  invalid_import:
+    - id: empty_payload
+      payload: {}
+  invalid_csv:
+    - id: missing_tos_path
+      payload: {}

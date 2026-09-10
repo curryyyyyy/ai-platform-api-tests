@@ -1,0 +1,8 @@
+defaults:
+  share_name: "API automation share"
+  max_count: 0
+
+cases:
+  lifecycle:
+    - id: standard
+      max_count: 10

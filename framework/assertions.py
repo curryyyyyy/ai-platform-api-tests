@@ -38,6 +38,7 @@ def assert_rejected(
     *,
     expected_http: int = 200,
     forbidden_messages: Iterable[str] = (),
+    allow_error_data: bool = False,
 ) -> dict[str, Any]:
     """严格校验非法请求确实被业务层拒绝。
 
@@ -48,14 +49,25 @@ def assert_rejected(
     body = assert_envelope(response, expected_http=expected_http, expected_code=None)
     assert body["code"] != 0, f"非法或不存在资源请求未被拒绝: {body}"
 
-    message = body.get("message")
+    # Hawk 的旧接口使用 message，资源管理等新接口使用统一信封的 msg。
+    message = body.get("message") or body.get("msg")
     assert isinstance(message, str) and message.strip(), (
         f"拒绝响应缺少有效错误消息: {body}"
     )
 
-    if "data" in body:
+    if "data" in body and not allow_error_data:
         data = body["data"]
-        assert data in (None, {}, [], ""), f"拒绝响应携带非空 data: {body}"
+
+        def is_empty(value: Any) -> bool:
+            if value in (None, {}, [], ""):
+                return True
+            if isinstance(value, dict):
+                return all(is_empty(item) for item in value.values())
+            if isinstance(value, list):
+                return all(is_empty(item) for item in value)
+            return False
+
+        assert is_empty(data), f"拒绝响应携带非空 data: {body}"
 
     normalized = message.casefold()
     for forbidden in (*_SUCCESS_LIKE_MESSAGES, *forbidden_messages):

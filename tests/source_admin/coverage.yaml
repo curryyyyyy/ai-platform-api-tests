@@ -1,0 +1,147 @@
+platform: source_admin
+inventory: contracts/source_admin/api_inventory.json
+entries:
+  - id: TC-01-01
+    priority: P0
+    level: full
+    operations: [DM-06]
+    tests: [tests/source_admin/test_read_api.py::test_source_01_01_authenticated_collection_list]
+  - id: TC-01-02
+    priority: P0
+    level: full
+    operations: [SC-06]
+    tests: [tests/source_admin/test_read_api.py::test_source_01_02_authenticated_schema_list]
+  - id: TC-01-03
+    priority: P1
+    level: full
+    operations: [AU-01]
+    tests: [tests/source_admin/test_read_api.py::test_source_01_04_authenticated_audit_log_list]
+  - id: TC-01-04
+    priority: P1
+    level: partial
+    note: "仅覆盖无登录 Token 的认证负向场景"
+    operations: [FS-02]
+    tests: [tests/source_admin/test_source_auth.py::test_source_01_05_requires_login_token]
+  - id: TC-02-01
+    priority: P0
+    level: full
+    operations: [DM-06, DM-07, DM-08, DM-09, DM-10]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_01_collection_read_chain]
+  - id: TC-02-02
+    priority: P0
+    level: full
+    operations: [DM-03]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_02_build_selection_query]
+  - id: TC-02-03
+    priority: P0
+    level: full
+    operations: [DM-06]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_03_collection_filters_and_pagination]
+  - id: TC-02-04
+    priority: P1
+    level: partial
+    note: "仅覆盖非法节点类型和空 rowkeys；正向异步下载依赖可用图片资源"
+    operations: [DM-01]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_04_invalid_original_download_is_rejected]
+  - id: TC-02-05
+    priority: P1
+    level: partial
+    note: "仅覆盖缺失任务；正向轮询依赖可用图片资源和异步状态"
+    operations: [DM-02]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_05_missing_original_download_is_rejected]
+  - id: TC-02-06
+    priority: P1
+    level: partial
+    note: "仅覆盖非法提交；正向提交会创建异步圈选集且当前缺少可靠清理接口"
+    operations: [DM-04]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_06_invalid_query_submit_is_rejected]
+  - id: TC-02-07
+    priority: P1
+    level: partial
+    note: "仅覆盖非法集合运算；正向提交会创建异步集合且当前缺少可靠清理接口"
+    operations: [DM-05]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_07_invalid_set_operation_is_rejected]
+  - id: TC-02-08
+    priority: P1
+    level: partial
+    note: "集合详情/标签/节点路径同时有正向链路；SQL、导入状态和错误明细当前仅覆盖缺失资源"
+    operations: [DM-07, DM-08, DM-10, DM-13, DM-18, DM-19]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_08_missing_collection_read_endpoints_are_rejected]
+  - id: TC-02-09
+    priority: P1
+    level: full
+    operations: [DM-09]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_09_missing_collection_data_is_rejected]
+  - id: TC-02-10
+    priority: P1
+    level: partial
+    note: "仅覆盖缺失集合；正向全量下载依赖外部数据和异步任务"
+    operations: [DM-14]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_10_collection_download_missing_resource_is_rejected]
+  - id: TC-02-11
+    priority: P1
+    level: full
+    operations: [DM-15]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_11_csv_upload_url]
+  - id: TC-02-12
+    priority: P1
+    level: partial
+    note: "仅覆盖空请求体；正向 CSV 导入依赖 TOS 文件和异步清理"
+    operations: [DM-16]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_12_invalid_csv_import_is_rejected]
+  - id: TC-02-13
+    priority: P1
+    level: partial
+    note: "仅覆盖缺失 tos_path；正向 CSV 检查依赖可用 TOS 文件"
+    operations: [DM-17]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_13_invalid_csv_check_is_rejected]
+  - id: TC-02-14
+    priority: P1
+    level: partial
+    note: "仅覆盖非法 node_type；正向复合预览依赖外部资源且认证规则仍有契约冲突"
+    operations: [DM-20]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_14_invalid_composite_preview_is_rejected]
+  - id: TC-02-15
+    priority: P1
+    level: full
+    operations: [AU-01]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_15_audit_log_filters]
+  - id: TC-02-16
+    priority: P1
+    level: partial
+    operations: [DM-11, DM-12]
+    env: SOURCE_ADMIN_WRITABLE_COLLECTION_ID
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_16_collection_metadata_write]
+  - id: TC-03-01
+    priority: P0
+    level: full
+    operations: [FS-01, FS-02, FS-03, FS-04, FS-05, FS-06, FS-07, FS-08]
+    tests: [tests/source_admin/test_filesystem_api.py::test_source_03_01_folder_crud_move_and_search]
+  - id: TC-04-01
+    priority: P0
+    level: blocked
+    operations: [SC-01, SC-02, SC-03, SC-07, SC-08, SC-09, SC-10, SC-11]
+    note: "Schema 创建被服务端 node_type 数据库默认值错误阻塞"
+    tests: [tests/source_admin/test_schema_api.py::test_source_04_01_schema_field_crud_and_readback]
+  - id: TC-04-02
+    priority: P1
+    level: partial
+    note: "覆盖只读/缺失资源及 fields=[] 合法空操作；Schema 写入正向链路受服务端 node_type 错误阻塞"
+    operations: [SC-04, SC-05, SC-09, SC-10, SC-11, SC-12, SC-13, SC-14, SC-15, SC-16]
+    tests: [tests/source_admin/test_schema_api.py::test_source_04_02_missing_schema_and_empty_batch_semantics]
+  - id: TC-04-03
+    priority: P0
+    level: blocked
+    operations: [SC-01, SC-03, SC-07, SC-08, SC-09, SC-14, SC-15, SC-16]
+    note: "Schema 创建被服务端 node_type 数据库默认值错误阻塞"
+    tests: [tests/source_admin/test_schema_api.py::test_source_04_03_schema_field_version_snapshot_and_rollback]
+  - id: TC-04-04
+    priority: P0
+    level: full
+    operations: [SC-05, SC-06]
+    tests: [tests/source_admin/test_schema_api.py::test_source_04_04_schema_list_and_lookup]
+  - id: TC-05-01
+    priority: P0
+    level: full
+    operations: [SH-01, SH-02, SH-03, SH-04]
+    tests: [tests/source_admin/test_share_api.py::test_source_05_01_share_link_lifecycle]

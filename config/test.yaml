@@ -7,3 +7,6 @@ platforms:
   hawk_admin:
     base_url: "https://test-hawk-admin.tucdev.com/api/v1"
     legacy_base_url_env: "HAWK_ADMIN_BASE_URL"
+  source_admin:
+    base_url: "https://src-admin.tucdev.com/api/v1"
+    legacy_base_url_env: "SOURCE_ADMIN_BASE_URL"

@@ -24,6 +24,7 @@
     "login_header": "Authorization",
     "login_header_documented_format": "<token>",
     "primary_route_auth": "middleware.Auth()",
+    "authentication_resolution": "reuse_central_sso_token_like_hawk_admin",
     "success_code_documented": 0,
     "async_statuses": {
       "job": {
@@ -544,9 +545,12 @@
     "DM-20",
     "FS-08"
   ],
+  "resolved_decisions": [
+    "认证已裁决为复用总平台 SSO 的 central_token，并沿用 Bearer Token",
+    "测试 Base URL 已裁决为 https://src-admin.tucdev.com/api/v1",
+    "测试环境允许全部读写操作；测试数据现场创建并由 DataScope 逆序清理"
+  ],
   "open_questions": [
-    "测试 Base URL、Token 获取方式和 Authorization 前缀",
-    "写操作权限、现场造数和清理方式",
     "异步任务轮询超时、最终状态和失败码",
     "错误码、错误体和资源不存在的 HTTP 状态码",
     "分页、字符串、SQL、CSV 和请求体边界",

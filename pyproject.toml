@@ -25,6 +25,7 @@ markers = [
   "contract: OpenAPI 契约检查",
   "core: P0 核心回归用例，适合 CI 门禁",
   "hawk_admin: Hawk 机器标注子平台用例",
+  "source_admin: 资源管理平台用例",
 ]
 
 [tool.setuptools.packages.find]

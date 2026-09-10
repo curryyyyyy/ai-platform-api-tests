@@ -51,3 +51,15 @@ def test_assert_rejected_accepts_non_empty_business_error() -> None:
     body = assert_rejected(response, forbidden_messages=("success",))
 
     assert body["code"] == 1
+
+
+@pytest.mark.contract
+def test_assert_rejected_can_allow_platform_error_data() -> None:
+    response = SimpleNamespace(
+        status_code=200,
+        json=lambda: {"code": 1, "message": "业务请求失败", "data": {"status": 0}},
+    )
+
+    body = assert_rejected(response, allow_error_data=True)
+
+    assert body["code"] == 1

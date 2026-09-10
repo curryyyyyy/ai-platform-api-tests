@@ -1,0 +1,14 @@
+defaults:
+  name: "tag"
+  type: "string"
+  display_format: "tag"
+  sort_order: 10
+  required: false
+  allow_inbound: false
+
+cases:
+  update:
+    - id: standard
+      name: "updated-tag"
+      display_format: "text"
+      sort_order: 20

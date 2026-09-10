@@ -1,0 +1,8 @@
+defaults:
+  type: 1
+  root_id: 1
+
+cases:
+  update:
+    - id: standard
+      suffix: "updated"

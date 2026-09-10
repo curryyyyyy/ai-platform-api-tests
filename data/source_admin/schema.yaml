@@ -1,0 +1,12 @@
+defaults:
+  comment: "API automation schema"
+  source_datasource: "hive"
+  source_table: "ods_api_test"
+
+cases:
+  update:
+    - id: standard
+      comment: "updated by API automation"
+  missing_resource:
+    - id: schema
+      resource_id: 999999999
