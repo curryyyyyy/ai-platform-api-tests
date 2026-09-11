@@ -43,7 +43,8 @@ def make_schema_field(scope: DataScope, *, schema_id: int | str, **overrides: An
 
 def make_folder(scope: DataScope, *, parent_id: int | str, **overrides: Any) -> dict[str, Any]:
     payload = dataset_defaults("source_admin", "node")
-    payload.pop("root_id", None)
+    for key in ("root_id", "missing_node_id", "missing_parent_id"):
+        payload.pop(key, None)
     payload["name"] = scope.unique_name("folder", max_length=48)
     payload["parent_id"] = int(parent_id)
     payload.update(overrides)

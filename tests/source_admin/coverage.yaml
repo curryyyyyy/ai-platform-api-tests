@@ -1,3 +1,4 @@
+# 测试用例与接口操作的映射清单，用于管理测试覆盖率
 platform: source_admin
 inventory: contracts/source_admin/api_inventory.json
 entries:
@@ -21,7 +22,7 @@ entries:
     level: partial
     note: "仅覆盖无登录 Token 的认证负向场景"
     operations: [FS-02]
-    tests: [tests/source_admin/test_source_auth.py::test_source_01_05_requires_login_token]
+    tests: [tests/source_admin/test_source_auth.py::test_source_01_05_requires_login_token, tests/source_admin/test_source_auth.py::test_source_01_06_invalid_login_token_is_rejected]
   - id: TC-02-01
     priority: P0
     level: full
@@ -117,6 +118,24 @@ entries:
     level: full
     operations: [FS-01, FS-02, FS-03, FS-04, FS-05, FS-06, FS-07, FS-08]
     tests: [tests/source_admin/test_filesystem_api.py::test_source_03_01_folder_crud_move_and_search]
+  - id: TC-03-02
+    priority: P1
+    level: partial
+    operations: [FS-03]
+    note: "覆盖非法节点类型和不存在父节点；合法创建链路由 TC-03-01 覆盖"
+    tests: [tests/source_admin/test_filesystem_api.py::test_source_03_02_invalid_node_create_is_rejected]
+  - id: TC-03-03
+    priority: P1
+    level: partial
+    operations: [FS-01, FS-02, FS-04, FS-05, FS-06]
+    note: "目录列表对不存在节点返回合法空集，其余详情/写操作覆盖拒绝响应"
+    tests: [tests/source_admin/test_filesystem_api.py::test_source_03_03_missing_node_operations_are_rejected]
+  - id: TC-03-04
+    priority: P1
+    level: partial
+    operations: [FS-08]
+    note: "覆盖批量查询空 ID 的合法空结果和非数字 ID 的拒绝；合法批量查询由 TC-03-01 覆盖"
+    tests: [tests/source_admin/test_filesystem_api.py::test_source_03_04_invalid_node_batch_query_is_rejected]
   - id: TC-04-01
     priority: P0
     level: blocked
@@ -140,8 +159,23 @@ entries:
     level: full
     operations: [SC-05, SC-06]
     tests: [tests/source_admin/test_schema_api.py::test_source_04_04_schema_list_and_lookup]
+  - id: TC-04-05
+    priority: P1
+    level: full
+    operations: [SC-02]
+    tests: [tests/source_admin/test_schema_api.py::test_source_04_05_missing_schema_update_is_rejected]
   - id: TC-05-01
     priority: P0
     level: full
     operations: [SH-01, SH-02, SH-03, SH-04]
     tests: [tests/source_admin/test_share_api.py::test_source_05_01_share_link_lifecycle]
+  - id: TC-05-02
+    priority: P1
+    level: full
+    operations: [SH-01]
+    tests: [tests/source_admin/test_share_api.py::test_source_05_02_invalid_share_create_is_rejected]
+  - id: TC-05-03
+    priority: P1
+    level: full
+    operations: [SH-02, SH-04]
+    tests: [tests/source_admin/test_share_api.py::test_source_05_03_missing_share_link_operations_are_rejected]

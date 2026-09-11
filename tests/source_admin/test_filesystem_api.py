@@ -1,25 +1,37 @@
 from __future__ import annotations
 
+from typing import Any, Mapping
+
 import pytest
 
-from framework.assertions import assert_envelope
-from framework.data.dataset import dataset_defaults
+from framework.assertions import assert_envelope, assert_rejected
+from framework.data.dataset import case_payload, dataset_cases, dataset_defaults
+from platforms.source_admin.client import SourceAdminClient
 from platforms.source_admin.factories import SourceAdminDataFactory
 
 
 pytestmark = [pytest.mark.live, pytest.mark.source_admin]
 NODE_DEFAULTS = dataset_defaults("source_admin", "node")
+INVALID_CREATE_CASES = dataset_cases("source_admin", "node", "invalid_create")
+INVALID_BATCH_CASES = dataset_cases("source_admin", "node", "invalid_batch")
 
 
-def _data(body: dict):
+def _data(body: Mapping[str, Any]) -> Any:
     value = body.get("data")
     if isinstance(value, dict) and set(value) == {"data"}:
         return value["data"]
     return value
 
 
+def _case_id(case: Mapping[str, Any]) -> str:
+    return str(case["id"])
+
+
 @pytest.mark.core
-def test_source_03_01_folder_crud_move_and_search(platform_client, platform_data_factory: SourceAdminDataFactory):
+def test_source_03_01_folder_crud_move_and_search(
+    platform_client: SourceAdminClient,
+    platform_data_factory: SourceAdminDataFactory,
+) -> None:
     """文件夹节点支持创建、重命名、移动、搜索和删除，且每条数据由本用例清理。"""
     root_id = NODE_DEFAULTS["root_id"]
     # 先创建目标目录，使 DataScope 清理时先删 source，再删 target。
@@ -49,3 +61,39 @@ def test_source_03_01_folder_crud_move_and_search(platform_client, platform_data
         platform_client.batch_list_nodes(f"{source_id},{target_id}"), required_keys=("data",)
     ))
     assert len(nodes["nodes"]) >= 2
+
+
+@pytest.mark.parametrize("case", INVALID_CREATE_CASES, ids=_case_id)
+def test_source_03_02_invalid_node_create_is_rejected(
+    case: Mapping[str, Any], platform_client: SourceAdminClient
+) -> None:
+    """节点类型和父节点非法时，创建请求必须返回业务失败。"""
+    assert_rejected(platform_client.create_node(**case_payload(case)))
+
+
+def test_source_03_03_missing_node_operations_are_rejected(
+    platform_client: SourceAdminClient,
+) -> None:
+    """不存在节点的目录列表返回空集，详情、更新、删除和移动应拒绝。"""
+    node_id = NODE_DEFAULTS["missing_node_id"]
+    listing = _data(assert_envelope(platform_client.list_nodes(node_id), required_keys=("data",)))
+    assert listing["nodes"] == []
+    assert_rejected(platform_client.get_node(node_id))
+    assert_rejected(platform_client.update_node(node_id, name="missing-node-updated"))
+    assert_rejected(platform_client.delete_node(node_id))
+    assert_rejected(platform_client.move_node(node_id, target_parent_id=NODE_DEFAULTS["root_id"]))
+
+
+@pytest.mark.parametrize("case", INVALID_BATCH_CASES, ids=_case_id)
+def test_source_03_04_invalid_node_batch_query_is_rejected(
+    case: Mapping[str, Any], platform_client: SourceAdminClient
+) -> None:
+    """批量节点查询拒绝非数字 ID，空 ID 按合法空查询处理。"""
+    payload = case_payload(case)
+    body = assert_envelope(
+        platform_client.batch_list_nodes(payload["ids"]),
+        required_keys=("data",),
+        expected_code=payload["expected_code"],
+    )
+    if payload["expected_code"] == 0:
+        assert _data(body)["nodes"] == []

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Optional
 
 from framework.http.client import ApiClient
 
@@ -18,7 +18,13 @@ _SUCCESS_LIKE_MESSAGES = (
 )
 
 
-def assert_envelope(response: Any, *, expected_http: int = 200, expected_code: int | None = 0, required_keys: Iterable[str] = ()) -> dict[str, Any]:
+def assert_envelope(
+    response: Any,
+    *,
+    expected_http: int = 200,
+    expected_code: Optional[int] = 0,
+    required_keys: Iterable[str] = (),
+) -> dict[str, Any]:
     """校验响应信封。
 
     `expected_code=None` 表示跳过业务码校验，供"异常输入应被拒绝"的反向用例使用。

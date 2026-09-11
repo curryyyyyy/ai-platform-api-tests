@@ -1,8 +1,13 @@
 defaults:
   share_name: "API automation share"
   max_count: 0
+  missing_link_id: 999999999
+  missing_collection_id: 999999999
 
 cases:
   lifecycle:
     - id: standard
       max_count: 10
+  invalid_create:
+    - id: expired_link
+      expire_at: 1

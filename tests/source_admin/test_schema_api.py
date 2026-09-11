@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from typing import Any, Mapping
+
 import pytest
 
 from framework.assertions import assert_envelope, assert_rejected
-from framework.data.dataset import case_payload, dataset_case_map
+from framework.data.dataset import case_payload, dataset_case_map, dataset_cases
+from platforms.source_admin.client import SourceAdminClient
 from platforms.source_admin.factories import SourceAdminDataFactory
 
 
@@ -11,18 +14,25 @@ pytestmark = [pytest.mark.live, pytest.mark.source_admin]
 SCHEMA_UPDATE_CASES = dataset_case_map("source_admin", "schema", "update")
 FIELD_UPDATE_CASES = dataset_case_map("source_admin", "schema_field", "update")
 MISSING_RESOURCE_CASE = dataset_case_map("source_admin", "schema", "missing_resource")["schema"]
+MISSING_UPDATE_CASES = dataset_cases("source_admin", "schema", "missing_update")
 
 
-def _data(body: dict):
+def _data(body: Mapping[str, Any]) -> Any:
     value = body.get("data")
     if isinstance(value, dict) and set(value) == {"data"}:
         return value["data"]
     return value
 
 
+def _case_id(case: Mapping[str, Any]) -> str:
+    return str(case["id"])
+
+
 @pytest.mark.core
 @pytest.mark.skip(reason="Schema 创建当前被服务端 node_type 数据库默认值错误阻塞")
-def test_source_04_01_schema_field_crud_and_readback(platform_data_factory: SourceAdminDataFactory):
+def test_source_04_01_schema_field_crud_and_readback(
+    platform_data_factory: SourceAdminDataFactory,
+) -> None:
     """Schema 与字段创建、回查、更新和字段列表应保持数据一致。"""
     schema_id, schema_payload = platform_data_factory.create_schema()
     field_id, field_payload = platform_data_factory.create_schema_field(schema_id=schema_id)
@@ -58,7 +68,9 @@ def test_source_04_01_schema_field_crud_and_readback(platform_data_factory: Sour
     assert final_schema["comment"] == schema_update["comment"]
 
 
-def test_source_04_02_missing_schema_and_empty_batch_semantics(platform_client):
+def test_source_04_02_missing_schema_and_empty_batch_semantics(
+    platform_client: SourceAdminClient,
+) -> None:
     """查询不存在的 Schema 应拒绝；空字段批量更新按合法空操作处理。"""
     missing_id = MISSING_RESOURCE_CASE["resource_id"]
     assert_rejected(platform_client.get_schema(missing_id))
@@ -79,7 +91,7 @@ def test_source_04_02_missing_schema_and_empty_batch_semantics(platform_client):
 
 
 @pytest.mark.core
-def test_source_04_04_schema_list_and_lookup(platform_client):
+def test_source_04_04_schema_list_and_lookup(platform_client: SourceAdminClient) -> None:
     """Schema 只读查询覆盖分页和按名称查询，不依赖创建链路。"""
     listing = _data(assert_envelope(platform_client.list_schemas(page=1, page_size=20), required_keys=("data",)))
     assert isinstance(listing, list)
@@ -92,9 +104,21 @@ def test_source_04_04_schema_list_and_lookup(platform_client):
     assert lookup_data is None or isinstance(lookup_data, (dict, list))
 
 
+@pytest.mark.parametrize("case", MISSING_UPDATE_CASES, ids=_case_id)
+def test_source_04_05_missing_schema_update_is_rejected(
+    case: Mapping[str, Any], platform_client: SourceAdminClient
+) -> None:
+    """更新不存在或零值 Schema 必须返回业务失败。"""
+    payload = case_payload(case)
+    payload["id"] = payload.pop("id_value")
+    assert_rejected(platform_client.update_schema(**payload))
+
+
 @pytest.mark.core
 @pytest.mark.skip(reason="Schema 创建当前被服务端 node_type 数据库默认值错误阻塞")
-def test_source_04_03_schema_field_version_snapshot_and_rollback(platform_data_factory: SourceAdminDataFactory):
+def test_source_04_03_schema_field_version_snapshot_and_rollback(
+    platform_data_factory: SourceAdminDataFactory,
+) -> None:
     """字段变更后应产生版本，可读取快照并回滚到指定版本。"""
     schema_id, _ = platform_data_factory.create_schema()
     field_id, field_payload = platform_data_factory.create_schema_field(schema_id=schema_id)

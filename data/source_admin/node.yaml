@@ -1,8 +1,22 @@
 defaults:
   type: 1
   root_id: 1
+  missing_node_id: 999999999
+  missing_parent_id: 999999999
 
 cases:
   update:
     - id: standard
       suffix: "updated"
+  invalid_create:
+    - id: missing_parent
+      name: "api-missing-parent"
+      type: 1
+      parent_id: 999999999
+  invalid_batch:
+    - id: non_numeric_id
+      ids: "not-an-integer"
+      expected_code: 1
+    - id: empty_ids
+      ids: ""
+      expected_code: 0
