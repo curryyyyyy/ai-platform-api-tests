@@ -1,0 +1,133 @@
+meta:
+  requirement_id: REQ-RCB-20260910
+  requirement_name: resource_cost_dashboard
+  display_name: 资源成本看板
+  source_markmap: 资源成本看板_P0测试用例_markmap.md
+  source_schema: 资源成本看板_P0测试用例.schema.yaml
+  extracted_at: 2026-09-11
+  execution_model: api
+  note: 仅收录原始 P0 用例中的接口联调场景；UI 场景仍由原始用例负责。
+
+shared:
+  preconditions:
+    - 测试账号已通过总平台登录并取得有效 Token。
+    - 执行前通过环境变量注入当前账号可访问的项目、批次和阶段数据：RCB_PROJECT_ID、RCB_BATCH_IDS、RCB_DETAIL_BATCH_ID、RCB_STAGE_INDEX、RCB_EXPECTED_STAGE_IDS。
+  resource_fields:
+    - displayName
+    - resource
+    - resourceLabel
+    - resourceKey
+    - metric
+    - metricLabel
+    - quantity
+    - unit
+    - unitPriceYuan
+    - amountYuan
+
+cases:
+  - id: REQ-RCB-20260910-API-01
+    source_id: TC-04-01
+    title: 项目成本明细接口返回项目金额和资源明细
+    module: 成本统计接口联调
+    priority: P0
+    type: data
+    execution_model: api
+    endpoint:
+      method: GET
+      path: /api/v1/hawk/cost/projects/{projectId}/detail
+    request:
+      projectId: "<RCB_PROJECT_ID>"
+    expected:
+      - code 为 0
+      - data.projectId 与 RCB_PROJECT_ID 相同
+      - data.amountYuan 为可解析的有限非负金额字符串
+      - data.resources 为数组，数组每一项包含 shared.resource_fields 中的字段
+  - id: REQ-RCB-20260910-API-02
+    source_id: TC-04-02
+    title: 批次统计接口按批次 ID 返回行内成本
+    module: 成本统计接口联调
+    priority: P0
+    type: data
+    execution_model: api
+    endpoint:
+      method: POST
+      path: /api/v1/hawk/stats
+    request:
+      batchIds: "<RCB_BATCH_IDS，逗号分隔>"
+    expected:
+      - code 为 0
+      - data 为数组且包含 RCB_BATCH_IDS 中的每个批次
+      - 每个批次统计项的 data.amountYuan 为可解析的有限非负金额字符串
+  - id: REQ-RCB-20260910-API-03
+    source_id: TC-04-03
+    title: 批次详情接口返回批次总成本和每个 stage 成本
+    module: 成本统计接口联调
+    priority: P0
+    type: data
+    execution_model: api
+    endpoint:
+      method: GET
+      path: /api/v1/hawk/stat/{batchId}
+    request:
+      batchId: "<RCB_DETAIL_BATCH_ID>"
+    expected:
+      - code 为 0
+      - data.amountYuan 为可解析的有限非负金额字符串
+      - data.stats 包含 RCB_EXPECTED_STAGE_IDS 中的每个 stageId，且每项 amountYuan 为可解析的有限非负金额字符串
+  - id: REQ-RCB-20260910-API-04
+    source_id: TC-04-04
+    title: 批次成本详情接口返回聚合后的资源明细
+    module: 成本统计接口联调
+    priority: P0
+    type: data
+    execution_model: api
+    endpoint:
+      method: GET
+      path: /api/v1/hawk/cost/batches/{batchId}/detail
+    request:
+      batchId: "<RCB_DETAIL_BATCH_ID>"
+    expected:
+      - code 为 0
+      - data.batchId 与 RCB_DETAIL_BATCH_ID 相同
+      - data.amountYuan 为可解析的有限非负金额字符串
+      - data.resources 为数组，数组每一项包含 shared.resource_fields 中的字段
+  - id: REQ-RCB-20260910-API-05
+    source_id: TC-04-05
+    title: 工作流节点成本详情接口返回指定 stage 的资源明细
+    module: 成本统计接口联调
+    priority: P0
+    type: data
+    execution_model: api
+    endpoint:
+      method: GET
+      path: /api/v1/hawk/cost/batches/{batchId}/stages/{stageIndex}
+    request:
+      batchId: "<RCB_DETAIL_BATCH_ID>"
+      stageIndex: "<RCB_STAGE_INDEX>"
+    expected:
+      - code 为 0
+      - data.batchId 与 RCB_DETAIL_BATCH_ID 相同
+      - data.stageIndex 与 RCB_STAGE_INDEX 相同
+      - data.stageName 为非空字符串
+      - data.amountYuan 为可解析的有限非负金额字符串
+      - data.resources 为数组，数组每一项包含 shared.resource_fields 中的字段
+
+review:
+  skill: test-case-review
+  reviewed_at: 2026-09-11
+  baseline: 自行提炼的本次需求接口可测点，未经业务方逐项确认
+  before_case_count: 5
+  after_case_count: 5
+  findings:
+    - kind: redundant
+      scope: REQ-RCB-20260910-API-01..API-05
+      detail: source_id 是原始人工用例追溯字段，不是接口行为；已从在线测试函数中移除重复断言。
+    - kind: retained
+      scope: coverage-contract
+      detail: source_id 关系仍由 test_coverage_contract.py 一次性校验 Schema、覆盖矩阵和数据集，防止映射漂移。
+    - kind: missing
+      scope: REQ-RCB-20260910-API-01..API-05
+      detail: 当前仅覆盖成功响应结构、关键标识和可解析非负金额；非法资源、权限、空数据以及金额跨接口一致性尚未覆盖。
+    - kind: blocked
+      scope: REQ-RCB-20260910-API-01..API-05
+      detail: 当前本地 Hawk OpenAPI 快照尚未登记新的 cost 路径及 amountYuan/resource 字段，需后端发布并同步契约后执行 live 验证。

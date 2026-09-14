@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from framework.assertions import assert_envelope, assert_rejected
+from framework.assertions import assert_amount_yuan, assert_cost_resources, assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_case_map, dataset_cases, dataset_defaults
 
 
@@ -16,6 +16,10 @@ INVALID_NOTIFICATION_CASES = dataset_cases("hawk_admin", "project", "invalid_not
 INVALID_OWNER_CASES = dataset_cases("hawk_admin", "project", "invalid_owner")
 PROJECT_DEFAULTS = dataset_defaults("hawk_admin", "project")
 AUTH_DEFAULTS = dataset_defaults("hawk_admin", "auth")
+RCB_RESOURCE_FIELDS = (
+    "displayName", "resource", "resourceLabel", "resourceKey", "metric",
+    "metricLabel", "quantity", "unit", "unitPriceYuan", "amountYuan",
+)
 
 
 def _assert_forbidden(response) -> None:
@@ -134,3 +138,15 @@ def test_hawk_02_08_delete_project_then_get(platform_client, platform_data_facto
     assert_envelope(platform_client.delete_project(project_id))
     response = platform_client.get_project(project_id)
     assert_rejected(response)
+
+
+@pytest.mark.requirement(id="REQ-RCB-20260910", name="资源成本看板")
+@pytest.mark.case_id("REQ-RCB-20260910-API-01", title="项目成本明细接口返回项目金额和资源明细")
+def test_hawk_10_01_rcb_project_cost_detail(platform_client, platform_context):
+    """项目成本接口返回项目金额和资源明细字段。"""
+    project_id = platform_context.project_id()
+    body = assert_envelope(platform_client.get_project_cost_detail(project_id), required_keys=("data",))
+    data = body["data"]
+    assert int(data["projectId"]) == project_id
+    assert_amount_yuan(data.get("amountYuan"))
+    assert_cost_resources(data.get("resources"), RCB_RESOURCE_FIELDS)

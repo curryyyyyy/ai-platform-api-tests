@@ -136,8 +136,8 @@ class HawkAdminClient(ApiClient):
     def refresh_stage_ref_counts(self, **payload):
         return self.post("/api/v1/tools/stage/ref_counts/refresh", json=payload)
 
-    def tos_file_ext(self, **params):
-        return self.get("/api/v1/tools/tos_file_ext", params=params)
+    def csv_info(self, **payload):
+        return self.post("/api/v1/tools/csv_info", json=payload)
 
     def common_templates(self):
         return self.get("/api/v1/common-template")
@@ -178,11 +178,21 @@ class HawkAdminClient(ApiClient):
             time.sleep(backoff * (attempt + 1))
         return response  # pragma: no cover - loop always returns
 
-    def batch_stat(self, batch_id):
-        return self.get(f"/api/v1/hawk/stat/{batch_id}")
+    def batch_stat(self, batch_id, **kwargs):
+        return self.get(f"/api/v1/hawk/stat/{batch_id}", **kwargs)
 
-    def batch_stats(self, batch_ids):
-        return self.post("/api/v1/hawk/stats", json={"batchIds": batch_ids})
+    def batch_stats(self, batch_ids, **kwargs):
+        return self.post("/api/v1/hawk/stats", json={"batchIds": batch_ids}, **kwargs)
+
+    # 资源成本看板（REQ-RCB-20260910）
+    def get_project_cost_detail(self, project_id, **kwargs):
+        return self.get(f"/api/v1/hawk/cost/projects/{project_id}/detail", **kwargs)
+
+    def get_batch_cost_detail(self, batch_id, **kwargs):
+        return self.get(f"/api/v1/hawk/cost/batches/{batch_id}/detail", **kwargs)
+
+    def get_stage_cost_detail(self, batch_id, stage_index, **kwargs):
+        return self.get(f"/api/v1/hawk/cost/batches/{batch_id}/stages/{stage_index}", **kwargs)
 
     def task_stream(self, **params):
         return self.get("/api/v1/hawk/task-stream", params=params)

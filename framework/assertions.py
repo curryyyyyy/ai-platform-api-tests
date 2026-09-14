@@ -8,6 +8,27 @@ from typing import Any, Optional
 from framework.http.client import ApiClient
 
 
+def assert_amount_yuan(value: Any, *, field: str = "amountYuan") -> None:
+    """断言金额字段为可解析的有限非负人民币金额字符串。"""
+    from decimal import Decimal, InvalidOperation
+
+    assert isinstance(value, str) and value.strip(), f"{field} 应为非空金额字符串: {value!r}"
+    try:
+        amount = Decimal(value.strip())
+    except (InvalidOperation, ValueError):
+        raise AssertionError(f"{field} 应为可解析的金额字符串: {value!r}") from None
+    assert amount.is_finite() and amount >= 0, f"{field} 应为有限非负金额: {value!r}"
+
+
+def assert_cost_resources(resources: Any, fields: tuple[str, ...]) -> None:
+    """断言成本资源明细为对象数组且包含契约字段。"""
+    assert isinstance(resources, list), f"resources 应为数组: {resources!r}"
+    for index, resource in enumerate(resources):
+        assert isinstance(resource, dict), f"resources[{index}] 应为对象: {resource!r}"
+        missing = [field for field in fields if field not in resource]
+        assert not missing, f"resources[{index}] 缺少字段 {missing}: {resource}"
+
+
 _SUCCESS_LIKE_MESSAGES = (
     "success",
     "操作成功",
@@ -55,7 +76,7 @@ def assert_rejected(
     body = assert_envelope(response, expected_http=expected_http, expected_code=None)
     assert body["code"] != 0, f"非法或不存在资源请求未被拒绝: {body}"
 
-    # Hawk 的旧接口使用 message，资源管理等新接口使用统一信封的 msg。
+    # Some legacy services use message; newer services use the standard msg key.
     message = body.get("message") or body.get("msg")
     assert isinstance(message, str) and message.strip(), (
         f"拒绝响应缺少有效错误消息: {body}"

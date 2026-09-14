@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 ClientFactory = Callable[[str, str, float], Any]
 DataFactoryFactory = Callable[[Any, Any], Any]
+RuntimeContextFactory = Callable[[Any], Any]
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,7 @@ class PlatformDefinition:
     short_name: str
     client_factory: ClientFactory
     data_factory_factory: DataFactoryFactory | None = None
+    runtime_context_factory: RuntimeContextFactory | None = None
     reporting: dict[str, Any] = field(default_factory=dict)
     state_resolver: Callable[[Any, Any, str], int] | None = None
     viewer_token_env: str | None = None

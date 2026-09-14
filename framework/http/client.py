@@ -35,6 +35,7 @@ class ApiClient:
             self.session.mount("https://", adapter)
 
     def request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
+        retry_request = kwargs.pop("_retry", True)
         request_path = "/" + path.lstrip("/")
         base_path = urlparse(self.base_url).path.rstrip("/")
         if base_path.endswith("/api/v1") and request_path == "/api/v1":
@@ -44,7 +45,14 @@ class ApiClient:
         url = urljoin(self.base_url + "/", request_path.lstrip("/"))
         kwargs.setdefault("timeout", self.timeout)
         LOG.debug("%s %s", method.upper(), url)
-        response = self.session.request(method.upper(), url, **kwargs)
+        if retry_request:
+            response = self.session.request(method.upper(), url, **kwargs)
+        else:
+            # Discovery/probing requests should not inherit the session adapter's
+            # retry policy; callers can bound them with a short timeout.
+            headers = dict(self.session.headers)
+            headers.update(kwargs.pop("headers", {}) or {})
+            response = requests.request(method.upper(), url, headers=headers, **kwargs)
         LOG.debug("response status=%s", response.status_code)
         return response
 

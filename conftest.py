@@ -12,6 +12,7 @@ import pytest
 from framework.auth.central_sso import CentralSSO
 from framework.data.scope import DataScope
 from framework.settings import load_settings
+from framework.requirements import validate_requirement_identifiers
 from platforms.registry import discover_platforms, get_platform
 
 ROOT = Path(__file__).resolve().parent
@@ -23,9 +24,15 @@ CASE_NAME_PATTERN = re.compile(
     r"^test_(?P<project>[a-z][a-z0-9]*)_(?P<module>\d{2})_(?P<seq>\d{2})_(?P<slug>.+)$"
 )
 
-# 由各平台 definition 提供报告元数据；保留该名称供外部插件兼容读取。
+# 由各平台 definition 提供报告元数据；平台标识也从注册定义动态带入，
+# 这样公共 fixture 不需要维护任何平台名称或编号映射。
 PLATFORM_REPORTING: dict[str, dict[str, Any]] = {
-    definition.short_name: definition.reporting for definition in discover_platforms().values()
+    definition.short_name: {
+        **definition.reporting,
+        "_platform": definition.short_name,
+        "_name": definition.name,
+    }
+    for definition in discover_platforms().values()
 }
 
 
@@ -140,7 +147,7 @@ def platform_batch_state(
             if "no healthy upstream" in str(exc).lower():
                 message = (
                     f"平台 {platform_name} 的下游执行服务不可用（no healthy upstream），"
-                    f"无法准备 {state} 状态批次；请恢复 tc-hawk 健康实例后重试"
+                    f"无法准备 {state} 状态批次；请恢复对应服务实例后重试"
                 )
             else:
                 message = f"自动构造 {state} 状态批次失败: {exc}；也可通过 {env_name} 指定"
@@ -165,6 +172,26 @@ def data_factory_for(client_for, data_scope: DataScope):
         if definition.data_factory_factory is None:
             pytest.skip(f"平台 {name} 未提供数据工厂")
         return definition.data_factory_factory(client_for(name), data_scope)
+
+    return create
+
+
+@pytest.fixture(scope="session")
+def platform_context_factory(client_for):
+    """按平台提供可复用的运行时数据上下文。
+
+    平台定义自行声明上下文工厂；公共测试入口不维护需求或平台专属
+    fixture 名称。没有上下文能力的平台仍可使用其它通用 fixture。
+    """
+    contexts: dict[str, Any] = {}
+
+    def create(name: str):
+        if name not in contexts:
+            definition = get_platform(name)
+            if definition.runtime_context_factory is None:
+                pytest.fail(f"平台 {name} 未提供运行时数据上下文")
+            contexts[name] = definition.runtime_context_factory(client_for(name))
+        return contexts[name]
 
     return create
 
@@ -205,6 +232,12 @@ def platform_data_factory(data_factory_for, request: pytest.FixtureRequest):
     return data_factory_for(_platform_name_for_node(request.node))
 
 
+@pytest.fixture
+def platform_context(platform_context_factory, request: pytest.FixtureRequest):
+    """当前平台的共享运行时上下文，供只读数据发现类用例使用。"""
+    return platform_context_factory(_platform_name_for_node(request.node))
+
+
 def _allure_dir(config: pytest.Config) -> Path | None:
     try:
         value = config.getoption("--alluredir", default=None)
@@ -226,6 +259,49 @@ def _resolve_reporting(node: pytest.Item) -> tuple[dict[str, Any], re.Match[str]
     return {}, None
 
 
+def _reporting_platform_id(node: pytest.Item, reporting: dict[str, Any]) -> str:
+    value = reporting.get("_platform")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    marker_names = {marker.name for marker in node.iter_markers()}
+    for short_name, metadata in PLATFORM_REPORTING.items():
+        if metadata.get("marker") in marker_names:
+            return short_name
+    return "platform"
+
+
+def _resolve_requirement(node: pytest.Item) -> dict[str, str]:
+    """读取需求级 marker，用稳定需求 ID 覆盖旧的 TC 编号报告身份。"""
+    requirement = node.get_closest_marker("requirement")
+    case = node.get_closest_marker("case_id")
+    if requirement is None or case is None:
+        return {}
+
+    requirement_id = requirement.kwargs.get("id")
+    if not requirement_id and requirement.args:
+        requirement_id = requirement.args[0]
+    requirement_name = requirement.kwargs.get("name")
+    if not requirement_name and len(requirement.args) > 1:
+        requirement_name = requirement.args[1]
+
+    case_id = case.kwargs.get("id")
+    if not case_id and case.args:
+        case_id = case.args[0]
+    case_title = case.kwargs.get("title")
+    if not case_title and len(case.args) > 1:
+        case_title = case.args[1]
+    values = {
+        "requirement_id": str(requirement_id or "").strip(),
+        "requirement_name": str(requirement_name or "").strip(),
+        "case_id": str(case_id or "").strip(),
+        "case_title": str(case_title or "").strip(),
+    }
+    if not values["requirement_id"] or not values["case_id"]:
+        raise ValueError("requirement marker 必须包含 id，case_id marker 必须包含 id")
+    validate_requirement_identifiers(values["requirement_id"], values["case_id"])
+    return values
+
+
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_teardown(item: pytest.Item) -> Generator[None, Any, Any]:
     yield
@@ -235,7 +311,21 @@ def pytest_runtest_teardown(item: pytest.Item) -> Generator[None, Any, Any]:
     #    因此标签不能放在 autouse fixture 里，否则跳过用例会丢失分组信息。
     # Tag 不需要处理，allure-pytest 会自动把 pytest marker 转成 tag。
     reporting, match = _resolve_reporting(item)
-    if match:
+    requirement = _resolve_requirement(item)
+    if requirement:
+        title = requirement["case_title"] or item.name
+        allure.dynamic.title(f"{requirement['case_id']} {title}")
+        allure.dynamic.label("requirement", requirement["requirement_id"])
+        if requirement["requirement_name"]:
+            allure.dynamic.label("requirementName", requirement["requirement_name"])
+            allure.dynamic.feature(requirement["requirement_name"])
+        allure.dynamic.label("caseId", requirement["case_id"])
+        allure.dynamic.label(
+            "testId",
+            f"{_reporting_platform_id(item, reporting)}/{requirement['case_id']}",
+        )
+        allure.dynamic.story(requirement["case_id"])
+    elif match:
         case_id = f"TC-{match.group('module')}-{match.group('seq')}"
         allure.dynamic.title(f"{case_id} {match.group('slug').replace('_', ' ')}")
         allure.dynamic.label("testId", f"{match.group('project')}/{case_id}")

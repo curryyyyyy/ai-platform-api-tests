@@ -613,6 +613,69 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.flow.v1.DeleteFlowReply'
+    /api/v1/hawk/cost/batches/{batchId}/detail:
+        get:
+            tags:
+                - BatchOperationService
+            description: 获取批次成本明细
+            operationId: BatchOperationService_GetBatchCostDetail
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.GetBatchCostDetailResponse'
+    /api/v1/hawk/cost/batches/{batchId}/stages/{stageIndex}:
+        get:
+            tags:
+                - BatchOperationService
+            description: 获取单个工作流节点成本明细
+            operationId: BatchOperationService_GetBatchStageCostDetail
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: stageIndex
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.GetBatchStageCostDetailResponse'
+    /api/v1/hawk/cost/projects/{projectId}/detail:
+        get:
+            tags:
+                - BatchOperationService
+            description: 获取项目成本明细
+            operationId: BatchOperationService_GetProjectCostDetail
+            parameters:
+                - name: projectId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.GetProjectCostDetailResponse'
     /api/v1/hawk/done-end-alert/delete/{batchId}:
         get:
             tags:
@@ -764,6 +827,10 @@ paths:
                 - name: batchId
                   in: path
                   required: true
+                  schema:
+                    type: string
+                - name: metricWindow
+                  in: query
                   schema:
                     type: string
             responses:
@@ -1169,6 +1236,24 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.tools.CsvFirstRowReply'
+    /api/v1/tools/csv_info:
+        post:
+            tags:
+                - Tools
+            operationId: Tools_CsvInfo
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.tools.TosFileExtRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.tools.TosFileExtReply'
     /api/v1/tools/daily_metrics/trigger:
         post:
             tags:
@@ -1222,27 +1307,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.tools.RefreshStageRefCountsReply'
-    /api/v1/tools/tos_file_ext:
-        get:
-            tags:
-                - Tools
-            operationId: Tools_TosFileExt
-            parameters:
-                - name: tosPath
-                  in: query
-                  schema:
-                    type: string
-                - name: tosPrefix
-                  in: query
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/api.tools.TosFileExtReply'
     /api/v1/tpl/wf:
         get:
             tags:
@@ -1808,6 +1872,10 @@ components:
                     type: string
                 realPath:
                     type: string
+                flowId:
+                    type: string
+                filteredFilePath:
+                    type: string
         api.batch.v1.CSVRow:
             type: object
             properties:
@@ -1892,6 +1960,8 @@ components:
                     type: string
                 materialType:
                     type: string
+                autoDelete:
+                    type: boolean
         api.batch.v1.CreateBatchReply:
             type: object
             properties:
@@ -2272,6 +2342,8 @@ components:
                     type: string
                 materialType:
                     type: string
+                autoDelete:
+                    type: boolean
         api.batch.v1.UpdateBatchReply:
             type: object
             properties:
@@ -2590,6 +2662,9 @@ components:
                     type: string
                 alias:
                     type: string
+                status:
+                    type: integer
+                    format: int32
         api.flow.v1.UpdateFlowReply:
             type: object
             properties:
@@ -2646,6 +2721,29 @@ components:
                 data:
                     $ref: '#/components/schemas/api.hawk.v1.GetBatchStatData'
             description: 单个批次统计结果
+        api.hawk.v1.CostResourceDetail:
+            type: object
+            properties:
+                displayName:
+                    type: string
+                resource:
+                    type: string
+                resourceLabel:
+                    type: string
+                resourceKey:
+                    type: string
+                metric:
+                    type: string
+                metricLabel:
+                    type: string
+                quantity:
+                    type: string
+                unit:
+                    type: string
+                amountYuan:
+                    type: string
+                unitPriceYuan:
+                    type: string
         api.hawk.v1.DeleteBatchFromDoneEndAlertResponse:
             type: object
             properties:
@@ -2666,6 +2764,8 @@ components:
                     type: string
                 zipTosPath:
                     type: string
+                filteredTosPath:
+                    type: string
             description: 中途导出批次输出数据
         api.hawk.v1.ExportBatchOutputRequest:
             type: object
@@ -2684,6 +2784,27 @@ components:
                 data:
                     $ref: '#/components/schemas/api.hawk.v1.ExportBatchOutputData'
             description: 中途导出批次输出响应
+        api.hawk.v1.GetBatchCostDetailData:
+            type: object
+            properties:
+                batchId:
+                    type: string
+                amountYuan:
+                    type: string
+                resources:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.hawk.v1.CostResourceDetail'
+        api.hawk.v1.GetBatchCostDetailResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.GetBatchCostDetailData'
         api.hawk.v1.GetBatchErrorLogResponse:
             type: object
             properties:
@@ -2695,6 +2816,32 @@ components:
                 data:
                     $ref: '#/components/schemas/api.hawk.v1.BatchErrorLogData'
             description: 查看批次错误日志响应
+        api.hawk.v1.GetBatchStageCostDetailData:
+            type: object
+            properties:
+                batchId:
+                    type: string
+                stageIndex:
+                    type: integer
+                    format: int32
+                stageName:
+                    type: string
+                amountYuan:
+                    type: string
+                resources:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.hawk.v1.CostResourceDetail'
+        api.hawk.v1.GetBatchStageCostDetailResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.GetBatchStageCostDetailData'
         api.hawk.v1.GetBatchStatData:
             type: object
             properties:
@@ -2726,6 +2873,8 @@ components:
                 masterIp:
                     type: string
                 rpcError:
+                    type: string
+                amountYuan:
                     type: string
             description: 批次统计数据
         api.hawk.v1.GetBatchStatResponse:
@@ -2761,6 +2910,27 @@ components:
                     items:
                         $ref: '#/components/schemas/api.hawk.v1.BatchStatItem'
             description: 批量查询批次统计响应
+        api.hawk.v1.GetProjectCostDetailData:
+            type: object
+            properties:
+                projectId:
+                    type: string
+                amountYuan:
+                    type: string
+                resources:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.hawk.v1.CostResourceDetail'
+        api.hawk.v1.GetProjectCostDetailResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.hawk.v1.GetProjectCostDetailData'
         api.hawk.v1.GetSystemLoadResponse:
             type: object
             properties:
@@ -2931,6 +3101,29 @@ components:
                 status:
                     type: string
                     description: 算子状态：pending / running / completed，透传自执行侧
+                recentSuccessRate:
+                    type: number
+                    description: 近期窗口内的算子成功率百分比，0~100，口径为 done / (done + failed + abort) * 100
+                    format: double
+                recentProcessSpeed:
+                    type: number
+                    description: 近期窗口内的算子处理速度，单位：job/s
+                    format: double
+                recentAvgDurationSeconds:
+                    type: number
+                    description: 近期窗口内的算子平均耗时，单位：秒
+                    format: double
+                recentTotalCnt:
+                    type: integer
+                    description: 近期窗口内的算子处理次数
+                    format: int32
+                metricWindow:
+                    type: string
+                    description: 指标统计窗口，例如 5m
+                stageId:
+                    type: string
+                amountYuan:
+                    type: string
         api.hawk.v1.SystemLoadData:
             type: object
             properties:
@@ -2994,6 +3187,7 @@ components:
                     type: string
                 id:
                     type: string
+            description: CreateProjectReply 示例：code=0，message="success"，id=12。
         api.project.v1.CreateProjectRequest:
             type: object
             properties:
@@ -3024,6 +3218,16 @@ components:
                 notificationLevel:
                     type: integer
                     format: int32
+                idempotencyKey:
+                    type: string
+                    description: |-
+                        【项目 RPC 必填】幂等键；同一创建请求重试时必须复用，示例："create-demo-project-001"。
+                         HTTP 创建接口不填写时继续使用原有创建逻辑。
+            description: |-
+                CreateProject 创建项目。
+                 RPC 请求示例：name="demo-project", idempotency_key="create-demo-project-001"。
+                 普通项目管理界面必填：name、notificationLevel；负责人由服务端根据当前登录用户设置，研发负责人和管理员可选。
+                 项目 RPC 必填：name、idempotency_key；其余字段为兼容旧 HTTP 创建接口保留。
         api.project.v1.DeleteProjectReply:
             type: object
             properties:
@@ -3543,6 +3747,8 @@ components:
                     type: string
                 asFrom:
                     type: string
+                allowInbound:
+                    type: boolean
         api.tools.RefreshStageRefCountsReply:
             type: object
             properties:
@@ -3570,6 +3776,17 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/api.tools.FileExtItem'
+        api.tools.TosFileExtRequest:
+            type: object
+            properties:
+                tosPath:
+                    type: string
+                tosPrefix:
+                    type: string
+                requiredHeaders:
+                    type: array
+                    items:
+                        type: string
         api.tools.TriggerDailyMetricsReply:
             type: object
             properties:

@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from framework.assertions import assert_envelope, assert_rejected
+from framework.assertions import assert_amount_yuan, assert_cost_resources, assert_envelope, assert_rejected
 from framework.data.dataset import dataset_case_map, dataset_defaults
 from platforms.hawk_admin.presets import wait_for_batch_status
 
@@ -13,6 +13,10 @@ pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
 EXECUTION_DEFAULTS = dataset_defaults("hawk_admin", "execution")
 EXECUTION_OPERATIONS = dataset_case_map("hawk_admin", "execution", "operations")
 TASK_STREAM_CASES = dataset_case_map("hawk_admin", "execution", "task_stream")
+RCB_RESOURCE_FIELDS = (
+    "displayName", "resource", "resourceLabel", "resourceKey", "metric",
+    "metricLabel", "quantity", "unit", "unitPriceYuan", "amountYuan",
+)
 
 
 def _operation(name: str) -> int:
@@ -147,6 +151,80 @@ def test_hawk_batch_stats_accepts_valid_batch(platform_client, platform_state):
     items = body["data"]
     assert isinstance(items, list)
     assert any(str(item.get("batchId")) == str(batch_id) for item in items)
+
+
+@pytest.mark.requirement(id="REQ-RCB-20260910", name="资源成本看板")
+@pytest.mark.case_id("REQ-RCB-20260910-API-02", title="批次统计接口按批次 ID 返回行内成本")
+def test_hawk_10_02_rcb_batch_stats_cost(platform_client, platform_context):
+    """批量批次统计返回每个批次的行内成本。"""
+    batch_ids = platform_context.batch_ids()
+    body = assert_envelope(platform_client.batch_stats(batch_ids), required_keys=("data",))
+    items = body["data"]
+    assert isinstance(items, list), f"批次统计 data 应为数组: {body}"
+    by_id = {str(item.get("batchId")): item for item in items if isinstance(item, dict)}
+    for batch_id in batch_ids:
+        assert str(batch_id) in by_id, f"批次统计缺少 batchId={batch_id}: {body}"
+        item_data = by_id[str(batch_id)].get("data")
+        assert isinstance(item_data, dict), f"批次 {batch_id} 的 data 应为对象: {body}"
+        assert_amount_yuan(item_data.get("amountYuan"))
+
+
+@pytest.mark.requirement(id="REQ-RCB-20260910", name="资源成本看板")
+@pytest.mark.case_id("REQ-RCB-20260910-API-03", title="批次详情接口返回批次总成本和每个 stage 成本")
+def test_hawk_10_03_rcb_batch_stat_cost(platform_client, platform_context):
+    """批次详情返回总成本和指定 stage 成本。"""
+    batch_id = platform_context.detail_batch_id()
+    expected_stage_ids = platform_context.expected_stage_ids()
+    body = assert_envelope(platform_client.batch_stat(batch_id), required_keys=("data",))
+    data = body["data"]
+    rpc_error = data.get("rpcError")
+    assert isinstance(rpc_error, str) and not rpc_error.strip(), (
+        f"批次统计下游 Hawk RPC 失败: message={body.get('message')!r}, "
+        f"rpcError={rpc_error!r}, data={data}"
+    )
+    for field in ("totalCount", "successCount", "failedCount", "abortedCount", "progress"):
+        value = data.get(field)
+        assert isinstance(value, (int, float)) and value >= 0, (
+            f"批次统计返回无效的 {field}={value!r}，疑似下游 Hawk RPC 降级响应: {body}"
+        )
+    assert_amount_yuan(data.get("amountYuan"))
+    stats = data.get("stats")
+    assert isinstance(stats, list), f"批次 stats 应为数组: {data}"
+    by_id = {str(item.get("stageId")): item for item in stats if isinstance(item, dict)}
+    for stage_id in expected_stage_ids:
+        assert str(stage_id) in by_id, f"批次统计缺少 stageId={stage_id}: {data}"
+        assert_amount_yuan(by_id[str(stage_id)].get("amountYuan"))
+
+
+@pytest.mark.requirement(id="REQ-RCB-20260910", name="资源成本看板")
+@pytest.mark.case_id("REQ-RCB-20260910-API-04", title="批次成本详情接口返回聚合后的资源明细")
+def test_hawk_10_04_rcb_batch_cost_detail(platform_client, platform_context):
+    """批次成本详情返回金额和聚合资源明细。"""
+    batch_id = platform_context.cost_batch_id()
+    body = assert_envelope(platform_client.get_batch_cost_detail(batch_id), required_keys=("data",))
+    data = body["data"]
+    assert int(data["batchId"]) == batch_id
+    assert_amount_yuan(data.get("amountYuan"))
+    assert_cost_resources(data.get("resources"), RCB_RESOURCE_FIELDS)
+
+
+@pytest.mark.requirement(id="REQ-RCB-20260910", name="资源成本看板")
+@pytest.mark.case_id("REQ-RCB-20260910-API-05", title="工作流节点成本详情接口返回指定 stage 的资源明细")
+def test_hawk_10_05_rcb_stage_cost_detail(platform_client, platform_context):
+    """指定 stage 成本详情返回节点标识和资源明细。"""
+    batch_id = platform_context.stage_batch_id()
+    stage_index = platform_context.stage_index()
+    body = assert_envelope(
+        platform_client.get_stage_cost_detail(batch_id, stage_index), required_keys=("data",)
+    )
+    data = body["data"]
+    assert int(data["batchId"]) == batch_id
+    assert int(data["stageIndex"]) == stage_index
+    assert isinstance(data.get("stageName"), str) and data["stageName"].strip(), (
+        f"批次阶段成本响应缺少有效 stageName，可能是 stageIndex={stage_index} 无效或下游数据不完整: {body}"
+    )
+    assert_amount_yuan(data.get("amountYuan"))
+    assert_cost_resources(data.get("resources"), RCB_RESOURCE_FIELDS)
 
 
 # TC-06-09/10：字段和错误日志

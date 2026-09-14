@@ -63,3 +63,18 @@ entries:
   - {id: TC-09-02, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_09_02_user_rsa_returns_public_key], level: full}
   - {id: TC-09-03, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_09_03_user_login_rejects_empty_credentials], level: full}
   - {id: TC-09-04, tests: [tests/hawk_admin/test_hawk_extended_api.py::test_hawk_09_04_user_logout_invalid_token_is_idempotent], level: full}
+
+# 需求级追溯与平台 case 共用同一份覆盖矩阵，避免每个需求新增一份 coverage 文件。
+# requirement/case ID 是 Allure 历史的稳定身份；运行时间只进入报告目录。
+requirements:
+  - id: REQ-RCB-20260910
+    name: resource_cost_dashboard
+    display_name: 资源成本看板
+    marker: requirement
+    source_schema: test-cases/hawk_admin/资源成本看板_P0接口测试.schema.yaml
+    cases:
+      - {id: REQ-RCB-20260910-API-01, source_id: TC-04-01, priority: P0, test: tests/hawk_admin/test_project_api.py::test_hawk_10_01_rcb_project_cost_detail, endpoint: "GET /api/v1/hawk/cost/projects/{projectId}/detail"}
+      - {id: REQ-RCB-20260910-API-02, source_id: TC-04-02, priority: P0, test: tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_02_rcb_batch_stats_cost, endpoint: "POST /api/v1/hawk/stats"}
+      - {id: REQ-RCB-20260910-API-03, source_id: TC-04-03, priority: P0, test: tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_03_rcb_batch_stat_cost, endpoint: "GET /api/v1/hawk/stat/{batchId}"}
+      - {id: REQ-RCB-20260910-API-04, source_id: TC-04-04, priority: P0, test: tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_04_rcb_batch_cost_detail, endpoint: "GET /api/v1/hawk/cost/batches/{batchId}/detail"}
+      - {id: REQ-RCB-20260910-API-05, source_id: TC-04-05, priority: P0, test: tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_05_rcb_stage_cost_detail, endpoint: "GET /api/v1/hawk/cost/batches/{batchId}/stages/{stageIndex}"}

@@ -24,8 +24,8 @@ markers = [
   "smoke: 主链路冒烟测试",
   "contract: OpenAPI 契约检查",
   "core: P0 核心回归用例，适合 CI 门禁",
-  "hawk_admin: Hawk 机器标注子平台用例",
-  "source_admin: 资源管理平台用例",
+  "requirement(id, name): 需求级报告元数据",
+  "case_id(id, title): 需求内稳定用例标识和标题",
 ]
 
 [tool.setuptools.packages.find]

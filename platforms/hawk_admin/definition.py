@@ -5,6 +5,7 @@ from __future__ import annotations
 from platforms.hawk_admin.client import HawkAdminClient
 from platforms.hawk_admin.factories import HawkDataFactory
 from platforms.hawk_admin.presets import prepare_batch
+from platforms.hawk_admin.runtime import HawkRuntimeContext
 from platforms.registry import PlatformDefinition, register_platform
 
 
@@ -18,6 +19,7 @@ register_platform(
         short_name="hawk",
         client_factory=_client,
         data_factory_factory=HawkDataFactory,
+        runtime_context_factory=HawkRuntimeContext,
         state_resolver=prepare_batch,
         viewer_token_env="HAWK_VIEWER_TOKEN",
         viewer_user_env="HAWK_VIEWER_USER",
