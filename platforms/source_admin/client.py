@@ -40,6 +40,8 @@ OPERATION_ROUTES: dict[str, tuple[str, str]] = {
     "FS-06": ("POST", "/api/v1/nodes/{id}/move"),
     "FS-07": ("GET", "/api/v1/nodes/search"),
     "FS-08": ("GET", "/api/v1/nodes/batch"),
+    "FS-09": ("POST", "/api/v1/nodes/project"),
+    "FS-10": ("GET", "/api/v1/nodes/project/info"),
     "SC-01": ("POST", "/api/v1/schema"),
     "SC-02": ("PUT", "/api/v1/schema"),
     "SC-03": ("DELETE", "/api/v1/schema/{id}"),
@@ -61,6 +63,16 @@ OPERATION_ROUTES: dict[str, tuple[str, str]] = {
     "SH-03": ("GET", "/api/v1/share/link/list"),
     "SH-04": ("PUT", "/api/v1/share/link/{id}/terminate"),
     "AU-01": ("GET", "/api/v1/audit/logs"),
+    "CT-01": ("GET", "/api/v1/contracts"),
+    "CT-02": ("GET", "/api/v1/contracts/{id}"),
+    "CT-03": ("PUT", "/api/v1/contracts/{id}/associate"),
+    "CT-04": ("POST", "/api/v1/contracts/{id}/archive"),
+    "CT-05": ("POST", "/api/v1/contracts/sync/trigger"),
+    "SP-01": ("GET", "/api/v1/suppliers"),
+    "SP-02": ("POST", "/api/v1/suppliers"),
+    "SP-03": ("GET", "/api/v1/suppliers/{id}"),
+    "SP-04": ("PUT", "/api/v1/suppliers/{id}"),
+    "SP-05": ("GET", "/api/v1/public/suppliers"),
 }
 
 OPERATION_METHODS: dict[str, str] = {
@@ -92,6 +104,8 @@ OPERATION_METHODS: dict[str, str] = {
     "FS-06": "move_node",
     "FS-07": "search_nodes",
     "FS-08": "batch_list_nodes",
+    "FS-09": "create_project_node",
+    "FS-10": "get_project_node_info",
     "SC-01": "create_schema",
     "SC-02": "update_schema",
     "SC-03": "delete_schema",
@@ -113,6 +127,16 @@ OPERATION_METHODS: dict[str, str] = {
     "SH-03": "list_share_links",
     "SH-04": "terminate_share_link",
     "AU-01": "list_audit_logs",
+    "CT-01": "list_contracts",
+    "CT-02": "get_contract",
+    "CT-03": "associate_contract",
+    "CT-04": "archive_contract",
+    "CT-05": "trigger_contract_sync",
+    "SP-01": "list_suppliers",
+    "SP-02": "create_supplier",
+    "SP-03": "get_supplier",
+    "SP-04": "update_supplier",
+    "SP-05": "list_external_suppliers",
 }
 
 
@@ -121,7 +145,7 @@ def _compact(values: Mapping[str, Any]) -> dict[str, Any]:
 
 
 class SourceAdminClient(ApiClient):
-    """资源管理平台 49 个已确认操作的客户端封装。"""
+    """资源管理平台 61 个已确认操作的客户端封装。"""
 
     def _operation(
         self,
@@ -243,6 +267,16 @@ class SourceAdminClient(ApiClient):
     def batch_list_nodes(self, ids: Any):
         return self._operation("FS-08", params={"ids": ids})
 
+    def create_project_node(self, *, node_name: str, force: bool | None = None):
+        return self._operation(
+            "FS-09",
+            json=_compact({"node_name": node_name, "force": force}),
+            has_json=True,
+        )
+
+    def get_project_node_info(self, ids: Any):
+        return self._operation("FS-10", params={"ids": ids})
+
     # Schema
     def create_schema(self, **payload: Any):
         return self._operation("SC-01", json=payload, has_json=True)
@@ -308,3 +342,50 @@ class SourceAdminClient(ApiClient):
     # 审计
     def list_audit_logs(self, **params: Any):
         return self._operation("AU-01", params=_compact(params))
+
+    # 合同管理
+    def list_contracts(self, **params: Any):
+        return self._operation("CT-01", params=_compact(params))
+
+    def get_contract(self, contract_id: Any):
+        return self._operation("CT-02", path_params={"id": contract_id})
+
+    def associate_contract(self, contract_id: Any, **payload: Any):
+        return self._operation(
+            "CT-03",
+            path_params={"id": contract_id},
+            json=payload,
+            has_json=True,
+        )
+
+    def archive_contract(self, contract_id: Any, **payload: Any):
+        return self._operation(
+            "CT-04",
+            path_params={"id": contract_id},
+            json=payload,
+            has_json=True,
+        )
+
+    def trigger_contract_sync(self):
+        return self._operation("CT-05")
+
+    # 供应商管理
+    def list_suppliers(self, **params: Any):
+        return self._operation("SP-01", params=_compact(params))
+
+    def create_supplier(self, **payload: Any):
+        return self._operation("SP-02", json=payload, has_json=True)
+
+    def get_supplier(self, supplier_id: Any):
+        return self._operation("SP-03", path_params={"id": supplier_id})
+
+    def update_supplier(self, supplier_id: Any, **payload: Any):
+        return self._operation(
+            "SP-04",
+            path_params={"id": supplier_id},
+            json=payload,
+            has_json=True,
+        )
+
+    def list_external_suppliers(self, **params: Any):
+        return self._operation("SP-05", params=_compact(params))

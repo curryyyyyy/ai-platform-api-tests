@@ -1,0 +1,302 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "分享链接 API",
+    "version": "1.0.0",
+    "description": "圈选集分享链接的创建、查询与管理"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发"
+    }
+  ],
+  "tags": [
+    { "name": "Share", "description": "分享链接管理" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "BaseResponse": {
+        "type": "object",
+        "required": ["code", "msg"],
+        "properties": {
+          "code": { "type": "integer", "description": "状态码，0 表示成功" },
+          "msg":  { "type": "string",  "description": "状态信息" }
+        }
+      },
+      "ShareLinkStatus": {
+        "type": "integer",
+        "enum": [1, 2, 3],
+        "description": "分享链接状态：1=ACTIVE（有效）2=TERMINATED（已终止）3=EXPIRED（已过期）"
+      },
+      "ShareLink": {
+        "type": "object",
+        "required": ["id", "name", "collection_id", "url", "status", "created_at", "updated_at", "expire_at"],
+        "properties": {
+          "id":            { "type": "integer", "format": "int64", "description": "链接 ID" },
+          "name":          { "type": "string",  "description": "链接名称" },
+          "collection_id": { "type": "integer", "format": "int64", "description": "关联的圈选集 ID" },
+          "url":           { "type": "string",  "description": "分享链接 URL" },
+          "status":        { "$ref": "#/components/schemas/ShareLinkStatus" },
+          "creator":       { "type": "string",  "description": "创建人用户名" },
+          "created_at":    { "type": "integer", "format": "int64", "description": "创建时间（毫秒时间戳）" },
+          "updated_at":    { "type": "integer", "format": "int64", "description": "更新时间（毫秒时间戳）" },
+          "expire_at":     { "type": "integer", "format": "int64", "description": "过期时间（毫秒时间戳）" },
+          "view_count":    { "type": "integer", "format": "int64", "description": "翻页次数（POST /data 每次请求 +1）" },
+          "share_name":    { "type": "string",  "description": "分享名称（对外展示），为空时默认使用 name" },
+          "max_count":     { "type": "integer", "format": "int32", "description": "分享条数限制，0 表示不限" }
+        }
+      }
+    }
+  },
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "paths": {
+    "/api/v1/share/link": {
+      "post": {
+        "tags": ["Share"],
+        "summary": "创建分享链接",
+        "description": "为指定圈选集创建一条分享链接",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "collection_id", "expire_at"],
+                "properties": {
+                  "name":          { "type": "string",  "description": "链接名称" },
+                  "collection_id": { "type": "integer", "format": "int64", "description": "关联的圈选集 ID" },
+                  "expire_at":     { "type": "integer", "format": "int64", "description": "过期时间（毫秒时间戳）" },
+                  "share_name":    { "type": "string",  "description": "分享名称（对外展示），为空时默认使用 name" },
+                  "max_count":     { "type": "integer", "format": "int32", "description": "分享条数限制，0 表示不限" }
+                }
+              },
+              "example": {
+                "name": "外部共享-20260608",
+                "collection_id": 1001,
+                "expire_at": 1780000000000,
+                "share_name": "2026夏季图片合集",
+                "max_count": 1000
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/ShareLink" }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "id": 10,
+                    "name": "外部共享-20260608",
+                    "collection_id": 1001,
+                    "url": "https://example.com/share/abc123",
+                    "status": 1,
+                    "creator": "xieyutian",
+                    "created_at": 1748304000000,
+                    "updated_at": 1748304000000,
+                    "expire_at": 1780000000000,
+                    "view_count": 0,
+                    "share_name": "2026夏季图片合集",
+                    "max_count": 1000
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/share/link/list": {
+      "get": {
+        "tags": ["Share"],
+        "summary": "查询分享链接列表",
+        "description": "支持按名称模糊搜索、状态、圈选集 ID 筛选，分页返回",
+        "parameters": [
+          {
+            "name": "name", "in": "query", "required": false,
+            "schema": { "type": "string" },
+            "description": "链接名称模糊匹配"
+          },
+          {
+            "name": "status", "in": "query", "required": false,
+            "schema": { "$ref": "#/components/schemas/ShareLinkStatus" },
+            "description": "状态筛选"
+          },
+          {
+            "name": "collection_id", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "按圈选集 ID 筛选"
+          },
+          {
+            "name": "limit", "in": "query", "required": false,
+            "schema": { "type": "integer", "default": 20 }
+          },
+          {
+            "name": "offset", "in": "query", "required": false,
+            "schema": { "type": "integer", "default": 0 }
+          },
+          {
+            "name": "creator", "in": "query", "required": false,
+            "schema": { "type": "string" },
+            "description": "创建人用户名精确匹配"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/ShareLink" }
+                        },
+                        "total": { "type": "integer", "description": "总条数" }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": [
+                    {
+                      "id": 10,
+                      "name": "外部共享-20260608",
+                      "collection_id": 1001,
+                      "url": "https://example.com/share/abc123",
+                      "status": 1,
+                      "creator": "xieyutian",
+                      "created_at": 1748304000000,
+                      "updated_at": 1748304000000,
+                      "expire_at": 1780000000000,
+                      "view_count": 42,
+                      "share_name": "2026夏季图片合集",
+                      "max_count": 1000
+                    }
+                  ],
+                  "total": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/share/link/{id}": {
+      "get": {
+        "tags": ["Share"],
+        "summary": "获取分享链接详情",
+        "description": "根据 ID 获取单条分享链接信息",
+        "parameters": [
+          {
+            "name": "id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "分享链接 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/ShareLink" }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "id": 10,
+                    "name": "外部共享-20260608",
+                    "collection_id": 1001,
+                    "url": "https://example.com/share/abc123",
+                    "status": 1,
+                    "creator": "xieyutian",
+                    "created_at": 1748304000000,
+                    "updated_at": 1748304000000,
+                    "expire_at": 1780000000000,
+                    "view_count": 42,
+                    "share_name": "2026夏季图片合集",
+                    "max_count": 1000
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" },
+          "404": { "description": "链接不存在" }
+        }
+      }
+    },
+    "/api/v1/share/link/{id}/terminate": {
+      "put": {
+        "tags": ["Share"],
+        "summary": "终止分享链接",
+        "description": "将指定分享链接状态变更为 TERMINATED，链接立即失效",
+        "parameters": [
+          {
+            "name": "id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "分享链接 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "终止成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse"
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok"
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" },
+          "404": { "description": "链接不存在" }
+        }
+      }
+    }
+  }
+}

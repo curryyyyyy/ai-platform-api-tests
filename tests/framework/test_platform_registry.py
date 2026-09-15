@@ -41,3 +41,25 @@ def test_settings_uses_platform_declared_legacy_base_url_alias(tmp_path, monkeyp
 
     settings = load_settings(tmp_path)
     assert settings["platforms"]["sample-platform"]["base_url"] == "http://legacy.invalid"
+
+
+def test_settings_discovers_platform_owned_environment_config(tmp_path) -> None:
+    (tmp_path / "platforms/sample_platform/config").mkdir(parents=True)
+    (tmp_path / "platforms/sample_platform/config/test.yaml").write_text(
+        "platform: sample_platform\nbase_url: http://owned.invalid\n", encoding="utf-8"
+    )
+
+    settings = load_settings(tmp_path)
+
+    assert settings["platforms"]["sample_platform"]["base_url"] == "http://owned.invalid"
+
+
+def test_settings_accepts_generic_platform_url_json(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv(
+        "PLATFORM_BASE_URLS_JSON",
+        '{"sample-platform": "https://json.invalid/api"}',
+    )
+
+    settings = load_settings(tmp_path)
+
+    assert settings["platforms"]["sample-platform"]["base_url"] == "https://json.invalid/api"

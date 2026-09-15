@@ -5,7 +5,7 @@ from typing import Any, Mapping
 import pytest
 
 from framework.assertions import assert_envelope, assert_rejected
-from framework.data.dataset import case_payload, dataset_cases, dataset_defaults
+from framework.data.dataset import case_payload, dataset_case_map, dataset_cases, dataset_defaults
 from platforms.source_admin.client import SourceAdminClient
 from platforms.source_admin.factories import SourceAdminDataFactory
 
@@ -14,6 +14,7 @@ pytestmark = [pytest.mark.live, pytest.mark.source_admin]
 NODE_DEFAULTS = dataset_defaults("source_admin", "node")
 INVALID_CREATE_CASES = dataset_cases("source_admin", "node", "invalid_create")
 INVALID_BATCH_CASES = dataset_cases("source_admin", "node", "invalid_batch")
+PROJECT_CASES = dataset_case_map("source_admin", "node", "project")
 
 
 def _data(body: Mapping[str, Any]) -> Any:
@@ -97,3 +98,25 @@ def test_source_03_04_invalid_node_batch_query_is_rejected(
     )
     if payload["expected_code"] == 0:
         assert _data(body)["nodes"] == []
+
+
+@pytest.mark.core
+def test_source_03_05_project_node_is_idempotent_and_queryable(
+    platform_client: SourceAdminClient,
+    platform_data_factory: SourceAdminDataFactory,
+) -> None:
+    """项目节点重复创建返回同一节点，并可通过项目节点查询接口回查。"""
+    payload = case_payload(PROJECT_CASES["standard"])
+    node_id, created_payload = platform_data_factory.create_project_node(**payload)
+
+    repeated = _data(assert_envelope(
+        platform_client.create_project_node(**created_payload), required_keys=("data",)
+    ))
+    assert repeated["node_id"] == int(node_id)
+    assert repeated["exists"] is True
+
+    info = _data(assert_envelope(
+        platform_client.get_project_node_info(f"{node_id},{NODE_DEFAULTS['missing_node_id']}"),
+        required_keys=("data",),
+    ))
+    assert any(item["id"] == int(node_id) for item in info["nodes"])

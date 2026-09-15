@@ -1,0 +1,19 @@
+defaults:
+  missing_contract_id: 999999999
+  missing_supplier_id: 999999999
+
+cases:
+  list:
+    - id: default_page
+      page: 1
+      page_size: 10
+    - id: unarchived_page
+      archive_status: unarchived
+      page: 1
+      page_size: 10
+  missing_associate:
+    - id: missing_contract
+      counterparty_id1: 999999999
+  missing_archive:
+    - id: missing_contract
+      archive_no: api-test-missing-contract

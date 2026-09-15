@@ -1,0 +1,889 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Supplier 供应商管理 API",
+    "version": "1.0.0",
+    "description": "机构/个人/专家供应商复用主表，含资质/领域/工作经历。对接 idl/supplier/supplier.thrift。"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Supplier",
+      "description": "供应商管理"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "BaseResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "0 成功"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "Supplier": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "alias",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "example": "供应商A"
+          },
+          "alias": {
+            "type": "string",
+            "example": "别名",
+            "description": "供应商别称 全局唯一必填"
+          },
+          "type": {
+            "type": "string",
+            "description": "机构供应商/个人供应商/专家供应商",
+            "example": "机构供应商"
+          },
+          "category": {
+            "type": "string",
+            "description": "成品服务/众包平台"
+          },
+          "phone": {
+            "type": "string",
+            "example": "13800000001"
+          },
+          "region": {
+            "type": "string",
+            "example": "北京"
+          },
+          "directions": {
+            "type": "string",
+            "description": "JSON 多选 AE/PS/3D/实拍",
+            "example": "[\"AE\",\"PS\"]"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "available": {
+            "type": "string",
+            "enum": [
+              "是",
+              "否"
+            ]
+          },
+          "weekly_capacity": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "birth_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "job_title": {
+            "type": "string"
+          },
+          "employment_status": {
+            "type": "string",
+            "description": "在读/在职/待业"
+          },
+          "work_experience": {
+            "type": "string",
+            "description": "1年内/3年内/5年内/5年上"
+          },
+          "education": {
+            "type": "string"
+          },
+          "school": {
+            "type": "string"
+          },
+          "major": {
+            "type": "string"
+          },
+          "resume_file_name": {
+            "type": "string"
+          },
+          "resume_url": {
+            "type": "string",
+            "description": "只读输出：resume_tos_path 实时签名后的可访问 URL"
+          },
+          "resume_tos_path": {
+            "type": "string",
+            "description": "简历 TOS 对象路径 tos://bucket/key，持久化字段，机构/专家均支持"
+          },
+          "note": {
+            "type": "string"
+          },
+          "account_type": {
+            "type": "string",
+            "description": "账户类型 对公银行卡/银行卡/微信/支付宝",
+            "example": "银行卡"
+          },
+          "settlement_account": {
+            "type": "string",
+            "description": "结算账号",
+            "example": "6220000000000000"
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updated_at": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SupplierCertification": {
+        "type": "object",
+        "required": [
+          "id",
+          "supplier_id",
+          "supplier_type",
+          "cert_key",
+          "cert_group",
+          "kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "supplier_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "supplier_type": {
+            "type": "string"
+          },
+          "cert_key": {
+            "type": "string",
+            "description": "idFront/legalIdFront/businessLicense...",
+            "example": "idFront"
+          },
+          "cert_group": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "text",
+              "attachments"
+            ]
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string",
+            "description": "只读输出：file_tos_path 实时签名后的可访问 URL，不持久化、不接受写入"
+          },
+          "text_value": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer"
+          },
+          "file_tos_path": {
+            "type": "string",
+            "description": "TOS 对象路径 tos://bucket/key，持久化字段，详情读时签名生成 file_url"
+          }
+        }
+      },
+      "SupplierExpertDomain": {
+        "type": "object",
+        "required": [
+          "id",
+          "supplier_id",
+          "level1",
+          "level2",
+          "level3",
+          "level"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "supplier_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "level1": {
+            "type": "string"
+          },
+          "level2": {
+            "type": "string"
+          },
+          "level3": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string",
+            "description": "一级（行业权威）...四级"
+          }
+        }
+      },
+      "SupplierWorkHistory": {
+        "type": "object",
+        "required": [
+          "id",
+          "supplier_id",
+          "company",
+          "position",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "supplier_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "company": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "SupplierDetail": {
+        "type": "object",
+        "required": [
+          "supplier"
+        ],
+        "properties": {
+          "supplier": {
+            "$ref": "#/components/schemas/Supplier"
+          },
+          "certifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupplierCertification"
+            }
+          },
+          "domains": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupplierExpertDomain"
+            }
+          },
+          "work_histories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupplierWorkHistory"
+            }
+          },
+          "contract_count": {
+            "type": "integer",
+            "description": "关联合同数量（counterparty_id1 OR counterparty_id2）",
+            "example": 3
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Authorization: <token>"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/suppliers": {
+      "get": {
+        "tags": [
+          "Supplier"
+        ],
+        "summary": "供应商列表",
+        "description": "3 Tab + 关键词（name/phone/directions/note）+ category + updated_from/to 分页。产品 四、供应商列表。",
+        "operationId": "ListSuppliers",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "机构供应商/个人供应商/专家供应商"
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "匹配 name/phone/directions/note"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "updated_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "updated_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "list": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/Supplier"
+                              }
+                            },
+                            "total": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "list": [
+                      {
+                        "id": 1,
+                        "name": "供应商A",
+                        "type": "机构供应商"
+                      }
+                    ],
+                    "total": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Supplier"
+        ],
+        "summary": "创建供应商",
+        "operationId": "CreateSupplier",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "alias",
+                  "type"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "alias": {
+                    "type": "string",
+                    "description": "必填 全局唯一"
+                  },
+                  "type": {
+                    "type": "string",
+                    "example": "机构供应商"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "region": {
+                    "type": "string"
+                  },
+                  "directions": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  },
+                  "available": {
+                    "type": "string"
+                  },
+                  "weekly_capacity": {
+                    "type": "string"
+                  },
+                  "gender": {
+                    "type": "string"
+                  },
+                  "birth_date": {
+                    "type": "string"
+                  },
+                  "job_title": {
+                    "type": "string"
+                  },
+                  "employment_status": {
+                    "type": "string"
+                  },
+                  "work_experience": {
+                    "type": "string"
+                  },
+                  "education": {
+                    "type": "string"
+                  },
+                  "school": {
+                    "type": "string"
+                  },
+                  "major": {
+                    "type": "string"
+                  },
+                  "resume_file_name": {
+                    "type": "string"
+                  },
+                  "resume_url": {
+                    "type": "string",
+                    "description": "只读，写入请用 resume_tos_path"
+                  },
+                  "resume_tos_path": {
+                    "type": "string",
+                    "description": "简历 TOS 对象路径 tos://bucket/key，持久化字段，机构/专家均支持"
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "certifications": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SupplierCertification"
+                    }
+                  },
+                  "domains": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SupplierExpertDomain"
+                    }
+                  },
+                  "work_histories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SupplierWorkHistory"
+                    }
+                  },
+                  "account_type": {
+                    "type": "string",
+                    "description": "对公银行卡/银行卡/微信/支付宝"
+                  },
+                  "settlement_account": {
+                    "type": "string",
+                    "description": "结算账号"
+                  }
+                }
+              },
+              "example": {
+                "name": "供应商A",
+                "type": "机构供应商",
+                "phone": "13800000001",
+                "category": "成品服务",
+                "alias": "别名",
+                "account_type": "银行卡",
+                "settlement_account": "6220000000000000"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Supplier"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}": {
+      "get": {
+        "tags": [
+          "Supplier"
+        ],
+        "summary": "供应商详情",
+        "operationId": "GetSupplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SupplierDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Supplier"
+        ],
+        "summary": "更新供应商",
+        "operationId": "UpdateSupplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "alias": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "region": {
+                    "type": "string"
+                  },
+                  "directions": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  },
+                  "available": {
+                    "type": "string"
+                  },
+                  "weekly_capacity": {
+                    "type": "string"
+                  },
+                  "gender": {
+                    "type": "string"
+                  },
+                  "birth_date": {
+                    "type": "string"
+                  },
+                  "job_title": {
+                    "type": "string"
+                  },
+                  "employment_status": {
+                    "type": "string"
+                  },
+                  "work_experience": {
+                    "type": "string"
+                  },
+                  "education": {
+                    "type": "string"
+                  },
+                  "school": {
+                    "type": "string"
+                  },
+                  "major": {
+                    "type": "string"
+                  },
+                  "resume_file_name": {
+                    "type": "string"
+                  },
+                  "resume_url": {
+                    "type": "string",
+                    "description": "只读"
+                  },
+                  "resume_tos_path": {
+                    "type": "string",
+                    "description": "简历 TOS 对象路径 tos://bucket/key，持久化字段，机构/专家均支持"
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "certifications": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SupplierCertification"
+                    }
+                  },
+                  "domains": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SupplierExpertDomain"
+                    }
+                  },
+                  "work_histories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SupplierWorkHistory"
+                    }
+                  },
+                  "account_type": {
+                    "type": "string"
+                  },
+                  "settlement_account": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "name": "供应商A(更新)",
+                "phone": "13800000002"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Supplier"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/suppliers": {
+      "get": {
+        "tags": [
+          "Supplier"
+        ],
+        "summary": "外部供应商列表（无鉴权）",
+        "description": "只返回机构基础信息，供众包联动。",
+        "operationId": "ListSuppliersExternal",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "list": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/Supplier"
+                              }
+                            },
+                            "total": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

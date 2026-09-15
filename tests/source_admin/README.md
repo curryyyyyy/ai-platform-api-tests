@@ -1,12 +1,13 @@
 # 资源管理平台测试接入
 
-资源管理平台（`source_admin`）的接口基线和第一批测试代码已接入；当前包含客户端契约、认证/只读冒烟，以及基于 `DataScope` 的 Schema、文件夹节点和分享链接写入生命周期测试。
+资源管理平台（`source_admin`）的接口基线和测试代码已接入；当前包含客户端契约、认证/只读冒烟，以及基于 `DataScope` 的 Schema、文件夹节点、项目节点和分享链接写入生命周期测试，并覆盖合同和供应商的安全读/反向链路。
 
 ## 当前产物
 
 - 接口清单：`../../test-cases/source_admin/资源管理平台_接口清单.md`
 - 需求模型：`../../test-cases/source_admin/资源管理平台_需求模型.md`
 - 机器可读接口库存：`../../contracts/source_admin/api_inventory.json`
+- OpenAPI 契约快照：`../../contracts/source_admin/openapi/`（对应上游 `docs/*-api.json`）
 - 客户端：`../../platforms/source_admin/client.py`
 - 数据工厂：`../../platforms/source_admin/factories.py`
 - 测试数据：`../../data/source_admin/`
@@ -17,9 +18,21 @@
 - Schema 测试：`test_schema_api.py`
 - 文件系统测试：`test_filesystem_api.py`
 - 分享链接测试：`test_share_api.py`
+- 合同测试：`test_contract_api.py`
+- 供应商测试：`test_supplier_api.py`
 - 覆盖矩阵：`coverage.yaml`；覆盖契约：`test_source_coverage_contract.py`
 - 上游仓库：`https://gitlab.ituchong.com/ai-dataset/ai-source-admin`
-- 当前基线：`master@55040a84d1d711ed4198215bc61be43b93ab1d85`
+- 当前契约分支：`test`；日常测试使用仓库内已提交的多文件快照，快照更新前先拉取上游 `test` 分支并人工审核
+
+资源管理平台没有单一 OpenAPI 文件，本地契约文件由 [`../../platforms/source_admin/contract.yaml`](../../platforms/source_admin/contract.yaml) 声明；当前纳入 `audit`、`contract`、`data-manage`、`filesystem`、`scheme`、`share`、`supplier` 7 份独立快照，不把不同文档的同名组件强行合并。`coverage.yaml` 将每个接口清单 ID 映射到 testcase。
+
+日常执行仓库快照测试：
+
+```bash
+./platforms/source_admin/test.sh -m "live and source_admin"
+```
+
+需要更新契约时，先在服务代码仓库拉取 `test` 分支最新代码，再人工审核 `docs/*-api.json` 与本仓库差异，并从本地工作树更新多文件快照。随后同步更新 client、数据、testcase、inventory 和覆盖矩阵，先跑受影响用例，再跑平台全量并提交。
 
 ## 接入范围
 
@@ -38,11 +51,11 @@
 .venv/bin/pytest -m 'live and source_admin and core' -q
 ```
 
-覆盖矩阵中的 49 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。
+覆盖矩阵中的 61 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
 
 ## 暂未执行的链路
 
-圈选 SQL、集合运算、原始下载、CSV/TOS 导入和集合数据查询依赖 Hive/LanceDB/HBase/RPC/TOS 及异步任务状态；待测试环境确认轮询阈值和样例资源后，再补现场造数、轮询和下载校验，不使用虚构资源或固定任务 ID。
+圈选 SQL、集合运算、原始下载、CSV/TOS 导入和集合数据查询依赖 Hive/LanceDB/HBase/RPC/TOS 及异步任务状态；合同归档/供应商关联依赖可控业务数据，合同手动同步依赖飞书服务，供应商创建当前缺少删除接口。待测试环境确认轮询阈值、样例资源和清理能力后，再补现场造数、轮询和写入校验，不使用虚构资源或固定任务 ID。
 
 当前 live 验证发现 Schema 创建接口返回 `Error 1364: Field 'node_type' doesn't have a default value`。请求模型和接口文档均未暴露 `node_type`，因此测试不会偷偷补充未被接口接受的字段；需先修复服务端数据库迁移/默认值或同步更新 API 契约后再恢复 Schema 写入回归。
 

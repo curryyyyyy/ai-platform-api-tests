@@ -20,3 +20,6 @@ cases:
     - id: empty_ids
       ids: ""
       expected_code: 0
+  project:
+    - id: standard
+      force: false

@@ -1,0 +1,137 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "审计日志 API",
+    "version": "1.0.0",
+    "description": "操作审计日志查询"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发"
+    }
+  ],
+  "tags": [
+    { "name": "Audit", "description": "审计日志查询" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "BaseResponse": {
+        "type": "object",
+        "required": ["code", "msg"],
+        "properties": {
+          "code": { "type": "integer", "description": "状态码，0 表示成功" },
+          "msg":  { "type": "string",  "description": "状态信息" }
+        }
+      },
+      "AuditOperationType": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
+        "description": "操作类型：1=圈选导出(submitQuery) 2=文件操作 3=分享 4=圈选运算 5=供应商 6=合同飞书同步 7=合同归档 8=合同关联"
+      },
+      "AuditLog": {
+        "type": "object",
+        "required": ["id", "operation_type", "operator", "resource", "created_at"],
+        "properties": {
+          "id":             { "type": "integer", "format": "int64", "description": "日志 ID" },
+          "operation_type": { "$ref": "#/components/schemas/AuditOperationType" },
+          "operator":       { "type": "string",  "description": "操作用户" },
+          "ip":             { "type": "string",  "description": "客户端 IP" },
+          "resource":       { "type": "string",  "description": "操作资源" },
+          "detail":         { "type": "string",  "description": "操作详情" },
+          "created_at":     { "type": "integer", "format": "int64", "description": "创建时间（毫秒时间戳）" }
+        }
+      }
+    }
+  },
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "paths": {
+    "/api/v1/audit/logs": {
+      "get": {
+        "tags": ["Audit"],
+        "summary": "查询审计日志列表",
+        "description": "支持按操作类型、操作用户、时间范围筛选，分页返回",
+        "parameters": [
+          {
+            "name": "operation_type", "in": "query", "required": false,
+            "schema": { "$ref": "#/components/schemas/AuditOperationType" },
+            "description": "操作类型筛选"
+          },
+          {
+            "name": "operator", "in": "query", "required": false,
+            "schema": { "type": "string" },
+            "description": "用户搜索"
+          },
+          {
+            "name": "start_time", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "时间范围-起（毫秒时间戳）"
+          },
+          {
+            "name": "end_time", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "时间范围-止（毫秒时间戳）"
+          },
+          {
+            "name": "limit", "in": "query", "required": false,
+            "schema": { "type": "integer", "default": 20 }
+          },
+          {
+            "name": "offset", "in": "query", "required": false,
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "logs": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/AuditLog" },
+                          "description": "审计日志列表"
+                        },
+                        "total": { "type": "integer", "description": "总条数" }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "logs": [
+                    {
+                      "id": 1,
+                      "operation_type": 2,
+                      "operator": "xieyutian",
+                      "ip": "192.168.1.100",
+                      "resource": "collection",
+                      "detail": "更新集合展示列: collection_id=23",
+                      "created_at": 1748304000000
+                    }
+                  ],
+                  "total": 1
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    }
+  }
+}

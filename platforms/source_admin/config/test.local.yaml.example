@@ -1,0 +1,2 @@
+# Copy to test.local.yaml for a developer-only override.
+# base_url: "https://your-test-host/api/v1"

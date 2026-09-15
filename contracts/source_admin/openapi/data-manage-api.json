@@ -1,0 +1,1603 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "数据管理 API",
+    "version": "1.1.0",
+    "description": "圈选 SQL 构建、任务提交、圈选集管理、集合运算及原始图片异步下载"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发"
+    }
+  ],
+  "tags": [
+    { "name": "Query",         "description": "SQL 构建 & 任务提交" },
+    { "name": "Collection",    "description": "圈选集查询 & 明细" },
+    { "name": "SetOperation",  "description": "集合运算（并/交/差）" },
+    { "name": "Download",      "description": "圈选集下载导出" },
+    { "name": "OriginalDownload", "description": "原始图片异步 ZIP 下载" },
+    { "name": "CSVImport",     "description": "CSV 文件导入圈选集（上传 → 校验 → 导入 → 轮询 → 下载错误）" },
+    { "name": "Composite",     "description": "复合数据预览（tos -> https，HBase 透传）" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "BaseResponse": {
+        "type": "object",
+        "required": ["code", "msg"],
+        "properties": {
+          "code": { "type": "integer", "description": "状态码，0 表示成功" },
+          "msg":  { "type": "string",  "description": "状态信息" }
+        }
+      },
+      "Operator": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+        "description": "条件操作符：1=EQUAL 2=NOT_EQUAL 3=GREATER_THAN 4=GREATER_THAN_OR_EQUAL 5=LESS_THAN 6=LESS_THAN_OR_EQUAL 7=LIKE 8=NOT_LIKE 9=RLIKE 10=IN 11=NOT_IN（自动附加 OR column IS NULL） 12=BETWEEN 13=IS_NULL 14=IS_NOT_NULL 15=ARRAY_CONTAINS 16=ARRAY_INTERSECT 17=ARRAY_SIZE_EQUALS 18=ARRAY_SIZE_GT 19=ARRAY_SIZE_LT 20=ARRAY_EMPTY 21=LIKE_CONTAINS 22=NOT_LIKE_CONTAINS 23=NOT_RLIKE（自动附加 OR column IS NULL） 24=ARRAY_INTERSECT_EMPTY 25=ARRAY_NOT_CONTAINS 26=RLIKE_CONTAINS（逗号分隔值转正则，如 '1,3,4' → RLIKE '1|3|4'）27=NOT_RLIKE_CONTAINS（自动附加 OR column IS NULL） 28=IS_EMPTY_STRING 29=IS_NOT_EMPTY_STRING 30=LIKE_CONTAINS_ANY（逗号分隔多值，OR，如 'a,b' → field LIKE \"%a%\" OR field LIKE \"%b%\"） 31=NOT_LIKE_CONTAINS_ALL（逗号分隔多值，AND，自动附加 OR column IS NULL，如 'a,b' → field NOT LIKE \"%a%\" AND field NOT LIKE \"%b%\" OR field IS NULL）\n\n⚠️ NOT_IN(11)、NOT_RLIKE(23)、NOT_RLIKE_CONTAINS(27)、NOT_LIKE_CONTAINS_ALL(31) 均自动在生成的 SQL 中附加 OR (column IS NULL)，避免 NULL 值被过滤遗漏。"
+      },
+      "LogicalOperator": {
+        "type": "integer",
+        "enum": [1, 2],
+        "description": "逻辑操作符：1=AND 2=OR"
+      },
+      "JobStatus": {
+        "type": "integer",
+        "enum": [0, 1, 2, 3, 4],
+        "description": "任务状态：0=PENDING 1=RUNNING 2=SUCCESS 3=FAILED 4=CANCELED"
+      },
+      "OriginalDownloadStatus": {
+        "type": "integer",
+        "format": "int32",
+        "enum": [0, 1, 2, 3],
+        "description": "原始图片下载任务状态：0=PENDING 1=RUNNING 2=SUCCESS 3=FAILED"
+      },
+      "CreateOriginalDownloadRequest": {
+        "type": "object",
+        "required": ["type", "rowkeys"],
+        "properties": {
+          "type": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [2],
+            "description": "节点类型，本期仅支持 2=FILE_IMAGE"
+          },
+          "rowkeys": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1000,
+            "items": { "type": "string", "minLength": 1 },
+            "description": "图片 rowkey；原始请求最多 1000 条，服务端按首次出现顺序去重"
+          }
+        }
+      },
+      "OriginalDownloadTask": {
+        "type": "object",
+        "required": ["task_id", "status", "total_files", "processed_files", "success_files", "failed_files", "total_bytes", "processed_bytes"],
+        "properties": {
+          "task_id": { "type": "integer", "format": "int64", "description": "下载任务 ID" },
+          "status": { "$ref": "#/components/schemas/OriginalDownloadStatus" },
+          "total_files": { "type": "integer", "format": "int32", "description": "去重后的请求图片数" },
+          "processed_files": { "type": "integer", "format": "int32", "description": "已处理图片数" },
+          "success_files": { "type": "integer", "format": "int32", "description": "成功写入 ZIP 的图片数" },
+          "failed_files": { "type": "integer", "format": "int32", "description": "处理失败的图片数" },
+          "total_bytes": { "type": "integer", "format": "int64", "description": "HBase 可获得的 file_size 合计" },
+          "processed_bytes": { "type": "integer", "format": "int64", "description": "成功写入 ZIP 的实际源文件字节数" },
+          "download_url": { "type": "string", "description": "SUCCESS 时返回的预签名 GET URL，有效期 30 分钟" },
+          "download_url_expires_at": { "type": "integer", "format": "int64", "description": "下载 URL 过期时间，Unix 毫秒" },
+          "error": { "type": "string", "description": "任务级失败说明，仅 FAILED 时可能返回" }
+        }
+      },
+      "SetOperationType": {
+        "type": "integer",
+        "description": "集合运算类型：1=UNION（并集）2=INTERSECTION（交集）3=DIFFERENCE（差集）"
+      },
+      "Condition": {
+        "type": "object",
+        "required": ["field", "operator", "value"],
+        "properties": {
+          "field":      { "type": "integer", "format": "int64", "description": "字段 ID" },
+          "operator":   { "$ref": "#/components/schemas/Operator" },
+          "value":      { "type": "string", "description": "条件值；BETWEEN 用逗号分隔两端；IN/NOT_IN 用逗号分隔多值；RLIKE_CONTAINS/NOT_RLIKE_CONTAINS 用逗号分隔多值，后端自动转为 v1|v2|v3 正则；LIKE_CONTAINS_ANY/NOT_LIKE_CONTAINS_ALL 用逗号分隔多值（支持 \\, 转义），后端生成多组 LIKE" },
+          "logical_op": { "$ref": "#/components/schemas/LogicalOperator", "description": "与下一条件的逻辑关系，默认取所在组的 logical_op" }
+        }
+      },
+      "ConditionGroup": {
+        "type": "object",
+        "required": ["logical_op", "conditions", "groups"],
+        "properties": {
+          "logical_op": { "$ref": "#/components/schemas/LogicalOperator" },
+          "conditions": { "type": "array", "items": { "$ref": "#/components/schemas/Condition" } },
+          "groups":     { "type": "array", "items": { "$ref": "#/components/schemas/ConditionGroup" }, "description": "嵌套条件组" }
+        }
+      },
+      "OrderBy": {
+        "type": "object",
+        "required": ["field", "desc"],
+        "properties": {
+          "field": { "type": "string" },
+          "desc":  { "type": "boolean" }
+        }
+      },
+      "Collection": {
+        "type": "object",
+        "required": ["id", "name", "created_at", "updated_at"],
+        "properties": {
+          "id":              { "type": "integer", "format": "int64" },
+          "name":            { "type": "string" },
+          "data_type":       { "type": "string",  "description": "类型：image / video" },
+          "start_at":        { "type": "integer", "format": "int64", "description": "任务开始时间（Unix 秒）" },
+          "end_at":          { "type": "integer", "format": "int64", "description": "任务结束时间（Unix 秒）" },
+          "operator":        { "type": "string",  "description": "操作人" },
+          "table_name":      { "type": "string",  "description": "数据集表名" },
+          "status":          { "$ref": "#/components/schemas/JobStatus" },
+          "created_at":      { "type": "integer", "format": "int64" },
+          "updated_at":      { "type": "integer", "format": "int64" },
+          "total_rows":      { "type": "integer", "format": "int64", "description": "数据量" },
+          "source":          { "type": "integer", "format": "int32", "description": "创建来源：1=圈选查询 2=机器标注平台 3=众包 4=集合运算" },
+          "config_snapshot": { "type": "string",  "description": "提交任务时的配置快照（JSON 字符串）" },
+          "node_id":         { "type": "integer", "format": "int64", "description": "collection 在文件系统中绑定的节点 ID，可用于查询节点路径或批量拉取节点信息" },
+          "business_source": { "type": "string",  "description": "平台来源：lance=资管圈选 / op=资管运算 / hawk=机器标注 / label=人工标注" }
+        }
+      },
+      "LabelSource": {
+        "type": "integer",
+        "enum": [1, 2],
+        "description": "label 来源类型：1=SHOW（来自 show_col，展示列）2=ORG（来自 org_col，原始列）"
+      },
+      "CollectionLabel": {
+        "type": "object",
+        "required": ["name", "display_name", "display_format", "data_type", "source"],
+        "description": "合并后的单列 label 信息，show_col 对应的字段在前（source=1），org_col 其余字段在后（source=2）",
+        "properties": {
+          "name":           { "type": "string", "description": "字段名，用作数据接口 KV 的 key" },
+          "display_name":   { "type": "string", "description": "展示名（当前等于 name）" },
+          "display_format": { "type": "string", "description": "展示格式：text / date / number / tag" },
+          "data_type":      { "type": "string", "description": "数据类型：string / int / date" },
+          "source":         { "$ref": "#/components/schemas/LabelSource" }
+        }
+      },
+      "ColumnRef": {
+        "type": "object",
+        "required": ["name", "source"],
+        "description": "前端传入的字段引用，服务端根据 source 决定从 OrgCol（CSV）还是 HBase 读取",
+        "properties": {
+          "name":   { "type": "string", "description": "字段名" },
+          "source": { "$ref": "#/components/schemas/LabelSource" }
+        }
+      },
+      "ColumnDef": {
+        "type": "object",
+        "required": ["name", "data_type"],
+        "properties": {
+          "name":           { "type": "string", "description": "字段名" },
+          "data_type":      { "type": "string", "description": "数据类型，如 string / int64 / float64" },
+          "display_format": { "type": "string", "description": "展示格式，如 yyyymmdd / percent" }
+        }
+      },
+      "Fragment": {
+        "type": "object",
+        "required": ["index", "data_key", "index_key", "byte_size", "row_count", "start_row", "end_row", "status"],
+        "properties": {
+          "index":      { "type": "integer", "format": "int64", "description": "分片序号，从 0 开始" },
+          "data_key":   { "type": "string",  "description": "TOS 数据文件路径" },
+          "index_key":  { "type": "string",  "description": "TOS 索引文件路径" },
+          "byte_size":  { "type": "integer", "format": "int64", "description": "数据大小（字节）" },
+          "row_count":  { "type": "integer", "format": "int64", "description": "本分片行数" },
+          "start_row":  { "type": "integer", "format": "int64", "description": "全局起始行号（包含）" },
+          "end_row":    { "type": "integer", "format": "int64", "description": "全局结束行号（不包含）" },
+          "status":     { "type": "integer", "description": "分片状态：0=ACTIVE 1=SEALED" },
+          "updated_at": { "type": "integer", "format": "int64", "description": "最后更新时间（毫秒）" }
+        }
+      },
+      "CollectionDetail": {
+        "type": "object",
+        "required": ["id", "name", "org_col", "show_col", "status", "total_rows", "total_bytes", "fragments"],
+        "description": "圈选集完整元数据",
+        "properties": {
+          "id":              { "type": "integer", "format": "int64" },
+          "name":            { "type": "string" },
+          "org_col":         { "type": "array",   "items": { "$ref": "#/components/schemas/ColumnDef" }, "description": "原始列定义（只读）" },
+          "show_col":        { "type": "array",   "items": { "type": "string" }, "description": "当前展示字段名列表" },
+          "status":          { "$ref": "#/components/schemas/JobStatus" },
+          "total_rows":      { "type": "integer", "format": "int64" },
+          "total_bytes":     { "type": "integer", "format": "int64" },
+          "fragments":       { "type": "array",   "items": { "$ref": "#/components/schemas/Fragment" } },
+          "created_at":      { "type": "integer", "format": "int64", "description": "创建时间（毫秒）" },
+          "updated_at":      { "type": "integer", "format": "int64", "description": "最后更新时间（毫秒）" },
+          "description":     { "type": "string" },
+          "business_id":     { "type": "string" },
+          "business_source": { "type": "string" },
+          "table_name":      { "type": "string",  "description": "来源表名" },
+          "operator":        { "type": "string",  "description": "操作者用户名" },
+          "set_type":        { "type": "integer", "description": "数据集类型：2=IMAGE 3=VIDEO 99=OTHER" }
+        }
+      },
+      "NodePathItem": {
+        "type": "object",
+        "required": ["id", "name", "type"],
+        "description": "面包屑路径中的单个节点",
+        "properties": {
+          "id":   { "type": "integer", "format": "int64", "description": "节点 ID" },
+          "name": { "type": "string",  "description": "节点名称" },
+          "type": { "type": "string",  "enum": ["FOLDER", "FILE_IMAGE", "FILE_VIDEO"], "description": "节点类型" }
+        }
+      }
+    }
+  },
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "paths": {
+    "/api/v1/original-downloads": {
+      "post": {
+        "tags": ["OriginalDownload"],
+        "summary": "创建原始图片 ZIP 下载任务",
+        "description": "按 rowkey 异步获取原始图片并打包 ZIP。请求独立于圈选集/CID，仅支持 type=2；不限制源文件总大小。接口立即返回 task_id，前端通过轮询接口获取进度。SDK 固定只读 token 不允许调用本接口。",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateOriginalDownloadRequest" },
+              "example": { "type": 2, "rowkeys": ["rk-001", "rk-002"] }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "业务结果；code=0 表示任务创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["task_id"],
+                          "properties": {
+                            "task_id": { "type": "integer", "format": "int64" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": { "code": 0, "msg": "ok", "data": { "task_id": 123 } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/original-downloads/{task_id}": {
+      "get": {
+        "tags": ["OriginalDownload"],
+        "summary": "查询原始图片下载任务",
+        "description": "仅任务创建者可以查询。响应不暴露请求 rowkeys 或源 tos_path。部分图片失败时任务仍可 SUCCESS，ZIP 内附 failed.csv；全部失败时任务为 FAILED 且不上传空 ZIP。",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "下载任务 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "任务进度或业务错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/OriginalDownloadTask" }
+                      }
+                    }
+                  ]
+                },
+                "examples": {
+                  "running": {
+                    "summary": "处理中",
+                    "value": {
+                      "code": 0,
+                      "msg": "ok",
+                      "data": {
+                        "task_id": 123,
+                        "status": 1,
+                        "total_files": 10,
+                        "processed_files": 6,
+                        "success_files": 5,
+                        "failed_files": 1,
+                        "total_bytes": 52428800,
+                        "processed_bytes": 30146560
+                      }
+                    }
+                  },
+                  "success": {
+                    "summary": "完成",
+                    "value": {
+                      "code": 0,
+                      "msg": "ok",
+                      "data": {
+                        "task_id": 123,
+                        "status": 2,
+                        "total_files": 10,
+                        "processed_files": 10,
+                        "success_files": 9,
+                        "failed_files": 1,
+                        "total_bytes": 52428800,
+                        "processed_bytes": 50000000,
+                        "download_url": "https://tos.example.com/download/2026-08-10/original-123.zip?X-Tos-Algorithm=...",
+                        "download_url_expires_at": 1786338600000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/query/build-selection": {
+      "post": {
+        "tags": ["Query"],
+        "summary": "构建圈选 SQL",
+        "description": "根据条件组在本地构建 Spark SQL，值直接内联到 SQL 字符串中，不执行查询。field 为 schema_field 表的字段 ID，服务端根据 table_name 解析出字段名和类型后拼入 SQL。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["table_name", "conditions"],
+                "properties": {
+                  "table_name": { "type": "string", "description": "数据集表名，同时用于查找对应的 Schema（schema.name = table_name）" },
+                  "conditions": { "$ref": "#/components/schemas/ConditionGroup" },
+                  "order_by":   { "type": "array", "items": { "$ref": "#/components/schemas/OrderBy" } }
+                }
+              },
+              "example": {
+                "table_name": "image",
+                "conditions": {
+                  "logical_op": 1,
+                  "conditions": [
+                    { "field": 41, "operator": 2, "value": "portrait" },
+                    { "field": 43, "operator": 1, "value": "1748304000" }
+                  ],
+                  "groups": []
+                },
+                "order_by": [{ "field": "created_at", "desc": true }]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "构建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["sql", "sql_id"],
+                          "properties": {
+                            "sql":    { "type": "string", "description": "构建好的 Spark SQL，值已完整内联" },
+                            "sql_id": { "type": "string", "description": "本次构建的唯一标识，格式为 {table_name}_{timestamp_ms}" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "sql": "SELECT id FROM lance.`image` WHERE content_creator <> 'portrait' AND tiff_file_size = 1748304000",
+                    "sql_id": "image_1780890333507"
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/query/submit": {
+      "post": {
+        "tags": ["Query"],
+        "summary": "提交圈选任务",
+        "description": "将完整 SQL 提交给下游 Spark 服务异步执行，立即返回 collection_id 和状态",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sql", "name", "file_node_id", "config_snapshot"],
+                "properties": {
+                  "sql":             { "type": "string", "description": "待执行的 Spark SQL（值已内联，由 build-selection 返回）" },
+                  "name":            { "type": "string", "description": "圈选集名称" },
+                  "file_node_id":    { "type": "integer", "format": "int64", "description": "结果存储的文件夹节点 ID" },
+                  "config_snapshot": { "type": "string", "description": "配置快照（JSON 字符串）" }
+                }
+              },
+              "example": {
+                "sql": "SELECT id FROM lance.`image` WHERE content_creator <> 'portrait' AND tiff_file_size = 1748304000",
+                "name": "圈选任务-20260608",
+                "file_node_id": 42,
+                "config_snapshot": "{}"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "提交成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["collection_id", "status", "created_at"],
+                          "properties": {
+                            "collection_id": { "type": "string", "description": "圈选集 ID" },
+                            "status":        { "$ref": "#/components/schemas/JobStatus" },
+                            "created_at":    { "type": "string", "format": "date-time" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "collection_id": "1001",
+                    "status": 1,
+                    "created_at": "2026-05-27T00:00:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/collections": {
+      "get": {
+        "tags": ["Collection"],
+        "summary": "查询圈选集列表",
+        "description": "支持名称模糊搜索、状态、数据类型、时间范围、创建来源、集合 ID、操作人、平台来源过滤，分页返回",
+        "parameters": [
+          {
+            "name": "name", "in": "query", "required": false,
+            "schema": { "type": "string" },
+            "description": "集合名称模糊匹配"
+          },
+          {
+            "name": "status", "in": "query", "required": false,
+            "schema": { "$ref": "#/components/schemas/JobStatus" },
+            "description": "任务状态筛选"
+          },
+          {
+            "name": "data_type", "in": "query", "required": false,
+            "schema": { "type": "string", "enum": ["image", "video"] },
+            "description": "类型筛选"
+          },
+          {
+            "name": "start_at_from", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "任务开始时间范围-起（Unix 秒）"
+          },
+          {
+            "name": "start_at_to", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "任务开始时间范围-止（Unix 秒）"
+          },
+          {
+            "name": "source", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int32", "enum": [1, 2, 3, 4] },
+            "description": "创建来源筛选：1-圈选查询，2-机器标注平台，3-众包，4-集合运算；不传或传 0 表示不过滤"
+          },
+          {
+            "name": "id", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int32" },
+            "description": "集合 ID 精确查询；不传或传 0 表示不过滤"
+          },
+          {
+            "name": "operator", "in": "query", "required": false,
+            "schema": { "type": "string" },
+            "description": "操作人 user_name 模糊匹配"
+          },
+          {
+            "name": "business_sources", "in": "query", "required": false,
+            "schema": { "type": "string" },
+            "description": "平台来源多选，逗号分隔。可选值：lance（资管圈选）/ op（资管运算）/ hawk（机器标注）/ label（人工标注）。示例：hawk,label"
+          },
+          {
+            "name": "limit", "in": "query", "required": false,
+            "schema": { "type": "integer", "default": 20 }
+          },
+          {
+            "name": "offset", "in": "query", "required": false,
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["collections", "total"],
+                          "properties": {
+                            "collections": { "type": "array", "items": { "$ref": "#/components/schemas/Collection" } },
+                            "total":       { "type": "integer", "description": "总条数" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "collections": [
+                      {
+                        "id": 1001,
+                        "name": "圈选任务-20260527",
+                        "data_type": "image",
+                        "start_at": 1748304000,
+                        "end_at": 1748304120,
+                        "operator": "xieyutian",
+                        "table_name": "image",
+                        "status": 2,
+                        "created_at": 1748304000,
+                        "updated_at": 1748304120,
+                        "total_rows": 5000,
+                        "source": 1,
+                        "node_id": 101
+                      }
+                    ],
+                    "total": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}": {
+      "get": {
+        "tags": ["Collection"],
+        "summary": "查询圈选元数据",
+        "description": "返回单个圈选集的完整元数据，包含列定义、分片信息、状态等。",
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "圈选集 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "collection": { "$ref": "#/components/schemas/Collection" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "collection": {
+                      "id": 1001,
+                      "name": "圈选任务-20260527",
+                      "start_at": 1748304000,
+                      "end_at": 1748304120,
+                      "operator": "xieyutian",
+                      "table_name": "image",
+                      "status": 2,
+                      "created_at": 1748304000,
+                      "updated_at": 1748304120
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/node-path": {
+      "get": {
+        "tags": ["Collection"],
+        "summary": "查询圈选 Node 面包屑路径",
+        "description": "返回该圈选集在文件系统中绑定节点的完整祖先路径，从根节点到当前节点有序排列，供前端渲染可点击面包屑导航。",
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "圈选集 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["path"],
+                          "properties": {
+                            "path": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/NodePathItem" },
+                              "description": "从根节点到当前节点的有序路径"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "path": [
+                      { "id": 1, "name": "/",       "type": "FOLDER" },
+                      { "id": 3, "name": "机器标注", "type": "FOLDER" },
+                      { "id": 87,"name": "圈选任务-20260527", "type": "FILE_IMAGE" }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/labels": {
+      "get": {
+        "tags": ["Collection"],
+        "summary": "查询圈选集列定义",
+        "description": "返回圈选集的完整列定义列表，合并 show_col 和 org_col。show_col 对应的 label 在前（source=SHOW），org_col 其余字段在后（source=ORG）。前端可用此接口渲染表头，并将字段信息传给数据接口。",
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "圈选集 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["labels"],
+                          "properties": {
+                            "labels": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/CollectionLabel" },
+                              "description": "列定义列表，show_col 字段在前，org_col 其余字段在后"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "labels": [
+                      { "name": "tag",      "display_name": "tag",      "display_format": "tag",  "data_type": "string", "source": 1 },
+                      { "name": "shoot_at", "display_name": "shoot_at", "display_format": "date", "data_type": "date",   "source": 1 },
+                      { "name": "id",       "display_name": "id",       "display_format": "text", "data_type": "string", "source": 2 }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/data": {
+      "post": {
+        "tags": ["Collection"],
+        "summary": "查询圈选集分页数据",
+        "description": "按前端指定的字段列表分页返回 KV 格式行数据。key 为字段名，value 为字符串。\n\n**source 决定数据来源：**\n- `source=2`（ORG）：从 OrgCol CSV 读取，直接返回原始列数据\n- `source=1`（SHOW）：从 HBase 查询，与 OrgCol 合并后返回；同时传入 ORG 和 SHOW 字段时走 HBase 合并路径，OrgCol 数据打底，HBase 字段覆盖同名字段\n\n**典型用法：** 先调用 `/labels` 获取列定义，再将所需字段的 name + source 透传到此接口。",
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "圈选集 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fields"],
+                "properties": {
+                  "fields": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/ColumnRef" },
+                    "description": "要查询的字段列表，每项包含 name 和 source"
+                  },
+                  "page":      { "type": "integer", "default": 1,    "description": "页码，从 1 开始" },
+                  "page_size": { "type": "integer", "default": 1000, "description": "每页条数，默认 1000" }
+                }
+              },
+              "examples": {
+                "org_only": {
+                  "summary": "只查 OrgCol 字段",
+                  "value": {
+                    "fields": [
+                      { "name": "rowkey", "source": 2 },
+                      { "name": "format", "source": 2 }
+                    ],
+                    "page": 1,
+                    "page_size": 10
+                  }
+                },
+                "mixed": {
+                  "summary": "混合查询（OrgCol + HBase）",
+                  "value": {
+                    "fields": [
+                      { "name": "rowkey",    "source": 2 },
+                      { "name": "lr_labels", "source": 1 },
+                      { "name": "zs_labels", "source": 1 }
+                    ],
+                    "page": 1,
+                    "page_size": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["data", "total"],
+                          "properties": {
+                            "data": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": { "type": "string" },
+                                "description": "单行数据，key 为字段名，value 为字符串"
+                              },
+                              "description": "KV 格式行数据"
+                            },
+                            "total": { "type": "integer", "description": "总行数" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "data": [
+                      { "rowkey": "img_001", "lr_labels": "[portrait,outdoor]", "zs_labels": "[person]" },
+                      { "rowkey": "img_002", "lr_labels": "[landscape]",        "zs_labels": "[]" }
+                    ],
+                    "total": 100
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/preview-sql": {
+      "get": {
+        "tags": ["Collection"],
+        "summary": "获取圈选集原始 SQL",
+        "description": "返回该圈选集提交时对应的原始 Spark SQL，从 lance_jobs 表按 collection_id 关联查询（取最新一条）。可用于前端 SQL 预览、复制和人工校验。",
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "圈选集 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "sql": { "type": "string", "description": "提交时的原始 Spark SQL" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "sql": "SELECT distinct rowkey FROM `image_data` WHERE (tag RLIKE '\\bdog\\b|\\bcat\\b' OR tag IS NULL)"
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" },
+          "404": { "description": "该圈选集无关联任务记录" }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/columns": {
+      "put": {
+        "tags": ["Collection"],
+        "summary": "更新圈选集列设置",
+        "description": "设置圈选集的展示列（show_col），传入的列表将完整替换当前展示列配置。传空列表表示清空所有展示列。org_col（原始列定义）只读，不受此接口影响。",
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "圈选集 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["show_col"],
+                "properties": {
+                  "show_col": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "展示列名列表，顺序即展示顺序；传空列表表示清空"
+                  }
+                }
+              },
+              "example": {
+                "show_col": ["tag", "shoot_at", "lr_labels"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "show_col": {
+                              "type": "array",
+                              "items": { "type": "string" },
+                              "description": "更新后的展示列名列表"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "show_col": ["tag", "shoot_at", "lr_labels"]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/set-type": {
+      "put": {
+        "tags": ["Collection"],
+        "summary": "更新圈选集类型",
+        "description": "修改圈选集的数据集资源类型（set_type）。修改后会自动同步更新绑定文件系统节点的类型，保持数据一致性。\n\n**支持的类型：**\n- `2` - 图片 (FILE_IMAGE)\n- `3` - 视频 (FILE_VIDEO)\n- `4` - 音频 (FILE_AUDIO)\n- `5` - 通用数据 (FILE_GENERIC)\n- `6` - 3D 文件 (FILE_THREED)\n- `99` - 其他 (FILE_OTHER)\n\n**注意事项：**\n- 修改类型会影响与 HBase 表的映射关系\n- 建议在圈选集创建初期或数据导入前修改\n- 操作会记录审计日志",
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "圈选集 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["set_type"],
+                "properties": {
+                  "set_type": {
+                    "type": "integer",
+                    "format": "int64",
+                    "enum": [2, 3, 4, 5, 6, 99],
+                    "description": "数据集资源类型：2-图片，3-视频，4-音频，5-通用，6-3D，99-其他"
+                  }
+                }
+              },
+              "example": {
+                "set_type": 2
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "set_type": {
+                              "type": "integer",
+                              "format": "int64",
+                              "description": "更新后的数据集类型"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "set_type": 2
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" },
+          "404": { "description": "圈选集不存在" }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/download": {
+      "post": {
+        "tags": ["Download"],
+        "summary": "下载圈选集全量数据",
+        "description": "流式拉取圈选集全量 OrgCol + HBase 数据，合并后导出为 CSV 上传到 CommonTos `download/` 目录，同步返回 TOS key 和 1 小时有效的预签名下载 URL。\n\n**TOS key 格式：** `download/<YYYY-MM-DD>/<collection_id>-<timestamp_ms>.csv`\n\n**CSV 列顺序：** `rowkey` → OrgFields（字母升序）→ HbaseFields（字母升序，与 OrgFields 重名时去重）\n\n内部使用 `GetCollectionDataStreamWithHBaseFast`（concurrency=4），大规模数据集不会 OOM。",
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "圈选集 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "导出成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["tos_key", "url"],
+                          "properties": {
+                            "tos_key": {
+                              "type": "string",
+                              "description": "TOS 对象路径，格式：download/<YYYY-MM-DD>/<collection_id>-<timestamp_ms>.csv"
+                            },
+                            "url": {
+                              "type": "string",
+                              "description": "预签名下载地址，1 小时内有效；TOS 未初始化时为空字符串"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "tos_key": "download/2026-06-24/1001-1719196800000.csv",
+                    "url": "https://tos.example.com/download/2026-06-24/1001-1719196800000.csv?X-Tos-Algorithm=..."
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误（collection_id 非法）" },
+          "500": { "description": "流式拉取或 TOS 上传失败" }
+        }
+      }
+    },
+    "/api/v1/collections/csv-upload-url": {
+      "post": {
+        "tags": ["CSVImport"],
+        "summary": "获取 CSV 预签名上传地址",
+        "description": "生成火山 TOS 预签名 PUT 地址，供前端直传 CSV 文件，无需经过后端中转。上传完成后将返回的 `tos_path` 传给 `/api/v1/collections/import` 接口。预签名地址有效期 30 分钟。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["file_name"],
+                "properties": {
+                  "file_name": { "type": "string", "description": "原始文件名，用于生成 TOS 对象路径（带时间戳前缀避免冲突）" }
+                }
+              },
+              "example": { "file_name": "my_dataset.csv" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["presigned_url", "tos_path"],
+                          "properties": {
+                            "presigned_url": { "type": "string", "description": "火山预签名 PUT 地址，有效期 30 分钟，前端直接 PUT 文件内容到此 URL" },
+                            "tos_path":      { "type": "string", "description": "TOS 对象路径，上传完成后透传给 ImportCollection 接口" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "presigned_url": "https://tos.example.com/csv-import/2026-07-31/my_dataset_1722384000000.csv?X-Tos-Algorithm=...",
+                    "tos_path": "csv-import/2026-07-31/my_dataset_1722384000000.csv"
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误（file_name 为空）" }
+        }
+      }
+    },
+    "/api/v1/collections/import": {
+      "post": {
+        "tags": ["CSVImport"],
+        "summary": "异步导入 CSV 创建圈选集",
+        "description": "从 TOS 读取已上传的 CSV 文件，异步创建圈选集，立即返回 `collection_id`。可通过 `GET /api/v1/collections/:collection_id` 轮询 `status` 获取进度。\n\n**set_type 枚举：** 2=FILE_IMAGE  3=FILE_VIDEO  4=FILE_AUDIO",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["tos_paths", "collection_name", "set_type"],
+                "properties": {
+                  "tos_paths":       { "type": "array", "items": { "type": "string" }, "description": "TOS 对象路径列表（由 csv-upload-url 接口返回的 tos_path）" },
+                  "collection_name": { "type": "string", "description": "圈选集名称" },
+                  "set_type":        { "type": "integer", "format": "int32", "enum": [2, 3, 4], "description": "数据集类型：2=FILE_IMAGE 3=FILE_VIDEO 4=FILE_AUDIO" },
+                  "description":     { "type": "string", "description": "圈选集描述（可选）" },
+                  "business_id":     { "type": "string", "description": "业务 ID（可选）" },
+                  "business_source": { "type": "string", "description": "平台来源（可选），如 hawk / label" },
+                  "parent_node_id":  { "type": "integer", "format": "int64", "description": "父节点 ID，指定圈选集在文件系统中的存储位置（可选）" }
+                }
+              },
+              "example": {
+                "tos_paths": ["csv-import/2026-07-31/my_dataset_1722384000000.csv"],
+                "collection_name": "CSV导入圈选集-20260731",
+                "set_type": 2,
+                "parent_node_id": 42
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "提交成功，异步处理中",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["collection_id"],
+                          "properties": {
+                            "collection_id": { "type": "integer", "format": "int64", "description": "新建圈选集 ID，可用于轮询状态" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": { "collection_id": 1234 }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误（tos_paths/collection_name/set_type 缺失或非法）" }
+        }
+      }
+    },
+    "/api/v1/collections/check-csv": {
+      "post": {
+        "tags": ["CSVImport"],
+        "summary": "检查 CSV 文件格式及必需字段",
+        "description": "读取 TOS 上 CSV 文件的 header（只读前 64KB，不下载完整文件），检查是否为合法 CSV 格式，以及是否包含指定必需字段（默认 `rowkey`）。建议在调用 `/import` 之前先调此接口做前置校验。",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["tos_path"],
+                "properties": {
+                  "tos_path": {
+                    "type": "string",
+                    "description": "TOS 文件路径，格式 `tos://bucket/key`（由 `/csv-upload-url` 接口返回）"
+                  },
+                  "required_fields": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "需要检查的字段名列表，不传默认为 `[\"rowkey\"]`，大小写不敏感"
+                  }
+                }
+              },
+              "example": {
+                "tos_path": "tos://tc-prod-aigcdata/csv-uploads/20260731/abc123_data.csv",
+                "required_fields": ["rowkey"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "检查完成（无论是否通过均返回 200，通过结果在 data.valid 中）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "valid":          { "type": "boolean", "description": "true=格式正确且包含所有必需字段" },
+                            "headers":        { "type": "array", "items": { "type": "string" }, "description": "CSV 实际列名（第一行）" },
+                            "missing_fields": { "type": "array", "items": { "type": "string" }, "description": "缺少的字段列表，valid=true 时为空" },
+                            "row_count":      { "type": "integer", "format": "int64", "description": "数据行数（不含 header），-1 表示未统计" },
+                            "error":          { "type": "string", "description": "valid=false 时的错误描述" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "examples": {
+                  "valid": {
+                    "summary": "校验通过",
+                    "value": { "code": 0, "msg": "ok", "data": { "valid": true, "headers": ["rowkey", "name", "label"], "row_count": -1 } }
+                  },
+                  "missing_field": {
+                    "summary": "缺少 rowkey 字段",
+                    "value": { "code": 0, "msg": "ok", "data": { "valid": false, "headers": ["id", "name"], "missing_fields": ["rowkey"], "error": "CSV 缺少必需字段: rowkey", "row_count": -1 } }
+                  },
+                  "not_csv": {
+                    "summary": "文件非 CSV 格式",
+                    "value": { "code": 0, "msg": "ok", "data": { "valid": false, "error": "无法解析 CSV header: ..." } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/import-status": {
+      "get": {
+        "tags": ["CSVImport"],
+        "summary": "查询 CSV 导入进度",
+        "description": "轮询 CSV 异步导入任务的状态及统计结果。**轮询建议：** 每 2 秒一次，`status` 为 2（Success）或 3（Failed）时停止。\n\n**status 枚举：** 0=Pending 1=Running 2=Success 3=Failed",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "collection_id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" }, "description": "导入时返回的 collection_id" }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "integer",
+                              "format": "int32",
+                              "enum": [0, 1, 2, 3],
+                              "description": "0=Pending 1=Running 2=Success 3=Failed"
+                            },
+                            "import_result": {
+                              "type": "object",
+                              "description": "导入统计，status=2/3 后才有数据",
+                              "properties": {
+                                "total":     { "type": "integer", "format": "int64", "description": "CSV 总数据行数" },
+                                "success":   { "type": "integer", "format": "int64", "description": "成功导入行数" },
+                                "failed":    { "type": "integer", "format": "int64", "description": "校验失败行数（HBase 不存在、rowkey 为空等）" },
+                                "duplicate": { "type": "integer", "format": "int64", "description": "批次内重复 rowkey 行数" },
+                                "failure_detail_tos_path": { "type": "string", "description": "失败明细 CSV 文件的 TOS 路径（有失败时才有）" },
+                                "failure_detail_truncated": { "type": "boolean", "description": "失败明细超过 10000 条时截断，true 表示仅保留前 10000 条" }
+                              }
+                            },
+                            "has_errors":      { "type": "boolean", "description": "true 时可调 /import-errors 下载失败明细" },
+                            "errors_truncated": { "type": "boolean", "description": "失败明细已截断（超过 10000 条）" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "examples": {
+                  "running": {
+                    "summary": "进行中",
+                    "value": { "code": 0, "msg": "ok", "data": { "status": 1 } }
+                  },
+                  "success_with_errors": {
+                    "summary": "完成（有失败行）",
+                    "value": {
+                      "code": 0, "msg": "ok",
+                      "data": {
+                        "status": 2,
+                        "import_result": { "total": 10000, "success": 9800, "failed": 150, "duplicate": 50 },
+                        "has_errors": true,
+                        "errors_truncated": false
+                      }
+                    }
+                  },
+                  "success_clean": {
+                    "summary": "完成（无失败）",
+                    "value": { "code": 0, "msg": "ok", "data": { "status": 2, "import_result": { "total": 5000, "success": 5000, "failed": 0, "duplicate": 0 }, "has_errors": false } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/import-errors": {
+      "get": {
+        "tags": ["CSVImport"],
+        "summary": "获取导入失败明细下载地址",
+        "description": "返回失败明细 CSV 文件的预签名 GET 下载地址（有效期 30 分钟）。仅在 `import-status` 返回 `has_errors=true` 时调用。\n\n**失败明细 CSV 格式：** `rowkey, row, reason`（最多 10000 条）",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "collection_id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "presigned_url": { "type": "string", "description": "预签名 GET 下载地址，有效期 30 分钟，前端直接访问下载 CSV" },
+                            "tos_path":      { "type": "string", "description": "失败明细文件的 TOS 路径" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0, "msg": "ok",
+                  "data": {
+                    "presigned_url": "https://tos.example.com/csv-imports/1234/failure_detail.csv?X-Tos-Algorithm=...",
+                    "tos_path": "tos://tc-prod-aigcdata/csv-imports/1234/failure_detail.csv"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/set-operation/submit": {
+      "post": {
+        "tags": ["SetOperation"],
+        "summary": "提交集合运算任务",
+        "description": "对两组圈选集执行并集 / 交集 / 差集运算，结果异步生成新圈选集",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["operation", "a_collection_ids", "b_collection_ids", "name", "file_node_id"],
+                "properties": {
+                  "operation":         { "$ref": "#/components/schemas/SetOperationType" },
+                  "a_collection_ids":  { "type": "array", "items": { "type": "integer", "format": "int64" }, "description": "集合 A 的圈选集 ID 列表" },
+                  "b_collection_ids":  { "type": "array", "items": { "type": "integer", "format": "int64" }, "description": "集合 B 的圈选集 ID 列表" },
+                  "name":              { "type": "string", "description": "结果集名称" },
+                  "file_node_id":      { "type": "integer", "format": "int64", "description": "结果存储节点 ID" }
+                }
+              },
+              "example": {
+                "operation": 1,
+                "a_collection_ids": [1001, 1002],
+                "b_collection_ids": [1003],
+                "name": "并集结果-20260527",
+                "file_node_id": 42
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "提交成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["collection_id", "status"],
+                          "properties": {
+                            "collection_id": { "type": "integer", "format": "int64" },
+                            "status":        { "$ref": "#/components/schemas/JobStatus" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "collection_id": 2001,
+                    "status": 1
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    },
+    "/api/v1/composite/preview": {
+      "post": {
+        "tags": ["Composite"],
+        "summary": "复合数据预览（tos -> https）",
+        "description": "将 composite payload 中的 tos:// 实时签名为可直接渲染的 https，支持 width/height/rowkey/tos_path_preview 透传；不写 HBase。node_type 决定 payload 形态（7=video_process 10=ps_edit 11=photo_edit_group）。\n\nHBase 存储为 base_image/edit_image -> $resource，预览为 base_image.tos_path/edit_image.tos_path + width/height 点语义。",
+        "parameters": [
+          {
+            "name": "node_type",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" },
+            "description": "资源类型：7=threed_game 10=ps_edit 11=photo_edit_group，与 schema.node_type 1:1"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "CompositePayload 的 JSON（如 {\"ps_edit\":{\"base_image\":{\"rowkey\":\"img_base\",\"node_type\":2},\"edits\":[...]}}）或简化为对应 arm 的 JSON（如直接传 PSEditGroup）"
+              },
+              "examples": {
+                "ps_edit": {
+                  "summary": "ps_edit 预览",
+                  "value": {
+                    "base_image": { "rowkey": "img_ps_20250825_001_base", "node_type": 2 },
+                    "edits": [
+                      { "edit_image": { "rowkey": "img_ps_20250825_001_rm", "node_type": 2 }, "operation": "ps_remove_object" }
+                    ],
+                    "scene_id": "scene_ps_042"
+                  }
+                },
+                "video_process_tos": {
+                  "summary": "直接 tos:// 签名兜底",
+                  "value": {
+                    "video_tospath": "tos://tc-test-resource-delivery/video_001.mp4",
+                    "keyframes": [{ "image_tospath": "tos://tc-test-resource-delivery/img_0100_01.jpg" }]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "预览成功，返回可直接渲染的 JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["code", "msg", "data"],
+                  "properties": {
+                    "code": { "type": "integer", "description": "0 成功" },
+                    "msg":  { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "description": "渲染后的 JSON，resource 字段已为 https，如 {\"base_image.tos_path\":\"https://...\",\"edits\":[{\"edit_image.tos_path\":\"https://...\",\"edit_image.width\":\"512\"}]}"
+                    }
+                  }
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "base_image.tos_path": "https://tc-test-delivery-s6.ituchong.com/img_ps_20250825_001_base.jpg?sign=...",
+                    "base_image.width": "512",
+                    "edits": [
+                      { "edit_image.tos_path": "https://...", "edit_image.width": "512", "operation": "ps_remove_object" }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数错误" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+version: 1
+platform: source_admin
+
+# This file is owned by the platform adapter and points only to committed
+# local snapshots used by offline contract tests.
+local:
+  openapi:
+    - contracts/source_admin/openapi/audit-api.json
+    - contracts/source_admin/openapi/contract-api.json
+    - contracts/source_admin/openapi/data-manage-api.json
+    - contracts/source_admin/openapi/filesystem-api.json
+    - contracts/source_admin/openapi/scheme-api.json
+    - contracts/source_admin/openapi/share-api.json
+    - contracts/source_admin/openapi/supplier-api.json
+  inventory: contracts/source_admin/api_inventory.json
+  coverage: tests/source_admin/coverage.yaml
+
+source:
+  openapi:
+    - docs/audit-api.json
+    - docs/contract-api.json
+    - docs/data-manage-api.json
+    - docs/filesystem-api.json
+    - docs/scheme-api.json
+    - docs/share-api.json
+    - docs/supplier-api.json

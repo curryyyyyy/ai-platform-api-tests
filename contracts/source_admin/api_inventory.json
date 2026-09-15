@@ -3,22 +3,24 @@
   "title": "资源管理平台 API 接口清单",
   "source": {
     "repository": "https://gitlab.ituchong.com/ai-dataset/ai-source-admin",
-    "branch": "master",
-    "commit": "55040a84d1d711ed4198215bc61be43b93ab1d85",
+    "branch": "test",
+    "commit": "3946acf",
     "primary_document": "docs/api.md",
     "structured_documents": [
       "docs/data-manage-api.json",
       "docs/filesystem-api.json",
       "docs/scheme-api.json",
       "docs/share-api.json",
-      "docs/audit-api.json"
+      "docs/audit-api.json",
+      "docs/contract-api.json",
+      "docs/supplier-api.json"
     ],
-    "analyzed_at": "2026-09-10"
+    "analyzed_at": "2026-09-14"
   },
   "counts": {
-    "primary_document_operations": 40,
-    "structured_contract_operations": 49,
-    "primary_document_gaps": 9
+    "primary_document_operations": 42,
+    "structured_contract_operations": 61,
+    "primary_document_gaps": 19
   },
   "common_contract": {
     "login_header": "Authorization",
@@ -324,6 +326,26 @@
       "summary": "批量查询节点"
     },
     {
+      "id": "FS-09",
+      "module": "filesystem",
+      "method": "POST",
+      "path": "/api/v1/nodes/project",
+      "source": "docs/api.md:653",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["node_name"], "body_optional": ["force"]},
+      "summary": "创建项目节点（幂等）"
+    },
+    {
+      "id": "FS-10",
+      "module": "filesystem",
+      "method": "GET",
+      "path": "/api/v1/nodes/project/info",
+      "source": "docs/api.md:686",
+      "documented_in_primary": true,
+      "inputs": {"query_required": ["ids"]},
+      "summary": "批量查询项目节点信息"
+    },
+    {
       "id": "SC-01",
       "module": "schema",
       "method": "POST",
@@ -532,6 +554,106 @@
       "documented_in_primary": true,
       "inputs": {"query_optional": ["operation_type", "operator", "start_time", "end_time", "limit", "offset"]},
       "summary": "查询审计日志列表"
+    },
+    {
+      "id": "CT-01",
+      "module": "contract",
+      "method": "GET",
+      "path": "/api/v1/contracts",
+      "source": "docs/contract-api.json#/paths/~1api~1v1~1contracts",
+      "documented_in_primary": false,
+      "inputs": {"query_optional": ["keyword", "counterparty_name1", "counterparty_name2", "supplier_id", "demand_type", "contract_type", "archive_status", "sign_date", "serial_number", "page", "page_size"]},
+      "summary": "合同列表"
+    },
+    {
+      "id": "CT-02",
+      "module": "contract",
+      "method": "GET",
+      "path": "/api/v1/contracts/{id}",
+      "source": "docs/contract-api.json#/paths/~1api~1v1~1contracts~1{id}",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["id"]},
+      "summary": "合同详情"
+    },
+    {
+      "id": "CT-03",
+      "module": "contract",
+      "method": "PUT",
+      "path": "/api/v1/contracts/{id}/associate",
+      "source": "docs/contract-api.json#/paths/~1api~1v1~1contracts~1{id}~1associate",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["id"], "body_optional": ["counterparty_id1", "counterparty_id2"]},
+      "summary": "关联供应商"
+    },
+    {
+      "id": "CT-04",
+      "module": "contract",
+      "method": "POST",
+      "path": "/api/v1/contracts/{id}/archive",
+      "source": "docs/contract-api.json#/paths/~1api~1v1~1contracts~1{id}~1archive",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["id"], "body_required": ["archive_no"], "body_optional": ["legal_supplement", "archive_files", "history_archive_no", "history_legal_supplement", "history_archive_files"]},
+      "summary": "法务归档/变更"
+    },
+    {
+      "id": "CT-05",
+      "module": "contract",
+      "method": "POST",
+      "path": "/api/v1/contracts/sync/trigger",
+      "source": "docs/contract-api.json#/paths/~1api~1v1~1contracts~1sync~1trigger",
+      "documented_in_primary": false,
+      "inputs": {},
+      "summary": "手动触发飞书兜底同步"
+    },
+    {
+      "id": "SP-01",
+      "module": "supplier",
+      "method": "GET",
+      "path": "/api/v1/suppliers",
+      "source": "docs/supplier-api.json#/paths/~1api~1v1~1suppliers",
+      "documented_in_primary": false,
+      "inputs": {"query_optional": ["type", "keyword", "category", "updated_from", "updated_to", "page", "page_size"]},
+      "summary": "供应商列表"
+    },
+    {
+      "id": "SP-02",
+      "module": "supplier",
+      "method": "POST",
+      "path": "/api/v1/suppliers",
+      "source": "docs/supplier-api.json#/paths/~1api~1v1~1suppliers",
+      "documented_in_primary": false,
+      "inputs": {"body_required": ["name", "alias", "type"], "body_optional": ["category", "phone", "region", "directions", "purpose", "available", "weekly_capacity", "gender", "birth_date", "job_title", "employment_status", "work_experience", "education", "school", "major", "resume_file_name", "resume_url", "resume_tos_path", "note", "certifications", "domains", "work_histories", "account_type", "settlement_account"]},
+      "summary": "创建供应商"
+    },
+    {
+      "id": "SP-03",
+      "module": "supplier",
+      "method": "GET",
+      "path": "/api/v1/suppliers/{id}",
+      "source": "docs/supplier-api.json#/paths/~1api~1v1~1suppliers~1{id}",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["id"]},
+      "summary": "供应商详情"
+    },
+    {
+      "id": "SP-04",
+      "module": "supplier",
+      "method": "PUT",
+      "path": "/api/v1/suppliers/{id}",
+      "source": "docs/supplier-api.json#/paths/~1api~1v1~1suppliers~1{id}",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["id"], "body_optional": ["name", "alias", "category", "phone", "region", "directions", "purpose", "available", "weekly_capacity", "gender", "birth_date", "job_title", "employment_status", "work_experience", "education", "school", "major", "resume_file_name", "resume_url", "resume_tos_path", "note", "certifications", "domains", "work_histories", "account_type", "settlement_account"]},
+      "summary": "更新供应商"
+    },
+    {
+      "id": "SP-05",
+      "module": "supplier",
+      "method": "GET",
+      "path": "/api/v1/public/suppliers",
+      "source": "docs/supplier-api.json#/paths/~1api~1v1~1public~1suppliers",
+      "documented_in_primary": false,
+      "inputs": {"query_optional": ["keyword", "page", "page_size"]},
+      "summary": "外部供应商列表（无鉴权）"
     }
   ],
   "documented_gaps": [
@@ -543,7 +665,17 @@
     "DM-18",
     "DM-19",
     "DM-20",
-    "FS-08"
+    "FS-08",
+    "CT-01",
+    "CT-02",
+    "CT-03",
+    "CT-04",
+    "CT-05",
+    "SP-01",
+    "SP-02",
+    "SP-03",
+    "SP-04",
+    "SP-05"
   ],
   "resolved_decisions": [
     "认证已裁决为复用总平台 SSO 的 central_token，并沿用 Bearer Token",

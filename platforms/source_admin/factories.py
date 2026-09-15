@@ -51,6 +51,12 @@ def make_folder(scope: DataScope, *, parent_id: int | str, **overrides: Any) -> 
     return payload
 
 
+def make_project_node(scope: DataScope, **overrides: Any) -> dict[str, Any]:
+    payload = {"node_name": scope.unique_name("project", max_length=48)}
+    payload.update(overrides)
+    return payload
+
+
 def make_share_link(scope: DataScope, *, collection_id: int | str, **overrides: Any) -> dict[str, Any]:
     payload = dataset_defaults("source_admin", "share")
     payload["name"] = scope.unique_name("share", max_length=48)
@@ -100,6 +106,16 @@ class SourceAdminDataFactory:
 
     def _delete_node(self, node_id: str) -> None:
         assert_envelope(self.client.delete_node(node_id))
+
+    def create_project_node(self, **overrides: Any) -> tuple[str, dict[str, Any]]:
+        payload = make_project_node(self.scope, **overrides)
+        body = assert_envelope(self.client.create_project_node(**payload), required_keys=("data",))
+        value = _payload_data(body)
+        if not isinstance(value, Mapping) or value.get("node_id") is None:
+            raise AssertionError(f"创建项目节点响应缺少 node_id: {body}")
+        node_id = str(value["node_id"])
+        self.scope.track(f"删除项目节点 {node_id}", lambda: self._delete_node(node_id))
+        return node_id, payload
 
     def create_share_link(self, *, collection_id: int | str, **overrides: Any) -> tuple[str, dict[str, Any]]:
         payload = make_share_link(self.scope, collection_id=collection_id, **overrides)

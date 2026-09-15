@@ -1,0 +1,882 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Contract 合同管理 API",
+    "version": "1.0.0",
+    "description": "飞书审批镜像合同管理：列表/详情/关联供应商/归档/触发同步。对应 idl/contract/contract.thrift，详情字段拆分自 form（字节立项编号/关联立项审批/印章明细等）。"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Contract",
+      "description": "合同管理（飞书审批镜像）"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "BaseResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "状态码，0 表示成功"
+          },
+          "msg": {
+            "type": "string",
+            "description": "状态信息"
+          },
+          "data": {
+            "type": "object",
+            "description": "业务数据，无数据时为 {}"
+          }
+        }
+      },
+      "ContractSupplierBrief": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        }
+      },
+      "ContractSigner": {
+        "type": "object",
+        "description": "签署方",
+        "properties": {
+          "entity": {
+            "type": "string",
+            "description": "签署方主体 企业/个人"
+          },
+          "company": {
+            "type": "string",
+            "description": "企业名称"
+          },
+          "name": {
+            "type": "string",
+            "description": "姓名"
+          },
+          "contact": {
+            "type": "string",
+            "description": "手机号/邮箱"
+          }
+        }
+      },
+      "ContractAttachment": {
+        "type": "object",
+        "description": "合同附件多值，ext 逗号文件名与 value URL 一一对应",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "文件名"
+          },
+          "url": {
+            "type": "string",
+            "description": "附件 URL"
+          }
+        }
+      },
+      "ContractListItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "instance_id",
+          "approval_code",
+          "status",
+          "demand_name",
+          "demand_type",
+          "our_entity",
+          "counterparty_name1",
+          "counterparty_name2",
+          "archive_status",
+          "created_at_feishu",
+          "updated_at_feishu",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "instance_id": {
+            "type": "string",
+            "example": "A8430B0F-E0CC-4B36-B72D-8B06734461A7"
+          },
+          "approval_code": {
+            "type": "string",
+            "example": "25D83B18-7F7D-448E-8232-B8B5FC73CC9E"
+          },
+          "status": {
+            "type": "string",
+            "description": "PENDING/APPROVED/REJECTED/CANCELED",
+            "example": "APPROVED"
+          },
+          "demand_name": {
+            "type": "string",
+            "example": "【测试】资源合同-字节立项"
+          },
+          "demand_type": {
+            "type": "string",
+            "example": "合同类用章"
+          },
+          "contract_type": {
+            "type": "string",
+            "description": "AIGC/资源合同，白名单过滤",
+            "example": "资源合同"
+          },
+          "amount": {
+            "type": "string",
+            "example": "100000.00"
+          },
+          "currency": {
+            "type": "string",
+            "example": "CNY"
+          },
+          "our_entity": {
+            "type": "string",
+            "example": "北京图虫科技有限公司"
+          },
+          "counterparty_name1": {
+            "type": "string",
+            "example": "供应商A"
+          },
+          "counterparty_id1": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "counterparty_supplier1": {
+            "$ref": "#/components/schemas/ContractSupplierBrief"
+          },
+          "counterparty_name2": {
+            "type": "string",
+            "example": "供应商B"
+          },
+          "counterparty_id2": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "counterparty_supplier2": {
+            "$ref": "#/components/schemas/ContractSupplierBrief"
+          },
+          "sign_date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-09"
+          },
+          "legal_supplement": {
+            "type": "string"
+          },
+          "serial_number": {
+            "type": "string",
+            "description": "审批编号 SerialNumber",
+            "example": "202609090001"
+          },
+          "current_node": {
+            "type": "string",
+            "description": "当前节点名称",
+            "example": "CRM信息确认"
+          },
+          "current_node_status": {
+            "type": "string",
+            "description": "PENDING/APPROVED/REJECTED",
+            "example": "APPROVED"
+          },
+          "archive_no": {
+            "type": "string",
+            "description": "归档号 YYMMDD-SSSSSSRR 20字内",
+            "example": "260909-12345678"
+          },
+          "archive_status": {
+            "type": "integer",
+            "description": "0未归档 1已归档"
+          },
+          "archive_operator": {
+            "type": "string"
+          },
+          "associate_operator": {
+            "type": "string"
+          },
+          "created_at_feishu": {
+            "type": "integer",
+            "format": "int64",
+            "description": "毫秒时间戳"
+          },
+          "updated_at_feishu": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updated_at": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "archive_files": {
+            "type": "array",
+            "description": "归档扫描件 多附件",
+            "items": {
+              "$ref": "#/components/schemas/ArchiveFile"
+            }
+          },
+          "archive_at": {
+            "type": "integer",
+            "format": "int64",
+            "description": "归档时间毫秒戳"
+          }
+        }
+      },
+      "Contract": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ContractListItem"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "form": {
+                "type": "string",
+                "description": "JSON 原始 13 widget 数组字符串"
+              },
+              "byte_project_no": {
+                "type": "string",
+                "description": "字节立项编号 input 单值",
+                "example": "202609090001"
+              },
+              "seal_detail": {
+                "type": "string",
+                "description": "印章/证照明细"
+              },
+              "sign_type": {
+                "type": "string",
+                "description": "签约类型 新签/续签",
+                "example": "新签"
+              },
+              "demand_note": {
+                "type": "string",
+                "description": "合同要点说明"
+              },
+              "usage": {
+                "type": "string",
+                "description": "签署方式 电子签/线下签署",
+                "example": "电子签"
+              },
+              "applicant": {
+                "type": "string",
+                "description": "申请人"
+              },
+              "multi_party": {
+                "type": "string",
+                "description": "是否多方签署 否/双方/三方"
+              },
+              "signers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ContractSigner"
+                }
+              },
+              "remark": {
+                "type": "string",
+                "description": "备注"
+              },
+              "attachments": {
+                "type": "array",
+                "description": "合同附件多值，ext 逗号文件名与 value URL 一一对应；详情接口单独调飞书 GetInstance 刷新 URL，避免过期。",
+                "items": {
+                  "$ref": "#/components/schemas/ContractAttachment"
+                },
+                "x-refresh": "live via feishu approval GetInstance"
+              },
+              "related_approvals": {
+                "type": "array",
+                "description": "关联立项审批列表，serial_no/instance_id/applink 一一对应",
+                "items": {
+                  "$ref": "#/components/schemas/RelatedApproval"
+                }
+              },
+              "archive_files": {
+                "type": "array",
+                "description": "归档扫描件 多附件，file_url 由 tos_path 实时签名",
+                "items": {
+                  "$ref": "#/components/schemas/ArchiveFile"
+                }
+              },
+              "archive_at": {
+                "type": "integer",
+                "format": "int64",
+                "description": "归档时间毫秒戳"
+              }
+            }
+          }
+        ]
+      },
+      "RelatedApproval": {
+        "type": "object",
+        "description": "关联立项审批，serial_no / instance_id / applink 一一对应",
+        "properties": {
+          "serial_no": {
+            "type": "string",
+            "description": "关联审批编号 ext.serialIDs 切分",
+            "example": "202609070070"
+          },
+          "instance_id": {
+            "type": "string",
+            "description": "关联审批 instanceCode value",
+            "example": "19FB5D87-9374-4B19-B1E6-42AE0470254E"
+          },
+          "applink": {
+            "type": "string",
+            "description": "PC 端详情页",
+            "example": "https://applink.feishu.cn/client/mini_program/open?mode=appCenter&appId=cli_9cb844403dbb9108&path=pc%2Fpages%2Fin-process%2Findex%3FinstanceId%3D19FB5D87-9374-4B19-B1E6-42AE0470254E"
+          }
+        }
+      },
+      "ArchiveFile": {
+        "type": "object",
+        "description": "归档扫描件 多附件，tos_path 实时签名生成 file_url",
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "description": "归档文件名",
+            "example": "扫描件.pdf"
+          },
+          "tos_path": {
+            "type": "string",
+            "description": "TOS 路径 tos://bucket/key",
+            "example": "tos://tc-prod-aigcdata/contracts/2024/scan.pdf"
+          },
+          "file_url": {
+            "type": "string",
+            "description": "签名访问 URL（由 tos_path 实时生成，不持久化）",
+            "example": "https://tos.example/signed?expires=..."
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Authorization: <token>"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/contracts": {
+      "get": {
+        "tags": [
+          "Contract"
+        ],
+        "summary": "合同列表",
+        "description": "分页列表，支持 keyword 模糊（demand_name/签约方/serial_number）、contract_type 白名单默认仅 资源合同/AIGC、archive_status、sign_date、supplier_id 等。对应 index.html:528。",
+        "operationId": "ListContracts",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "LIKE demand_name / COALESCE 签约方1/2 / serial_number"
+          },
+          {
+            "name": "counterparty_name1",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "counterparty_name2",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "supplier_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "counterparty_id1=ID OR id2=ID"
+          },
+          {
+            "name": "demand_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "合同类用章/证照资质申请"
+          },
+          {
+            "name": "contract_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "AIGC/资源合同，不传时仅返回白名单"
+          },
+          {
+            "name": "archive_status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "archived",
+                "unarchived"
+              ]
+            }
+          },
+          {
+            "name": "sign_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "serial_number",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "list": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/ContractListItem"
+                              }
+                            },
+                            "total": {
+                              "type": "integer",
+                              "format": "int32"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "list": [
+                      {
+                        "id": 1,
+                        "instance_id": "A8430B0F-E0CC-4B36-B72D-8B06734461A7",
+                        "approval_code": "25D83B18-7F7D-448E-8232-B8B5FC73CC9E",
+                        "status": "APPROVED",
+                        "demand_name": "【测试】资源合同",
+                        "demand_type": "合同类用章",
+                        "contract_type": "资源合同",
+                        "amount": "50000.00",
+                        "currency": "CNY",
+                        "our_entity": "北京图虫科技有限公司",
+                        "counterparty_name1": "供应商A",
+                        "counterparty_name2": "供应商B",
+                        "archive_status": 0,
+                        "created_at_feishu": 1757376000000,
+                        "updated_at_feishu": 1757376000000,
+                        "updated_at": 1757376000000
+                      }
+                    ],
+                    "total": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contracts/{id}": {
+      "get": {
+        "tags": [
+          "Contract"
+        ],
+        "summary": "合同详情",
+        "description": "详情返回拆分字段：byte_project_no、related_approval_nos/related_applinks、attachments、applink 等。attachments 的 URL 为临时有效期，DB 存储可能已失效，接口会单独调用飞书 GetInstance 实时刷新链接，失败则回退 DB；列表不刷新。",
+        "operationId": "GetContract",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Contract"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "id": 1,
+                    "instance_id": "A8430B0F-E0CC-4B36-B72D-8B06734461A7",
+                    "status": "APPROVED",
+                    "demand_name": "【测试】资源合同",
+                    "byte_project_no": "202609090001",
+                    "attachments": [
+                      {
+                        "name": "合同.pdf",
+                        "url": "https://tos.example/contract.pdf"
+                      }
+                    ],
+                    "signers": [
+                      {
+                        "entity": "企业",
+                        "company": "供应商A",
+                        "name": "张三",
+                        "contact": "13800000001"
+                      }
+                    ],
+                    "related_approvals": [
+                      {
+                        "serial_no": "202609090058",
+                        "instance_id": "BB711F21-xxxx",
+                        "applink": "https://applink.feishu.cn/client/mini_program/open?mode=appCenter&appId=cli_9cb844403dbb9108&path=pc%2Fpages%2Fin-process%2Findex%3FinstanceId%3DBB711F21-xxxx"
+                      },
+                      {
+                        "serial_no": "202609090082",
+                        "instance_id": "D2EF586F-xxxx",
+                        "applink": "https://applink.feishu.cn/client/mini_program/open?mode=appCenter&appId=cli_9cb844403dbb9108&path=pc%2Fpages%2Fin-process%2Findex%3FinstanceId%3DD2EF586F-xxxx"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contracts/{id}/associate": {
+      "put": {
+        "tags": [
+          "Contract"
+        ],
+        "summary": "关联供应商",
+        "description": "资源管理员将合同绑定供应商（法务不可），校验 supplier 存在并同步 name。",
+        "operationId": "AssociateContract",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "counterparty_id1": {
+                    "type": "integer",
+                    "format": "int64"
+                  },
+                  "counterparty_id2": {
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                }
+              },
+              "example": {
+                "counterparty_id1": 100,
+                "counterparty_id2": 101
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Contract"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contracts/{id}/archive": {
+      "post": {
+        "tags": [
+          "Contract"
+        ],
+        "summary": "法务归档/变更",
+        "description": "archive_no 唯一 20 字，legal_supplement 200 字，多附件 archive_files(JSON 内多文件，每元素 file_name/tos_path/file_url) tos_path 实时签名生成 file_url，archive 后 archive_status=1，详情/列表返回 archive_files+archive_at。幂等：前端需回传 history_*（上一次文件名/备注/合同信息中的归档号）与 DB 现值 CAS 对比，不一致返回 归档信息已变更；若新值与现值完全一致则幂等直接返回；可先通过 GET /api/v1/contracts/{id} 取 archive_files/legal_supplement/archive_no 作为 history_* 入参。",
+
+        "operationId": "ArchiveContract",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "archive_no"
+                ],
+                "properties": {
+                  "archive_no": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "example": "260909-12345678"
+                  },
+                  "legal_supplement": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "archive_files": {
+                    "type": "array",
+                    "description": "多附件归档扫描件（JSON 内），每个元素含 file_name/tos_path/file_url，多文件",
+                    "items": {
+                      "$ref": "#/components/schemas/ArchiveFile"
+                    }
+                  },
+                  "history_archive_no": {
+                    "type": "string",
+                    "description": "幂等用：上一次归档号，前端从 GET /contracts/{id} 取 archive_no 回传"
+                  },
+                  "history_legal_supplement": {
+                    "type": "string",
+                    "description": "幂等用：上一次法务备注，前端回传"
+                  },
+                  "history_archive_files": {
+                    "type": "array",
+                    "description": "幂等用：上一次多附件文件名/路径，前端回传用于与 DB 现值对比",
+                    "items": {
+                      "$ref": "#/components/schemas/ArchiveFile"
+                    }
+                  }
+                },
+                "example": {
+                  "archive_no": "260909-12345678",
+                  "legal_supplement": "法务备注",
+                  "archive_files": [
+                    {
+                      "file_name": "扫描件1.pdf",
+                      "tos_path": "tos://tc-prod-aigcdata/contracts/scan1.pdf"
+                    },
+                    {
+                      "file_name": "扫描件2.pdf",
+                      "tos_path": "tos://tc-prod-aigcdata/contracts/scan2.pdf"
+                    }
+                  ],
+                  "history_archive_no": "260909-12345678",
+                  "history_legal_supplement": "旧备注",
+                  "history_archive_files": [
+                    {
+                      "file_name": "旧扫描件.pdf",
+                      "tos_path": "tos://tc-prod-aigcdata/contracts/old.pdf"
+                    }
+                  ]
+                }
+              },
+              "example": {
+                "archive_no": "260909-12345678",
+                "legal_supplement": "法务备注"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Contract"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contracts/sync/trigger": {
+      "post": {
+        "tags": [
+          "Contract"
+        ],
+        "summary": "手动触发飞书兜底同步",
+        "description": "鉴权后异步触发 SyncAll（分页拉取全量，限流 QPS 20，并发 5）。",
+        "operationId": "TriggerSync",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

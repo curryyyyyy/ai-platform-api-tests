@@ -136,6 +136,11 @@ entries:
     operations: [FS-08]
     note: "覆盖批量查询空 ID 的合法空结果和非数字 ID 的拒绝；合法批量查询由 TC-03-01 覆盖"
     tests: [tests/source_admin/test_filesystem_api.py::test_source_03_04_invalid_node_batch_query_is_rejected]
+  - id: TC-03-05
+    priority: P0
+    level: full
+    operations: [FS-09, FS-10]
+    tests: [tests/source_admin/test_filesystem_api.py::test_source_03_05_project_node_is_idempotent_and_queryable]
   - id: TC-04-01
     priority: P0
     level: blocked
@@ -179,3 +184,52 @@ entries:
     level: full
     operations: [SH-02, SH-04]
     tests: [tests/source_admin/test_share_api.py::test_source_05_03_missing_share_link_operations_are_rejected]
+  - id: TC-06-01
+    priority: P0
+    level: full
+    operations: [CT-01]
+    tests: [tests/source_admin/test_contract_api.py::test_source_06_01_contract_list_filters]
+  - id: TC-06-02
+    priority: P1
+    level: full
+    operations: [CT-02, CT-03, CT-04]
+    tests: [tests/source_admin/test_contract_api.py::test_source_06_02_missing_contract_read_and_update_are_rejected]
+  - id: TC-06-03
+    priority: P1
+    level: partial
+    note: "仅覆盖不存在合同的供应商关联拒绝；合法关联需要可控合同和供应商前置"
+    operations: [CT-03]
+    tests: [tests/source_admin/test_contract_api.py::test_source_06_03_missing_contract_associate_cases_are_rejected]
+  - id: TC-06-04
+    priority: P1
+    level: partial
+    note: "仅覆盖不存在合同的归档拒绝；合法归档会修改共享合同状态"
+    operations: [CT-04]
+    tests: [tests/source_admin/test_contract_api.py::test_source_06_04_missing_contract_archive_cases_are_rejected]
+  - id: TC-06-05
+    priority: P1
+    level: blocked
+    note: "手动同步会触发全量飞书同步，需维护者确认外部依赖和限流窗口"
+    operations: [CT-05]
+    tests: [tests/source_admin/test_contract_api.py::test_source_06_05_contract_sync_is_deferred]
+  - id: TC-07-01
+    priority: P0
+    level: full
+    operations: [SP-01]
+    tests: [tests/source_admin/test_supplier_api.py::test_source_07_01_supplier_list_filters]
+  - id: TC-07-02
+    priority: P1
+    level: full
+    operations: [SP-05]
+    tests: [tests/source_admin/test_supplier_api.py::test_source_07_02_public_supplier_list_requires_no_token]
+  - id: TC-07-03
+    priority: P1
+    level: full
+    operations: [SP-03, SP-04]
+    tests: [tests/source_admin/test_supplier_api.py::test_source_07_03_missing_supplier_read_and_update_are_rejected]
+  - id: TC-07-04
+    priority: P1
+    level: blocked
+    note: "供应商接口没有删除能力，创建后无法满足 DataScope 清理要求"
+    operations: [SP-02]
+    tests: [tests/source_admin/test_supplier_api.py::test_source_07_04_supplier_create_is_deferred]

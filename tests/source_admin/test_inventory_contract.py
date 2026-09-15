@@ -18,14 +18,14 @@ def _inventory() -> dict:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-def test_source_admin_inventory_has_49_unique_operations() -> None:
+def test_source_admin_inventory_has_61_unique_operations() -> None:
     inventory = _inventory()
     operations = inventory["operations"]
-    assert len(operations) == 49
-    assert len({item["id"] for item in operations}) == 49
-    assert len({(item["method"], item["path"]) for item in operations}) == 49
-    assert sum(item["documented_in_primary"] for item in operations) == 40
-    assert len(inventory["documented_gaps"]) == 9
+    assert len(operations) == 61
+    assert len({item["id"] for item in operations}) == 61
+    assert len({(item["method"], item["path"]) for item in operations}) == 61
+    assert sum(item["documented_in_primary"] for item in operations) == 42
+    assert len(inventory["documented_gaps"]) == 19
 
 
 def test_source_admin_client_methods_cover_inventory() -> None:

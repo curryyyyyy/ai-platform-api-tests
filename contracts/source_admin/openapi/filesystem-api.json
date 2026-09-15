@@ -1,0 +1,603 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "FileSystem 文件系统 API",
+    "version": "1.0.0",
+    "description": "文件/文件夹节点的增删改查、移动与搜索"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发"
+    }
+  ],
+  "tags": [
+    { "name": "Node", "description": "文件系统节点管理" }
+  ],
+  "components": {
+    "schemas": {
+      "BaseResponse": {
+        "type": "object",
+        "required": ["code", "msg"],
+        "properties": {
+          "code": { "type": "integer", "description": "状态码，0 表示成功" },
+          "msg":  { "type": "string",  "description": "状态信息" },
+          "data": { "type": "object",  "description": "业务数据，无数据时为 {}" }
+        }
+      },
+      "Node": {
+        "type": "object",
+        "required": ["id", "name", "type", "path", "parent_id", "is_system", "created_at", "updated_at"],
+        "properties": {
+          "id":          { "type": "integer", "format": "int64" },
+          "name":        { "type": "string",  "description": "节点名称" },
+          "type":        { "type": "integer", "description": "1=文件夹 2=图片文件 3=视频文件" },
+          "path":        { "type": "string",  "description": "绝对路径，如 /docs/images" },
+          "parent_id":   { "type": "integer", "format": "int64", "description": "父节点 ID，0 表示根节点" },
+          "resource_id": { "type": "integer", "format": "int64", "description": "绑定的圈选集 ID（仅文件节点）" },
+          "is_system":   { "type": "boolean", "description": "是否系统节点（/ 和 /trash）" },
+          "created_at":  { "type": "integer", "format": "int64", "description": "创建时间（毫秒时间戳）" },
+          "updated_at":  { "type": "integer", "format": "int64", "description": "更新时间（毫秒时间戳）" },
+          "row_count":   { "type": "integer", "format": "int64", "description": "文件节点的数据行数（仅文件节点，目录节点不返回）" }
+        }
+      },
+      "SearchNodeItem": {
+        "type": "object",
+        "required": ["id", "name", "type", "path"],
+        "properties": {
+          "id":   { "type": "integer", "format": "int64" },
+          "name": { "type": "string" },
+          "type": { "type": "integer", "description": "1=文件夹 2=图片文件 3=视频文件" },
+          "path": { "type": "string" }
+        }
+      },
+      "ProjectNodeInfo": {
+        "type": "object",
+        "required": ["id", "name", "path", "created_at"],
+        "properties": {
+          "id":         { "type": "integer", "format": "int64", "description": "节点 ID" },
+          "name":       { "type": "string",  "description": "项目名称" },
+          "path":       { "type": "string",  "description": "绝对路径" },
+          "created_at": { "type": "integer", "format": "int64", "description": "创建时间（毫秒时间戳）" }
+        }
+      }
+    },
+    "parameters": {
+      "NodeID": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "节点 ID",
+        "schema": { "type": "integer", "format": "int64" }
+      }
+    },
+    "headers": {
+      "XOwnerID": {
+        "description": "空间/用户 ID，用于隔离文件系统数据",
+        "schema": { "type": "integer", "format": "int64" }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/nodes/{id}/list": {
+      "get": {
+        "tags": ["Node"],
+        "summary": "列出目录内容",
+        "operationId": "ListNodes",
+        "parameters": [
+          { "$ref": "#/components/parameters/NodeID" },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "过滤类型：folder | file | （空=全部）",
+            "schema": { "type": "string", "enum": ["folder", "file", ""] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "nodes": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Node" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "nodes": [
+                      {
+                        "id": 3,
+                        "name": "images",
+                        "type": 1,
+                        "path": "/images",
+                        "parent_id": 1,
+                        "is_system": false,
+                        "created_at": 1717200000000,
+                        "updated_at": 1717200000000
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}": {
+      "get": {
+        "tags": ["Node"],
+        "summary": "获取节点元数据",
+        "operationId": "GetNode",
+        "parameters": [
+          { "$ref": "#/components/parameters/NodeID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "node": { "$ref": "#/components/schemas/Node" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Node"],
+        "summary": "重命名节点",
+        "operationId": "UpdateNode",
+        "parameters": [
+          { "$ref": "#/components/parameters/NodeID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "description": "新名称，不能包含 / 或 \\" }
+                }
+              },
+              "example": { "name": "新文件夹名" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "node": { "$ref": "#/components/schemas/Node" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Node"],
+        "summary": "删除节点",
+        "description": "文件节点（图片/视频）移入 /trash 目录；目录节点执行软删除（is_deleted=1）。系统节点不可删除。",
+        "operationId": "DeleteNode",
+        "parameters": [
+          { "$ref": "#/components/parameters/NodeID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BaseResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes": {
+      "post": {
+        "tags": ["Node"],
+        "summary": "创建节点",
+        "operationId": "CreateNode",
+        "parameters": [
+          {
+            "name": "X-Owner-ID",
+            "in": "header",
+            "required": false,
+            "description": "空间/用户 ID",
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "type", "parent_id"],
+                "properties": {
+                  "name":      { "type": "string",  "description": "节点名称，不能包含 / 或 \\" },
+                  "type":      { "type": "integer", "description": "1=文件夹 2=图片文件 3=视频文件" },
+                  "parent_id": { "type": "integer", "format": "int64", "description": "父节点 ID" }
+                }
+              },
+              "example": {
+                "name": "我的图片",
+                "type": 1,
+                "parent_id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "node": { "$ref": "#/components/schemas/Node" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/{id}/move": {
+      "post": {
+        "tags": ["Node"],
+        "summary": "移动节点",
+        "operationId": "MoveNode",
+        "parameters": [
+          { "$ref": "#/components/parameters/NodeID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["target_parent_id"],
+                "properties": {
+                  "target_parent_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "目标父节点 ID（必须是文件夹）"
+                  }
+                }
+              },
+              "example": { "target_parent_id": 5 }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BaseResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/search": {
+      "get": {
+        "tags": ["Node"],
+        "summary": "搜索节点",
+        "operationId": "SearchNodes",
+        "parameters": [
+          {
+            "name": "X-Owner-ID",
+            "in": "header",
+            "required": false,
+            "description": "空间/用户 ID",
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "搜索关键词（名称模糊匹配）",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "description": "搜索范围：folder | file | （空=全部）",
+            "schema": { "type": "string", "enum": ["folder", "file", ""] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，最多返回 100 条",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/SearchNodeItem" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "node": [
+                      { "id": 10, "name": "猫咪.jpg", "type": 2, "path": "/images/猫咪.jpg" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/batch": {
+      "get": {
+        "tags": ["Node"],
+        "summary": "批量查询节点",
+        "description": "按节点 ID 列表批量查询节点元数据，用于 collection 列表回填 node 信息等场景。",
+        "operationId": "BatchListNodes",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "description": "逗号分隔的节点 ID 列表，如 1,2,3",
+            "schema": { "type": "string" },
+            "example": "101,102,103"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "nodes": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Node" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "nodes": [
+                      {
+                        "id": 101,
+                        "name": "圈选任务-20260527",
+                        "type": 2,
+                        "path": "/机器标注/圈选任务-20260527",
+                        "parent_id": 3,
+                        "resource_id": 1001,
+                        "is_system": false,
+                        "created_at": 1748304000000,
+                        "updated_at": 1748304000000,
+                        "row_count": 5000
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/project": {
+      "post": {
+        "tags": ["Node"],
+        "summary": "创建项目节点（幂等）",
+        "description": "在固定父节点 7 下创建文件夹类型的项目节点。同名项目已存在则直接返回已有节点（exists=true）；force 为预留参数，当前存在即返回，不做强制重建。",
+        "operationId": "CreateProjectNode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["node_name"],
+                "properties": {
+                  "node_name": { "type": "string",  "description": "项目名称" },
+                  "force":     { "type": "boolean", "description": "预留参数，当前存在即返回" }
+                }
+              },
+              "example": {
+                "node_name": "新项目",
+                "force": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "node_id": { "type": "integer", "format": "int64", "description": "项目节点 ID" },
+                            "exists":  { "type": "boolean", "description": "true 表示项目已存在，直接返回已有节点" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "node_id": 42,
+                    "exists": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nodes/project/info": {
+      "get": {
+        "tags": ["Node"],
+        "summary": "批量查询项目节点信息",
+        "description": "按节点 ID 列表批量查询，只返回文件夹节点，非文件夹节点会被过滤掉。",
+        "operationId": "GetProjectNodeInfo",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "description": "逗号分隔的节点 ID 列表，如 1,2",
+            "schema": { "type": "string" },
+            "example": "42,43"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "nodes": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/ProjectNodeInfo" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "nodes": [
+                      {
+                        "id": 42,
+                        "name": "新项目",
+                        "path": "/项目/新项目",
+                        "created_at": 1748304000000
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

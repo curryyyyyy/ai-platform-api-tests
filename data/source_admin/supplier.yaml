@@ -1,0 +1,16 @@
+defaults:
+  missing_supplier_id: 999999999
+
+cases:
+  list:
+    - id: default_page
+      page: 1
+      page_size: 10
+    - id: institution_page
+      type: "机构供应商"
+      page: 1
+      page_size: 10
+  external_list:
+    - id: default_page
+      page: 1
+      page_size: 10

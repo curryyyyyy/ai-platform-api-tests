@@ -1,0 +1,780 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Schema 数据字典 API",
+    "version": "1.0.0",
+    "description": "Schema 及 SchemaField 的 CRUD 管理，含版本快照与回滚"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发"
+    }
+  ],
+  "tags": [
+    { "name": "Schema", "description": "数据字典管理" },
+    { "name": "SchemaField", "description": "字段管理" },
+    { "name": "SchemaFieldVersion", "description": "字段版本管理" }
+  ],
+  "components": {
+    "schemas": {
+      "BaseResponse": {
+        "type": "object",
+        "required": ["code", "msg"],
+        "properties": {
+          "code": { "type": "integer", "description": "状态码，0 表示成功" },
+          "msg":  { "type": "string",  "description": "状态信息" },
+          "data": { "type": "object",  "description": "业务数据，无数据时为 {}" }
+        }
+      },
+      "LancedbPartition": {
+        "type": "object",
+        "required": ["date"],
+        "description": "LanceDB 分区信息，结构可扩展",
+        "properties": {
+          "date": { "type": "string", "description": "分区日期，格式 \"20060102\"", "example": "20240101" }
+        }
+      },
+      "Schema": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id":         { "type": "integer", "format": "int64" },
+          "name":       { "type": "string" },
+          "comment":    { "type": "string" },
+          "created_at": { "type": "integer", "format": "int64" },
+          "updated_at": { "type": "integer", "format": "int64" },
+          "partitions": {
+            "type": "array",
+            "description": "该 Schema 对应的 LanceDB 分区列表，降序排列；图片和视频共用相同结构",
+            "items": { "$ref": "#/components/schemas/LancedbPartition" }
+          }
+        }
+      },
+      "SchemaField": {
+        "type": "object",
+        "required": ["schema_id", "qualifier", "type"],
+        "properties": {
+          "id":             { "type": "integer", "format": "int64" },
+          "schema_id":      { "type": "integer", "format": "int64" },
+          "qualifier":      { "type": "string",  "description": "字段标识符" },
+          "name":           { "type": "string",  "description": "字段名称" },
+          "type":           { "type": "string",  "description": "string / int / float / array / enum" },
+          "options":        { "type": "array", "items": { "type": "string" }, "description": "enum 选项" },
+          "w_rule":         { "type": "string",  "description": "写入规则" },
+          "required":       { "type": "boolean", "default": false },
+          "as_from":        { "type": "string",  "description": "来源字段" },
+          "display_format": { "type": "string" },
+          "sort_order":     { "type": "integer", "default": 0 },
+          "status":         { "type": "integer", "description": "1-启用 0-禁用", "default": 1 },
+          "need_sync":      { "type": "boolean", "default": false },
+          "allow_inbound":  { "type": "boolean", "default": false, "description": "是否允许透传入库: true=是(1) false=否(2) 默认否" },
+          "memo":           { "type": "string" },
+          "created_at":     { "type": "integer", "format": "int64" },
+          "updated_at":     { "type": "integer", "format": "int64" }
+        }
+      },
+      "SchemaFieldVersion": {
+        "type": "object",
+        "required": ["schema_id"],
+        "properties": {
+          "id":            { "type": "integer", "format": "int64" },
+          "schema_id":     { "type": "integer", "format": "int64" },
+          "version":       { "type": "integer" },
+          "summary":       { "type": "string" },
+          "created_at":    { "type": "integer", "format": "int64" },
+          "operator_id":   { "type": "string",  "description": "操作人ID" },
+          "operator_name": { "type": "string",  "description": "操作人名称" }
+        }
+      },
+      "SchemaFieldPageData": {
+        "type": "object",
+        "required": ["list", "total", "page", "page_size"],
+        "properties": {
+          "list":      { "type": "array", "items": { "$ref": "#/components/schemas/SchemaField" } },
+          "total":     { "type": "integer", "format": "int64" },
+          "page":      { "type": "integer" },
+          "page_size": { "type": "integer" }
+        }
+      },
+      "BatchUpdateSchemaFieldItem": {
+        "type": "object",
+        "required": ["qualifier", "type"],
+        "properties": {
+          "id":             { "type": "integer", "format": "int64" },
+          "qualifier":      { "type": "string" },
+          "name":           { "type": "string" },
+          "type":           { "type": "string" },
+          "options":        { "type": "array", "items": { "type": "string" } },
+          "w_rule":         { "type": "string" },
+          "required":       { "type": "boolean" },
+          "as_from":        { "type": "string" },
+          "display_format": { "type": "string" },
+          "sort_order":     { "type": "integer" },
+          "status":         { "type": "integer" },
+          "need_sync":      { "type": "boolean" },
+          "allow_inbound":  { "type": "boolean", "description": "是否允许透传入库" },
+          "memo":           { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/schema": {
+      "post": {
+        "tags": ["Schema"],
+        "summary": "创建 Schema",
+        "operationId": "CreateSchema",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name":    { "type": "string", "description": "Schema 名称" },
+                  "comment": { "type": "string", "description": "备注" }
+                }
+              },
+              "example": {
+                "name": "商品信息",
+                "comment": "电商商品基础字段"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/Schema" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Schema"],
+        "summary": "更新 Schema",
+        "operationId": "UpdateSchema",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id":      { "type": "integer", "format": "int64" },
+                  "name":    { "type": "string" },
+                  "comment": { "type": "string" }
+                }
+              },
+              "example": {
+                "id": 1,
+                "name": "商品信息（更新）",
+                "comment": "新备注"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/Schema" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/{id}": {
+      "get": {
+        "tags": ["Schema"],
+        "summary": "获取 Schema 详情",
+        "operationId": "GetSchema",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/Schema" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Schema"],
+        "summary": "删除 Schema",
+        "operationId": "DeleteSchema",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BaseResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/by-name": {
+      "get": {
+        "tags": ["Schema"],
+        "summary": "通过 name 获取 Schema 的字段列表",
+        "operationId": "GetSchemaByName",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Schema 名称"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/SchemaField" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/list": {
+      "get": {
+        "tags": ["Schema"],
+        "summary": "获取 Schema 列表",
+        "description": "返回 Schema 列表，每个 Schema 携带对应的 LanceDB 分区信息（图片和视频共用相同分区结构）",
+        "operationId": "ListSchemas",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/Schema" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/field": {
+      "post": {
+        "tags": ["SchemaField"],
+        "summary": "创建字段",
+        "operationId": "CreateSchemaField",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["schema_id", "qualifier", "type"],
+                "properties": {
+                  "schema_id":      { "type": "integer", "format": "int64" },
+                  "qualifier":      { "type": "string",  "description": "字段标识符" },
+                  "name":           { "type": "string",  "description": "字段名称" },
+                  "type":           { "type": "string",  "description": "string / int / float / array / enum" },
+                  "options":        { "type": "array", "items": { "type": "string" }, "description": "enum 选项" },
+                  "w_rule":         { "type": "string" },
+                  "required":       { "type": "boolean", "default": false },
+                  "as_from":        { "type": "string" },
+                  "display_format": { "type": "string" },
+                  "sort_order":     { "type": "integer", "default": 0 },
+                  "allow_inbound":  { "type": "boolean", "default": false, "description": "是否允许透传入库" },
+                  "memo":           { "type": "string" }
+                }
+              },
+              "example": {
+                "schema_id": 1,
+                "qualifier": "product_name",
+                "name": "商品名称",
+                "type": "string",
+                "required": true,
+                "sort_order": 1,
+                "allow_inbound": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/SchemaField" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["SchemaField"],
+        "summary": "更新字段",
+        "operationId": "UpdateSchemaField",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id", "schema_id", "qualifier", "type"],
+                "properties": {
+                  "id":             { "type": "integer", "format": "int64" },
+                  "schema_id":      { "type": "integer", "format": "int64" },
+                  "qualifier":      { "type": "string" },
+                  "name":           { "type": "string" },
+                  "type":           { "type": "string" },
+                  "options":        { "type": "array", "items": { "type": "string" } },
+                  "w_rule":         { "type": "string" },
+                  "required":       { "type": "boolean" },
+                  "as_from":        { "type": "string" },
+                  "display_format": { "type": "string" },
+                  "sort_order":     { "type": "integer" },
+                  "status":         { "type": "integer", "description": "1-启用 0-禁用" },
+                  "allow_inbound":  { "type": "boolean", "description": "是否允许透传入库" },
+                  "memo":           { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/SchemaField" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/field/{id}": {
+      "get": {
+        "tags": ["SchemaField"],
+        "summary": "获取字段详情",
+        "operationId": "GetSchemaField",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/SchemaField" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["SchemaField"],
+        "summary": "删除字段",
+        "operationId": "DeleteSchemaField",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BaseResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/field/list": {
+      "get": {
+        "tags": ["SchemaField"],
+        "summary": "获取字段列表",
+        "operationId": "ListSchemaFields",
+        "parameters": [
+          {
+            "name": "schema_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          },
+          {
+            "name": "scene",
+            "in": "query",
+            "description": "场景：search=条件搜索（只返回 need_sync=1 的字段），display 或不传=展示（返回全部）",
+            "schema": { "type": "string", "enum": ["search", "display"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/SchemaFieldPageData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/field/batch": {
+      "put": {
+        "tags": ["SchemaField"],
+        "summary": "批量更新字段",
+        "operationId": "BatchUpdateSchemaFields",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["schema_id", "fields"],
+                "properties": {
+                  "schema_id":  { "type": "integer", "format": "int64" },
+                  "fields": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/BatchUpdateSchemaFieldItem" }
+                  },
+                  "delete_ids": {
+                    "type": "array",
+                    "items": { "type": "integer", "format": "int64" },
+                    "description": "需要删除的字段 ID 列表"
+                  }
+                }
+              },
+              "example": {
+                "schema_id": 1,
+                "fields": [
+                  { "qualifier": "product_name", "type": "string", "sort_order": 1 },
+                  { "id": 5, "qualifier": "price", "type": "float", "sort_order": 2 }
+                ],
+                "delete_ids": [10, 11]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/SchemaField" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/field/sync-tos": {
+      "post": {
+        "tags": ["SchemaField"],
+        "summary": "同步字段到 TOS",
+        "operationId": "SyncTOS",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["schema_id"],
+                "properties": {
+                  "schema_id": { "type": "integer", "format": "int64" }
+                }
+              },
+              "example": { "schema_id": 1 }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BaseResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/field/versions": {
+      "get": {
+        "tags": ["SchemaFieldVersion"],
+        "summary": "获取字段版本列表",
+        "operationId": "ListSchemaFieldVersions",
+        "parameters": [
+          {
+            "name": "schema_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/SchemaFieldVersion" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/field/versions/{version_id}/snapshot": {
+      "get": {
+        "tags": ["SchemaFieldVersion"],
+        "summary": "获取版本快照",
+        "operationId": "GetSchemaFieldVersionSnapshot",
+        "parameters": [
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/SchemaField" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schema/field/versions/{version_id}/rollback": {
+      "post": {
+        "tags": ["SchemaFieldVersion"],
+        "summary": "回滚到指定版本",
+        "operationId": "RollbackSchemaField",
+        "parameters": [
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BaseResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
