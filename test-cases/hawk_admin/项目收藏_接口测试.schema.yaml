@@ -1,0 +1,25 @@
+meta:
+  requirement_id: REQ-PROJECT-FAVORITE
+  requirement_name: project_favorite
+  display_name: 项目收藏
+  execution_model: api
+  source: biaozhu:test docs/project-favorite-api.md
+
+cases:
+  - id: REQ-PROJECT-FAVORITE-API-01
+    source_id: FAV-01
+    title: 收藏、取消收藏和筛选项目
+    module: 项目管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint:
+      methods: [POST, DELETE, GET]
+      paths:
+        - /api/v1/project/{id}/favorite
+        - /api/v1/project
+        - /api/v1/project/{id}
+    expected:
+      - 重复收藏和重复取消收藏均成功
+      - 详情 isFavorite 与当前收藏状态一致
+      - onlyFavorite=true 的筛选只返回已收藏项目

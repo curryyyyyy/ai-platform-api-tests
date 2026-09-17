@@ -14,6 +14,7 @@ PROJECT_CREATE_CASES = dataset_cases("hawk_admin", "project", "create")
 PROJECT_UPDATE_CASES = dataset_case_map("hawk_admin", "project", "update")
 INVALID_NOTIFICATION_CASES = dataset_cases("hawk_admin", "project", "invalid_notification_levels")
 INVALID_OWNER_CASES = dataset_cases("hawk_admin", "project", "invalid_owner")
+PROJECT_FAVORITE_CASE = dataset_cases("hawk_admin", "project", "favorite")[0]
 PROJECT_DEFAULTS = dataset_defaults("hawk_admin", "project")
 AUTH_DEFAULTS = dataset_defaults("hawk_admin", "auth")
 RCB_RESOURCE_FIELDS = (
@@ -138,6 +139,58 @@ def test_hawk_02_08_delete_project_then_get(platform_client, platform_data_facto
     assert_envelope(platform_client.delete_project(project_id))
     response = platform_client.get_project(project_id)
     assert_rejected(response)
+
+
+def test_hawk_07_05_get_feishu_project_info_rejects_invalid_link(platform_client):
+    """项目域的飞书链接解析必须拒绝非法地址。"""
+    assert_rejected(platform_client.feishu_project_info(link="not-a-feishu-link"))
+
+
+@pytest.mark.requirement(id="REQ-PROJECT-FAVORITE", name="project_favorite")
+@pytest.mark.case_id("REQ-PROJECT-FAVORITE-API-01", title="项目收藏状态在详情和收藏列表中一致")
+def test_hawk_10_06_project_favorite_lifecycle(platform_client, platform_data_factory, data_scope):
+    """收藏、重复操作和取消收藏都应幂等，并同步反映到详情和列表。"""
+    project_id, payload = platform_data_factory.create_project()
+    detail = assert_envelope(platform_client.get_project(project_id), required_keys=("data",))["data"]
+    assert detail.get("isFavorite") is False
+
+    assert_envelope(platform_client.favorite_project(project_id))
+    data_scope.track(
+        f"取消收藏项目 {project_id}",
+        lambda: assert_envelope(platform_client.unfavorite_project(project_id)),
+    )
+    assert_envelope(platform_client.favorite_project(project_id))
+
+    detail = assert_envelope(platform_client.get_project(project_id), required_keys=("data",))["data"]
+    assert detail.get("isFavorite") is True
+    listing = assert_envelope(
+        platform_client.list_projects(
+            page=1,
+            page_size=10,
+            name=payload["name"],
+            onlyFavorite=PROJECT_FAVORITE_CASE["onlyFavorite"],
+        ),
+        required_keys=("data",),
+    )["data"]
+    projects = listing.get("list")
+    assert isinstance(projects, list)
+    matches = [item for item in projects if str(item.get("id")) == str(project_id)]
+    assert len(matches) == 1 and matches[0].get("isFavorite") is True
+
+    assert_envelope(platform_client.unfavorite_project(project_id))
+    assert_envelope(platform_client.unfavorite_project(project_id))
+    detail = assert_envelope(platform_client.get_project(project_id), required_keys=("data",))["data"]
+    assert detail.get("isFavorite") is False
+    listing = assert_envelope(
+        platform_client.list_projects(
+            page=1,
+            page_size=10,
+            name=payload["name"],
+            onlyFavorite=PROJECT_FAVORITE_CASE["onlyFavorite"],
+        ),
+        required_keys=("data",),
+    )["data"]
+    assert not any(str(item.get("id")) == str(project_id) for item in listing.get("list", []))
 
 
 @pytest.mark.requirement(id="REQ-RCB-20260910", name="资源成本看板")

@@ -10,14 +10,20 @@ Hawk 子平台的接口测试、数据集、Schema 覆盖和 CI 前置均在本�
 | --- | --- | --- | --- |
 | 认证与权限 | `test_auth.py`、`test_project_api.py` | `auth.yaml`、`project.yaml` | Token、查看者写入/读取/更新越权 |
 | 项目管理 | `test_project_api.py` | `project.yaml` | 创建、查询、列表、更新、OWNER、通知级别、删除 |
+| 项目收藏需求 | `test_project_api.py` | `project.yaml` | 收藏/取消收藏幂等、详情 `isFavorite`、`onlyFavorite` 筛选 |
 | 阶段管理 | `test_stage_api.py` | `stage.yaml` | 创建、列表筛选、更新、缺失查询、删除 |
 | 流程生命周期（写入类） | `test_flow_api.py` | `flow.yaml` | 创建、非法 JSON、更新、删除 |
 | 流程只读查询类 | `test_flow_read_api.py` | `flow.yaml` | 详情、缺失查询、Stage/状态筛选、调用次数排序、`canOffline` 条件 |
 | 批次管理 | `test_batch_api.py` | `batch.yaml` | 创建、CID、引用校验、名称、列表、元数据/输入/状态更新、删除 |
 | 执行与统计 | `test_hawk_execution_api.py` | `execution.yaml` | 状态操作、任务流、统计、字段、错误日志、导出 |
-| Hawk 辅助接口 | `test_hawk_extended_api.py` | `extended.yaml` | 统计辅助、文件/工具、凭证、模板、系统负载、结束告警 |
-| 传输任务 | `test_hawk_extended_api.py` | `extended.yaml` | 任务列表/详情、非法操作和配置更新 |
-| 用户认证 | `test_auth.py`、`test_hawk_extended_api.py` | `auth.yaml`、`extended.yaml` | RSA、公钥认证、空凭证登录、无效 Token 退出 |
+| 批次辅助能力 | `test_batch_api.py` | `batch.yaml` | 流程图、复制、统计批次、文件上传负向校验 |
+| 执行辅助能力 | `test_hawk_execution_api.py` | `execution.yaml` | 系统负载、任务流刷新、结束告警、隐藏任务流批次 |
+| 模板工作流 | `test_template_workflow_api.py` | `template_workflow.yaml` | 模板列表、批量查询、空工作流和补全校验 |
+| 凭证管理 | `test_credential_api.py` | `credential.yaml` | 查询及非法创建、更新、删除 |
+| 工具与文件 | `test_tools_file_api.py` | - | 临时文件、下载链接、CSV/HBase 运维工具 |
+| 传输任务 | `test_transfer_task_api.py` | `transfer_task.yaml` | 公共模板、任务列表/详情、非法操作和配置更新 |
+| 用户认证 | `test_auth.py` | `auth.yaml` | RSA、公钥认证、空凭证登录、无效 Token 退出 |
+| 需求级用例 | 对应业务域模块 | `coverage.yaml` 的 `requirements` 节 | 通过稳定 `requirement`、`case_id` 标识跨模块筛选与追溯 |
 | 适配器契约 | `test_*_contract.py` | - | 客户端、工厂、状态预置、注册和数据加载 |
 
 ## 覆盖矩阵
@@ -93,7 +99,17 @@ config/test.yaml 的 base_url
 
 其他辅助接口按相同方法查看：先在测试中找到客户端方法，再回到 `client.py` 查路径，最后在 OpenAPI 中查 `operationId`、参数和响应。状态操作还要额外阅读 `presets.py`，因为它会先调用列表、创建、操作和状态查询接口来准备前置批次。
 
-契约门禁当前从 `https://gitlab.ituchong.com/ai-dataset/tc-hawk-admin` 的 `master` 分支线上拉取 `openapi.yaml` 和 `api-tests/api_inventory.json`。私有项目使用 CI Secret `CONTRACT_GITLAB_TOKEN`；其他平台或分支可覆盖 `CONTRACT_GITLAB_PROJECT`、`CONTRACT_GITLAB_REF`、`CONTRACT_OPENAPI_PATH`、`CONTRACT_INVENTORY_PATH`。如果更适合直接使用 raw 地址，则配置 `HAWK_CONTRACT_OPENAPI_URL` 和 `HAWK_CONTRACT_INVENTORY_URL`。实现脚本为 [`../../scripts/fetch_contracts.py`](../../scripts/fetch_contracts.py)。
+契约快照和覆盖映射由 [`../../platforms/hawk_admin/contract.yaml`](../../platforms/hawk_admin/contract.yaml) 与 [`operation_coverage.yaml`](operation_coverage.yaml) 维护。日常测试固定使用已提交的 `../../contracts/hawk_admin/openapi.yaml` 和 inventory。更新契约时，维护者先在服务代码仓库拉取目标分支到本地，再将审核后的文档复制到快照目录。
+
+日常执行仓库快照测试：
+
+```bash
+./platforms/hawk_admin/test.sh -m "live and hawk_admin"
+```
+
+需要更新契约时，先在服务代码仓库拉取 `test` 分支最新代码，再审核 `openapi.yaml` 与本仓库差异，并从本地工作树更新快照。随后同步更新 client、数据、testcase、inventory 和覆盖矩阵，先跑受影响用例，再跑本平台全量并提交。
+
+契约 job 会将 MR 目标分支的 Hawk 契约保存为基线，并通过 [`../../scripts/contract_diff.py`](../../scripts/contract_diff.py) 检查删除接口、必填参数、请求/响应 Schema、枚举和共享组件等破坏性变化。报告保存于 `reports/contracts/hawk_admin-diff.json`；默认发现破坏性变化即阻断合并。确认是有意变更时，必须同步 `client.py`、数据 YAML、测试 Schema、断言和本文件，并由维护者通过受保护变量 `CONTRACT_DIFF_ALLOW_BREAKING=1` 临时放行。
 
 ## 本地运行
 
@@ -103,6 +119,10 @@ pytest tests/hawk_admin -m contract -v
 
 # Hawk 全量线上用例
 pytest tests/hawk_admin -m "live and hawk_admin" -v
+
+# 精确运行一个需求，即使其用例分布在多个业务模块中
+pytest tests/hawk_admin -m "requirement and live" \
+  --requirement-id REQ-TEMPLATE-WORKFLOW-LIFECYCLE -v
 
 # P0 主链路
 CORE_EXPECTED_TESTS=10 ./scripts/run_tests.sh --no-skips -m "core and live"
@@ -144,5 +164,16 @@ GitLab Merge Request 门禁位于根目录 [`.gitlab-ci.yml`](../../.gitlab-ci.y
 
 - `failed`、`running_with_tasks`、`running_end` 依赖真实执行任务或失败产物，未配置前置时会跳过。
 - 网关返回 `no healthy upstream` 表示 `tc-hawk` 下游没有健康实例，属于环境阻塞，不应归因于测试代码。
-- `TC-07-15` 的 `GET /api/v1/tools/tos_file_ext` 属于当前 OpenAPI 契约；若线上返回纯文本 `404 page not found`，说明部署实例未注册该路由或版本落后于契约，应先发布/核对服务版本，不能放宽负向断言。
+- `TC-07-15` 的 `POST /api/v1/tools/csv_info` 属于测试分支 OpenAPI 契约；若线上返回纯文本 `404 page not found`，说明部署实例未注册该路由或版本落后于契约，应先发布/核对服务版本，不能放宽负向断言。
 - 流程创建接口若返回“数据库操作失败”，创建场景必须失败并要求排查服务端持久化层；批次场景继续复用已有流程。
+
+## 需求级接入与持续集成
+
+资源成本看板使用独立需求 ID `REQ-RCB-20260910`，来源 case `TC-04-01` 至 `TC-04-05` 映射见 [`coverage.yaml`](coverage.yaml) 的 `requirements` 节。需求 ID 和 case ID 在所有运行中保持不变；执行时间只作为 `reports/history/<run_id>/` 的报告目录名，不进入 Allure 用例身份。
+用例函数保留平台命名约定（`test_hawk_10_01` 至 `test_hawk_10_05`），按接口所属业务模块放入既有测试文件；报告身份由每条用例的 `requirement` 和 `case_id` marker 覆盖，因此 Allure 标题、`testId`、`requirement` 标签都带有稳定需求 ID，不会与既有 Hawk 的 `TC-04-*` 混淆。
+`source_id` 只表示原始人工用例的追溯关系，不是被测接口的响应断言；它由离线覆盖契约一次性校验 Schema 和平台覆盖矩阵，在线函数不重复断言。当前 5 条仅覆盖成功响应结构、关键标识和可解析非负金额，非法资源、权限、空数据以及金额跨接口一致性仍需后续补充。
+
+成本看板不提交共享环境的固定项目、批次或阶段 ID。默认情况下，既有项目/执行模块中的用例通过通用 `platform_context` fixture 自动发现当前账号可访问的项目和批次：项目会先经过成本接口权限校验，批次统计会排除 Hawk RPC 降级数据，批次成本详情和阶段成本详情分别验证访问权限，`10_05` 再探测实际可用的 `stageIndex`。平台运行时上下文由 `platforms/hawk_admin/runtime.py` 注册提供，不再为单个需求增加 `tests/hawk_admin/conftest.py`。阶段成本明细不存在时只阻塞 `10_05`，不会连带影响批次统计用例；批次成本详情越权也不会被误报为接口断言失败。因此日常 CI 不需要人工逐项准备 `RCB_*` 变量。
+
+如需复现指定环境资源，仍可通过 `RCB_PROJECT_ID`、`RCB_BATCH_IDS`（逗号分隔）、`RCB_DETAIL_BATCH_ID`、`RCB_STAGE_INDEX`、`RCB_EXPECTED_STAGE_IDS`（逗号分隔）覆盖自动发现结果。只有在环境没有任何可访问且统计链路正常的批次，或下游没有阶段成本数据时才会阻塞，并明确报告环境前置不足。
+CI 的需求回归 job 统一筛选 `requirement and live`，在受信任 MR、Web 或定时流水线中执行，并将需求报告作为流水线产物。

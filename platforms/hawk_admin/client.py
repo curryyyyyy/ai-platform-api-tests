@@ -8,8 +8,10 @@ from framework.http.client import ApiClient
 
 
 class HawkAdminClient(ApiClient):
-    def list_projects(self, *, page: int = 1, page_size: int = 10):
-        return self.get("/api/v1/project", params={"page": page, "pageSize": page_size})
+    def list_projects(self, *, page: int = 1, page_size: int = 10, **params):
+        return self.get(
+            "/api/v1/project", params={"page": page, "pageSize": page_size, **params}
+        )
 
     def get_rsa(self):
         return self.get("/api/v1/user/rsa")
@@ -35,6 +37,12 @@ class HawkAdminClient(ApiClient):
 
     def delete_project(self, project_id):
         return self.delete(f"/api/v1/project/{project_id}")
+
+    def favorite_project(self, project_id):
+        return self.post(f"/api/v1/project/{project_id}/favorite")
+
+    def unfavorite_project(self, project_id):
+        return self.delete(f"/api/v1/project/{project_id}/favorite")
 
     # 阶段
     def list_stages(self, **params):
@@ -230,6 +238,12 @@ class HawkAdminClient(ApiClient):
     def create_template(self, **payload):
         return self.post("/api/v1/tpl/wf", json=payload)
 
+    def batch_get_templates(self, ids):
+        return self.post("/api/v1/tpl/wf/batch-get", json={"ids": ids})
+
+    def create_empty_template(self, **payload):
+        return self.post("/api/v1/tpl/wf/empty", json=payload)
+
     def template_metric(self, ids):
         return self.get("/api/v1/tpl/wf/metric", params={"ids": ids})
 
@@ -238,6 +252,11 @@ class HawkAdminClient(ApiClient):
 
     def update_template(self, template_id, **payload):
         return self.put(f"/api/v1/tpl/wf/{template_id}", json={"id": template_id, **payload})
+
+    def complete_template(self, template_id, **payload):
+        return self.post(
+            f"/api/v1/tpl/wf/{template_id}/complete", json={"id": template_id, **payload}
+        )
 
     def download_template(self, template_id):
         return self.get(f"/api/v1/tpl/wf/{template_id}/download")

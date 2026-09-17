@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from framework.assertions import assert_envelope
+from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import dataset_defaults
 
 
@@ -48,3 +48,33 @@ def test_hawk_authenticated_project_list(platform_client) -> None:
     payload = assert_envelope(response, required_keys=("data",))
     assert isinstance((payload.get("data") or {}).get("list"), list)
     assert isinstance((payload.get("data") or {}).get("total"), int)
+
+
+@pytest.mark.live
+@pytest.mark.hawk_admin
+def test_hawk_09_01_user_auth_accepts_central_token(platform_client, central_token):
+    body = assert_envelope(platform_client.user_auth(token=central_token), required_keys=("data",))
+    assert isinstance(body["data"], dict)
+
+
+@pytest.mark.live
+@pytest.mark.hawk_admin
+def test_hawk_09_02_user_rsa_returns_public_key(anonymous_platform_client):
+    body = assert_envelope(anonymous_platform_client.get("/api/v1/user/rsa"), required_keys=("data",))
+    rsa = body["data"].get("rsa")
+    assert isinstance(rsa, str) and rsa.strip()
+
+
+@pytest.mark.live
+@pytest.mark.hawk_admin
+def test_hawk_09_03_user_login_rejects_empty_credentials(platform_client):
+    assert_rejected(platform_client.user_login())
+
+
+@pytest.mark.live
+@pytest.mark.hawk_admin
+def test_hawk_09_04_user_logout_invalid_token_is_idempotent(platform_client, central_token):
+    body = assert_envelope(platform_client.user_logout(token=AUTH_DEFAULTS["invalidUserToken"]))
+    assert body.get("data") in (None, {}, [], "")
+    auth_body = assert_envelope(platform_client.user_auth(token=central_token), required_keys=("data",))
+    assert isinstance(auth_body["data"], dict)

@@ -23,6 +23,10 @@ def _operation(name: str) -> int:
     return int(EXECUTION_OPERATIONS[name]["operation"])
 
 
+def _missing_batch_id() -> int:
+    return int(EXECUTION_DEFAULTS["missingBatchId"])
+
+
 def _assert_operation(
     platform_client, platform_state, state: str, env_name: str, operation: int,
     expected_status: int | tuple[int, ...], *, required: bool = False,
@@ -225,6 +229,25 @@ def test_hawk_10_05_rcb_stage_cost_detail(platform_client, platform_context):
     )
     assert_amount_yuan(data.get("amountYuan"))
     assert_cost_resources(data.get("resources"), RCB_RESOURCE_FIELDS)
+
+
+def test_hawk_07_03_get_system_load(platform_client):
+    body = assert_envelope(platform_client.system_load(), required_keys=("data",))
+    assert isinstance(body["data"], dict)
+
+
+def test_hawk_07_04_list_task_stream_stats(platform_client):
+    body = assert_envelope(platform_client.refresh_task_stream(), required_keys=("data",))
+    assert isinstance(body["data"], list)
+
+
+def test_hawk_07_16_done_end_alert_actions_reject_missing_batch(platform_client):
+    assert_rejected(platform_client.done_end_delete(_missing_batch_id()))
+    assert_rejected(platform_client.done_end_rollback(_missing_batch_id()))
+
+
+def test_hawk_08_05_hide_missing_task_stream_batch_is_rejected(platform_client):
+    assert_rejected(platform_client.hide_task_stream_batch(batchId=_missing_batch_id()))
 
 
 # TC-06-09/10：字段和错误日志

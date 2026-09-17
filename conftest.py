@@ -36,12 +36,61 @@ PLATFORM_REPORTING: dict[str, dict[str, Any]] = {
 }
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    group = parser.getgroup("requirement", "需求级用例筛选")
+    group.addoption(
+        "--requirement-id",
+        action="append",
+        default=[],
+        metavar="REQ-ID",
+        help="只收集指定需求 ID 的用例；可重复传入或使用逗号分隔多个 ID",
+    )
+
+
 def pytest_configure(config: pytest.Config) -> None:
     """将平台自描述的 marker 注入 pytest strict-markers。"""
     for definition in discover_platforms().values():
         marker = definition.reporting.get("marker")
         if marker:
             config.addinivalue_line("markers", f"{marker}: {definition.name} 平台测试")
+
+
+def _marker_value(marker: pytest.Mark | None, name: str, position: int = 0) -> str:
+    if marker is None:
+        return ""
+    value = marker.kwargs.get(name)
+    if not value and len(marker.args) > position:
+        value = marker.args[position]
+    return str(value or "").strip()
+
+
+def _selected_requirement_ids(config: pytest.Config) -> set[str]:
+    values = config.getoption("requirement_id") or []
+    return {
+        requirement_id.strip()
+        for value in values
+        for requirement_id in str(value).split(",")
+        if requirement_id.strip()
+    }
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """按稳定 requirement marker 精确筛选，不依赖测试文件或函数命名。"""
+    selected = _selected_requirement_ids(config)
+    if not selected:
+        return
+    kept: list[pytest.Item] = []
+    deselected: list[pytest.Item] = []
+    for item in items:
+        requirement_id = _marker_value(item.get_closest_marker("requirement"), "id")
+        (kept if requirement_id in selected else deselected).append(item)
+    if not kept:
+        raise pytest.UsageError(
+            f"未找到需求用例: {', '.join(sorted(selected))}；请检查 requirement marker 或 coverage.yaml"
+        )
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+    items[:] = kept
 
 
 
@@ -277,19 +326,10 @@ def _resolve_requirement(node: pytest.Item) -> dict[str, str]:
     if requirement is None or case is None:
         return {}
 
-    requirement_id = requirement.kwargs.get("id")
-    if not requirement_id and requirement.args:
-        requirement_id = requirement.args[0]
-    requirement_name = requirement.kwargs.get("name")
-    if not requirement_name and len(requirement.args) > 1:
-        requirement_name = requirement.args[1]
-
-    case_id = case.kwargs.get("id")
-    if not case_id and case.args:
-        case_id = case.args[0]
-    case_title = case.kwargs.get("title")
-    if not case_title and len(case.args) > 1:
-        case_title = case.args[1]
+    requirement_id = _marker_value(requirement, "id")
+    requirement_name = _marker_value(requirement, "name", 1)
+    case_id = _marker_value(case, "id")
+    case_title = _marker_value(case, "title", 1)
     values = {
         "requirement_id": str(requirement_id or "").strip(),
         "requirement_name": str(requirement_name or "").strip(),

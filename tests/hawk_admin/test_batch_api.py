@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 
 import pytest
 
@@ -15,6 +16,7 @@ BATCH_CASES = dataset_case_map("hawk_admin", "batch", "create")
 BATCH_DEFAULTS = dataset_defaults("hawk_admin", "batch")
 INVALID_BATCH_CASES = {case["id"]: case for case in dataset_cases("hawk_admin", "batch", "invalid_create")}
 INVALID_STATUS_CASES = dataset_cases("hawk_admin", "batch", "invalid_status")
+BATCH_AUXILIARY_INVALID_WRITES = dataset_cases("hawk_admin", "batch", "auxiliary_invalid_write")
 
 
 def test_hawk_05_07_running_batch_rejects_input_update(platform_client, platform_state):
@@ -211,3 +213,44 @@ def test_hawk_05_11_delete_batch_then_get(platform_client, platform_data_factory
     )
     assert_envelope(platform_client.delete_batch(batch_id))
     assert_rejected(platform_client.get_batch(batch_id))
+
+
+def _missing_batch_id() -> int:
+    return int(BATCH_DEFAULTS["missingId"])
+
+
+def _invoke_auxiliary_invalid_write(case, platform_client):
+    method = getattr(platform_client, case["endpoint"])
+    payload = case["payload"]
+    if isinstance(payload, Mapping):
+        return method(**payload)
+    return method(payload=payload)
+
+
+def test_hawk_07_07_get_batch_flowgraph_for_missing_batch(platform_client):
+    assert_rejected(platform_client.flowgraph(_missing_batch_id()))
+
+
+def test_hawk_07_08_copy_missing_batch_is_rejected(platform_client):
+    assert_rejected(platform_client.copy_batch(_missing_batch_id()))
+
+
+def test_hawk_07_09_get_statistics_csv_for_missing_batch(platform_client):
+    assert_rejected(platform_client.statistics_batch_csv(_missing_batch_id()))
+
+
+def test_hawk_07_10_list_statistics_batches(platform_client):
+    body = assert_envelope(
+        platform_client.list_statistics_batches(
+            collectionId=BATCH_DEFAULTS["statisticsCollectionId"]
+        ),
+        required_keys=("data",),
+    )
+    assert isinstance(body["data"], dict)
+    assert isinstance(body["data"].get("list"), list)
+    assert isinstance(body["data"].get("total"), int)
+
+
+@pytest.mark.parametrize("case", BATCH_AUXILIARY_INVALID_WRITES, ids=lambda case: case["id"])
+def test_hawk_07_11_invalid_batch_auxiliary_write_is_rejected(case, platform_client):
+    assert_rejected(_invoke_auxiliary_invalid_write(case, platform_client))

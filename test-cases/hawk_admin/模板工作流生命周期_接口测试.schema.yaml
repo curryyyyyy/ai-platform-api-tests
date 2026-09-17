@@ -1,0 +1,46 @@
+meta:
+  requirement_id: REQ-TEMPLATE-WORKFLOW-LIFECYCLE
+  requirement_name: template_workflow_lifecycle
+  display_name: 模板工作流生命周期
+  execution_model: api
+  source: biaozhu:test api/template/v1/template.proto
+
+cases:
+  - id: REQ-TEMPLATE-WORKFLOW-LIFECYCLE-API-01
+    source_id: TPL-01
+    title: 批量查询模板工作流
+    module: 模板工作流接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint:
+      method: POST
+      path: /api/v1/tpl/wf/batch-get
+    expected:
+      - 非法和重复编号被过滤
+      - 有效编号按请求顺序返回 id、name、description
+      - 空 ids 返回空数组
+  - id: REQ-TEMPLATE-WORKFLOW-LIFECYCLE-API-02
+    source_id: TPL-02
+    title: 创建空模板工作流校验名称
+    module: 模板工作流接口
+    priority: P0
+    type: exception
+    execution_model: api
+    endpoint:
+      method: POST
+      path: /api/v1/tpl/wf/empty
+    expected:
+      - 空名称被业务层拒绝且不创建工作流
+  - id: REQ-TEMPLATE-WORKFLOW-LIFECYCLE-API-03
+    source_id: TPL-03
+    title: 补齐模板工作流校验编号
+    module: 模板工作流接口
+    priority: P0
+    type: exception
+    execution_model: api
+    endpoint:
+      method: POST
+      path: /api/v1/tpl/wf/{id}/complete
+    expected:
+      - 无效工作流编号被业务层拒绝且不物化控制记录

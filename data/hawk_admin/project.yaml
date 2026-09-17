@@ -39,3 +39,7 @@ cases:
       adminUserIds: []
       developerUserIds: []
       ownerUserId: 0
+
+  favorite:
+    - id: default
+      onlyFavorite: true

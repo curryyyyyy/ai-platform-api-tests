@@ -1,4 +1,5 @@
 defaults:
   invalidToken: "invalid-token-20260902"
+  invalidUserToken: "invalid-user-token-20260909"
   viewerProjectName: "TC-02-07-viewer-project"
   viewerProjectIdEnv: "HAWK_VIEWER_PROJECT_ID"

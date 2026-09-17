@@ -1,0 +1,13 @@
+defaults:
+  missingId: 999999999
+
+cases:
+  batch_get:
+    - id: empty
+      ids: []
+  invalid_write:
+    - id: empty_template
+      payload: {}
+  invalid_complete:
+    - id: missing_workflow
+      workflow_id: 0

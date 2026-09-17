@@ -988,6 +988,10 @@ paths:
                   in: query
                   schema:
                     type: string
+                - name: onlyFavorite
+                  in: query
+                  schema:
+                    type: boolean
             responses:
                 "200":
                     description: OK
@@ -1088,6 +1092,41 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.project.v1.DeleteProjectReply'
+    /api/v1/project/{id}/favorite:
+        post:
+            tags:
+                - Project
+            operationId: Project_FavoriteProject
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.project.v1.FavoriteProjectReply'
+        delete:
+            tags:
+                - Project
+            operationId: Project_UnfavoriteProject
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.project.v1.FavoriteProjectReply'
     /api/v1/stage:
         get:
             tags:
@@ -1354,6 +1393,12 @@ paths:
                   schema:
                     type: integer
                     format: int32
+                - name: ids
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
             responses:
                 "200":
                     description: OK
@@ -1378,6 +1423,48 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.template.CreateTemplateWorkflowReply'
+    /api/v1/tpl/wf/batch-get:
+        post:
+            tags:
+                - Template
+            description: |-
+                BatchGetTemplateWorkflow 按工作流 id 批量查询（无分页）：
+                 入参只有 ids，返回精简任务列表（id/name/description）。
+            operationId: Template_BatchGetTemplateWorkflow
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.template.BatchGetTemplateWorkflowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.BatchGetTemplateWorkflowReply'
+    /api/v1/tpl/wf/empty:
+        post:
+            tags:
+                - Template
+            description: |-
+                CreateEmptyTemplateWorkflow 只创建空工作流骨架（tpl_wf 记录），返回 id；
+                 之后由 CompleteInfoTemplateWorkflow 补齐模板与配置，再物化 tpl_wf_ctl。
+            operationId: Template_CreateEmptyTemplateWorkflow
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.template.CreateEmptyTemplateWorkflowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.CreateEmptyTemplateWorkflowReply'
     /api/v1/tpl/wf/metric:
         get:
             tags:
@@ -1438,6 +1525,33 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.template.UpdateTemplateWorkflowReply'
+    /api/v1/tpl/wf/{id}/complete:
+        post:
+            tags:
+                - Template
+            description: |-
+                CompleteInfoTemplateWorkflow 为空工作流补齐 tpl_id/info/input，
+                 首次补齐时物化 tpl_wf_ctl 控制记录并回填 tpl_wf_ctl_id。
+            operationId: Template_CompleteInfoTemplateWorkflow
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.template.CompleteInfoTemplateWorkflowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.CompleteInfoTemplateWorkflowReply'
     /api/v1/tpl/wf/{id}/download:
         get:
             tags:
@@ -3124,6 +3238,8 @@ components:
                     type: string
                 amountYuan:
                     type: string
+                skip:
+                    type: boolean
         api.hawk.v1.SystemLoadData:
             type: object
             properties:
@@ -3225,10 +3341,20 @@ components:
                          HTTP 创建接口不填写时继续使用原有创建逻辑。
             description: |-
                 CreateProject 创建项目。
-                 RPC 请求示例：name="demo-project", idempotency_key="create-demo-project-001"。
+                 RPC 请求示例：name="demo-project", createdUserID="1001", createdUserName="张三", idempotency_key="create-demo-project-001"。
                  普通项目管理界面必填：name、notificationLevel；负责人由服务端根据当前登录用户设置，研发负责人和管理员可选。
-                 项目 RPC 必填：name、idempotency_key；其余字段为兼容旧 HTTP 创建接口保留。
+                 项目 RPC 必填：name、createdUserID、idempotency_key；createdUserName 为空时使用 createdUserID。
         api.project.v1.DeleteProjectReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.project.v1.FavoriteProjectReply:
             type: object
             properties:
                 code:
@@ -3331,6 +3457,8 @@ components:
                 notificationLevel:
                     type: integer
                     format: int32
+                isFavorite:
+                    type: boolean
         api.project.v1.ProjectUserData:
             type: object
             properties:
@@ -3550,6 +3678,75 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/api.template.TemplateWorkflow'
+        api.template.BatchGetTemplateWorkflowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.template.TemplateWorkflowBrief'
+        api.template.BatchGetTemplateWorkflowRequest:
+            type: object
+            properties:
+                ids:
+                    type: array
+                    items:
+                        type: string
+            description: BatchGetTemplateWorkflowRequest 按 id 批量查询的请求，无分页。
+        api.template.CompleteInfoTemplateWorkflowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+        api.template.CompleteInfoTemplateWorkflowRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                tplId:
+                    type: string
+                info:
+                    type: object
+                input:
+                    type: object
+            description: |-
+                CompleteInfoTemplateWorkflowRequest 补齐空工作流：
+                 首次调用（tpl_wf.tpl_wf_ctl_id=0）时必须携带 tpl_id，用于物化 tpl_wf_ctl。
+        api.template.CreateEmptyTemplateWorkflowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    type: string
+        api.template.CreateEmptyTemplateWorkflowRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                description:
+                    type: string
+            description: |-
+                CreateEmptyTemplateWorkflowRequest 创建空工作流的请求：
+                 project_id 从服务端动态配置 template.default_project_id 读取，不由前端传入。
+                 模板与输入延后由 CompleteInfoTemplateWorkflow 补齐。
         api.template.CreateTemplateWorkflowReply:
             type: object
             properties:
@@ -3665,6 +3862,18 @@ components:
                     type: string
                 createdAt:
                     type: string
+                description:
+                    type: string
+        api.template.TemplateWorkflowBrief:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+            description: TemplateWorkflowBrief 工作流精简信息，仅 id/名称/描述。
         api.template.UpdateTemplateWorkflowReply:
             type: object
             properties:

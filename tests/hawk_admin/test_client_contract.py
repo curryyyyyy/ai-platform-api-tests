@@ -74,12 +74,52 @@ def test_transfer_action_dataset_methods_have_matching_client_signatures():
     from framework.data.dataset import dataset_cases
 
     client = HawkAdminClient("http://hawk.invalid", retries=0)
-    cases = dataset_cases("hawk_admin", "extended", "transfer_actions")
+    cases = dataset_cases("hawk_admin", "transfer_task", "actions")
 
     for case in cases:
         method_name = case.get("client_method")
         assert isinstance(method_name, str) and method_name.strip()
         method = getattr(client, method_name, None)
-        assert callable(method), f"transfer_actions 引用了不存在的方法: {method_name}"
+        assert callable(method), f"transfer_task/actions 引用了不存在的方法: {method_name}"
         if "step_no" in case:
             assert "step_no" in inspect.signature(method).parameters
+
+
+def test_project_favorite_and_template_lifecycle_routes_match_openapi(monkeypatch):
+    """新增接口必须保留 OpenAPI 的 HTTP 方法、路径和请求体形状。"""
+    client = HawkAdminClient("http://hawk.invalid", retries=0)
+    calls: list[tuple[str, str, dict[str, Any]]] = []
+
+    def record(method: str):
+        def request(path: str, **kwargs: Any) -> None:
+            calls.append((method, path, kwargs))
+
+        return request
+
+    monkeypatch.setattr(client, "get", record("GET"))
+    monkeypatch.setattr(client, "post", record("POST"))
+    monkeypatch.setattr(client, "delete", record("DELETE"))
+
+    client.list_projects(page=2, page_size=5, onlyFavorite=True)
+    client.favorite_project(42)
+    client.unfavorite_project(42)
+    client.batch_get_templates([7, 8])
+    client.create_empty_template(name="workflow", description="description")
+    client.complete_template(7, tplId=8, info={"name": "workflow"})
+
+    assert calls == [
+        ("GET", "/api/v1/project", {"params": {"page": 2, "pageSize": 5, "onlyFavorite": True}}),
+        ("POST", "/api/v1/project/42/favorite", {}),
+        ("DELETE", "/api/v1/project/42/favorite", {}),
+        ("POST", "/api/v1/tpl/wf/batch-get", {"json": {"ids": [7, 8]}}),
+        (
+            "POST",
+            "/api/v1/tpl/wf/empty",
+            {"json": {"name": "workflow", "description": "description"}},
+        ),
+        (
+            "POST",
+            "/api/v1/tpl/wf/7/complete",
+            {"json": {"id": 7, "tplId": 8, "info": {"name": "workflow"}}},
+        ),
+    ]

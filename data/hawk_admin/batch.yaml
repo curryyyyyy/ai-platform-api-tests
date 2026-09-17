@@ -1,6 +1,8 @@
 defaults:
   materialType: "图片"
   config: '{"stages":[]}'
+  missingId: 999999999
+  statisticsCollectionId: "999999999"
 
 cases:
   create:
@@ -39,3 +41,17 @@ cases:
       status: -1
     - id: unsupported
       status: 999
+
+  auxiliary_invalid_write:
+    - id: empty_statistics
+      endpoint: batch_statistics
+      payload: {}
+    - id: empty_upload
+      endpoint: upload_file
+      payload: ""
+    - id: empty_multipart_init
+      endpoint: init_multipart_upload
+      payload: {}
+    - id: empty_multipart_complete
+      endpoint: complete_multipart_upload
+      payload: {}

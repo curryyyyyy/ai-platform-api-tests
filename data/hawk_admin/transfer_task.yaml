@@ -1,0 +1,25 @@
+defaults:
+  missingId: 999999999
+  transferTaskId: 116
+
+cases:
+  invalid_write:
+    - id: empty_transfer
+      payload: {}
+  actions:
+    - id: cancel_missing
+      client_method: cancel_transfer_task
+    - id: close_missing
+      client_method: close_transfer_task
+    - id: pause_missing
+      client_method: pause_transfer_task
+    - id: run_missing
+      client_method: run_transfer_task
+    - id: snapshot_missing
+      client_method: transfer_snapshot
+    - id: continue_missing
+      client_method: continue_transfer_step
+      step_no: 1
+    - id: retry_missing
+      client_method: retry_transfer_step
+      step_no: 1
