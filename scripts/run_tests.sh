@@ -7,7 +7,7 @@
 #   ./scripts/run_tests.sh -m contract --serve         用临时目录起服务并打开（不落盘 HTML）
 #   ./scripts/run_tests.sh -m contract --no-clean      保留当前结果目录，用于趋势对比
 #   ./scripts/run_tests.sh --no-skips -m "core and live"  将跳过视为门禁失败
-#   REPORT_KEEP=3 ./scripts/run_tests.sh -m contract   保留最近 3 次报告（默认值）
+#   REPORT_KEEP=3 ./scripts/run_tests.sh -m contract   临时保留最近 3 次报告
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -19,7 +19,7 @@ HTML_DIR="reports/allure-report"
 REPORTS_ROOT="reports"
 MODE="results"
 CLEAN=1
-REPORT_KEEP="${REPORT_KEEP:-3}"
+REPORT_KEEP="${REPORT_KEEP:-5}"
 FAIL_ON_SKIP=0
 PYTEST_ARGS=()
 
@@ -44,6 +44,11 @@ fi
 PYTEST="pytest"
 if [ -x "$ROOT/.venv/bin/pytest" ]; then
   PYTEST="$ROOT/.venv/bin/pytest"
+fi
+
+PYTHON="python3"
+if [ -x "$ROOT/.venv/bin/python" ]; then
+  PYTHON="$ROOT/.venv/bin/python"
 fi
 
 require_allure() {
@@ -85,7 +90,7 @@ if [ "$FAIL_ON_SKIP" -eq 1 ]; then
   if [ -n "${CORE_EXPECTED_TESTS:-}" ]; then
     GATE_ARGS+=(--expected-tests "$CORE_EXPECTED_TESTS")
   fi
-  if ! python3 "$ROOT/scripts/check_junit_gate.py" "${GATE_ARGS[@]}"; then
+  if ! "$PYTHON" "$ROOT/scripts/check_junit_gate.py" "${GATE_ARGS[@]}"; then
     GATE_STATUS=1
   fi
 fi
@@ -116,7 +121,7 @@ ARCHIVE_ARGS=(
 if [ "$INCLUDE_HTML" -eq 1 ]; then
   ARCHIVE_ARGS+=(--include-html)
 fi
-if ! python3 "$ROOT/scripts/report_history.py" "${ARCHIVE_ARGS[@]}"; then
+if ! "$PYTHON" "$ROOT/scripts/report_history.py" "${ARCHIVE_ARGS[@]}"; then
   echo "警告：本轮报告归档失败，当前报告仍保留在 $ROOT/$ALLURE_DIR 和 $ROOT/$JUNIT_DIR" >&2
 fi
 

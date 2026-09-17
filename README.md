@@ -15,6 +15,7 @@ tests            -> contracts/<platform>
 - `contracts/<platform>/`：OpenAPI 快照和接口清单。
 - `test-cases/<platform>/`：手工用例、Schema 和追溯依据。
 - `tests/<platform>/`：按业务板块组织的 pytest 用例及平台 README。
+- 需求级接口包：测试函数归入已有业务模块，需求 ID、case 和接口映射统一登记到所属平台的覆盖矩阵，支持单需求筛选与独立 CI 门禁。
 
 公共框架不得反向依赖具体平台。新增平台应集中修改自身目录，不通过不断增加平台分支来扩展 `framework/`。
 
@@ -27,8 +28,8 @@ data/               子平台可执行测试数据
 contracts/          子平台 OpenAPI 契约
 test-cases/         子平台手工用例与 Schema
 tests/              smoke、契约测试和各子平台业务测试
-config/             非敏感环境配置；*.local.yaml 不提交
-scripts/            测试执行、契约同步和报告工具
+config/             总平台非敏感配置；*.local.yaml 不提交
+scripts/            测试执行、契约 diff 和报告工具
 ```
 
 ## 安装与运行
@@ -48,18 +49,20 @@ pytest -m "live and smoke" -v
 pytest -m "core and live" -v
 ```
 
-线上测试需要总平台 `API_TOKEN`，或使用 `API_USER` / `API_PASSWORD` 现场登录。地址和凭证只通过环境变量或 `config/<env>.local.yaml` 注入：
+线上测试需要总平台 `API_TOKEN`，或使用 `API_USER` / `API_PASSWORD` 现场登录。总平台地址和凭证只通过环境变量或 `config/<env>.local.yaml` 注入；子平台地址由各自 `platforms/<platform>/config/<env>.yaml` 管理，也可统一由 CI JSON Secret 注入：
 
 | 变量 | 用途 |
 | --- | --- |
 | `TEST_ENV` | 环境配置名，默认 `test` |
 | `AUTH_BASE_URL` | 总平台地址 |
 | `PLATFORM_<平台名>_BASE_URL` | 子平台地址 |
+| `PLATFORM_BASE_URLS_JSON` | CI 批量注入子平台地址的 JSON 对象 |
 | `API_TOKEN` | 已有总平台 Token |
 | `API_USER` / `API_PASSWORD` | 总平台登录凭证 |
 | `API_TIMEOUT` | HTTP 超时时间 |
+| `CONTRACT_DIFF_ALLOW_BREAKING` | 经维护者确认后临时放行契约破坏性变更，仅限受保护 CI 变量 |
 
-配置优先级为：环境变量 > `config/<environment>.local.yaml` > `config/<environment>.yaml`。不得提交真实账号、密码或 Token。
+配置优先级为：环境变量 > 平台/根目录 `*.local.yaml` > 平台/根目录 `*.yaml`。不得提交真实账号、密码或 Token。
 
 ## 测试分层
 
@@ -70,12 +73,60 @@ pytest -m "core and live" -v
 | `core` | P0 主链路回归 | 线上 |
 | `live` | 访问实际测试环境 | 线上 |
 | `<platform>` | 子平台隔离标记 | 取决于用例 |
+| `requirement` | 需求接口包用例 | `-m requirement` 执行全部需求；`--requirement-id REQ-...` 精确筛选 |
 
-推荐 CI 将 `contract` 与线上回归分开。仓库已提供 [`.github/workflows/api-tests.yml`](.github/workflows/api-tests.yml)：PR/主分支推送执行契约门禁，定时或手动触发执行线上回归。
+推荐 CI 将 `contract` 与线上回归分开。仓库已提供 [`.github/workflows/api-tests.yml`](.github/workflows/api-tests.yml)：PR/主分支推送执行契约门禁，受信任流水线在契约门禁通过后执行线上回归和需求接口包。
 
-GitLab 项目可使用 [`.gitlab-ci.yml`](.gitlab-ci.yml) 接入 Merge Request 门禁：contract 对所有 MR 执行，同项目受信任 MR 执行 `core_live`。请在 GitLab 受保护分支中将 `core_live` 对应的 pipeline status 设为 Required，并将测试地址和凭证配置为受保护 CI/CD Variables；外部 fork 不应直接执行带线上凭证的测试代码。
+GitLab 项目可使用 [`.gitlab-ci.yml`](.gitlab-ci.yml) 接入 Merge Request 门禁：contract 对所有 MR 执行，同项目受信任 MR 执行核心和需求回归。请在 GitLab 受保护分支中将对应 pipeline status 设为 Required，并将线上地址和凭证配置为受保护 CI/CD Variables。外部 fork 不应直接执行带线上凭证的测试代码。
 
-契约门禁支持在 CI 中从 GitLab 拉取最新 OpenAPI 和接口清单。平台契约来源由各子平台文档和 CI 配置声明，通用拉取器支持项目地址、分支、文件路径或直接 raw URL。私有项目使用 `CONTRACT_GITLAB_TOKEN`；未配置远程来源时，门禁使用仓库内快照。GitHub Actions 仅在配置仓库 Variables `CONTRACT_GITLAB_PROJECT`（或 Secrets `HAWK_CONTRACT_OPENAPI_URL` 与 `HAWK_CONTRACT_INVENTORY_URL`）时启用远程拉取，避免 PR 因未配置内部契约源而失败。
+每个平台在 `platforms/<platform>/contract.yaml` 内声明自己的本地快照、接口清单和覆盖矩阵，在 `platforms/<platform>/config/` 管理运行地址。`contracts/<platform>/` 是日常测试使用的已提交快照；公共工具只读取这些协议，不包含具体平台的 URL、路径或业务分支。
+
+### 契约变更检测
+
+契约更新由维护者在对应服务代码仓库拉取目标分支到本地后完成，再运行 [`scripts/contract_diff.py`](scripts/contract_diff.py) 和 [`scripts/contract_coverage.py`](scripts/contract_coverage.py)。工具支持单文件和多文件 OpenAPI bundle，检测接口删除、`operationId` 变化、必填参数增加、请求/响应类型变化、枚举收窄、响应字段删除和共享 Schema 变化等破坏性变更，并检查每个最新接口是否有 inventory 和 testcase 映射。普通测试和 CI 不访问远程仓库，只校验当前提交中的快照。
+
+破坏性变更、新增接口没有覆盖映射、接口清单不一致或 testcase 引用失效，都会阻止门禁通过，并输出 diff/coverage 报告；维护者完成客户端和 case 回流后再提交新的快照。工具不会自动生成或修改业务 case，避免把未经审核的断言带入门禁。
+
+每个平台的标准执行命令由平台目录提供；命令只校验当前提交中的契约快照，再启动测试：
+
+```bash
+./platforms/<platform>/test.sh -m "contract"
+```
+
+契约需要更新时，先在对应服务代码仓库拉取目标分支的最新提交（例如 `git fetch origin test`、`git pull --ff-only origin test`），阅读该分支的 OpenAPI 文档和代码变更，再从本地工作树复制文档到本仓库并审核更新 `contracts/<platform>/`、接口清单、覆盖矩阵、客户端和用例。快照、客户端和用例一起提交后，普通 `test.sh` 和 CI 即使用这组固定版本。
+
+契约快照校验是测试执行的前置门禁，而不是静默刷新文件：每次平台测试命令只对仓库内快照执行格式、接口清单和 testcase 映射校验，再决定是否进入 pytest。新增、删除或破坏性变更应在快照提交前由维护者处理；兼容但可能影响断言的变更也要求人工复核。报告中的 `missing_inventory`、`missing_coverage`、`invalid_tests` 和 diff 明细就是回流清单。
+
+框架不会在 CI 中自动拉取或改写契约和业务 case。接口变更后的固定回流顺序是：拉取服务方 `test` 分支 → 阅读 diff → 更新本仓库快照、client、数据、Schema、inventory 和覆盖映射 → 先执行受影响 case → 运行 `contract` 和平台回归全量 → 提交审核后的快照与测试变更。平台之间只共享同步、diff、覆盖校验和报告逻辑，不共享业务接口信息。
+
+本地可直接比较两个契约：
+
+```bash
+python scripts/contract_diff.py \
+  --baseline-openapi /path/to/old/openapi.yaml \
+  --current-openapi contracts/<platform>/openapi.yaml \
+  --baseline-inventory /path/to/old/api_inventory.json \
+  --current-inventory contracts/<platform>/api_inventory.json \
+  --report reports/contracts/<platform>-diff.json \
+  --fail-on-breaking
+```
+
+比较当前快照与 Git 基线（不替换本地快照）可直接运行：
+
+```bash
+python scripts/contract_pipeline.py --base-ref "$BASE_SHA" --fail-on-breaking
+```
+
+比较已拉取的某个服务工作树（仍不替换本地快照）：
+
+```bash
+python scripts/contract_pipeline.py --platform <platform> \
+  --source-root /path/to/service-checkout --fail-on-breaking
+```
+
+平台目录下的 `test.sh` 只校验本地快照、运行时配置并启动 pytest；不会因为测试执行而访问远程契约。
+
+接口变更后的同步顺序固定为：拉取服务方文档 → 阅读 diff 和 coverage report → 更新平台 client → 更新 `data/<platform>/`、测试 Schema 和覆盖矩阵 → 先跑目标 case，再跑 `contract` 和平台回归全量。已有 case ID 默认保持不变；新增行为新增 case，废弃行为需保留迁移依据，不能直接删除测试来消除失败。
 
 ## 数据与清理
 
@@ -97,13 +148,17 @@ GitLab 项目可使用 [`.gitlab-ci.yml`](.gitlab-ci.yml) 接入 Merge Request �
 
 ## 新增子平台
 
-1. 新增 `config` 中的平台地址和 `platforms/<platform>/definition.py`。
-2. 在 `platforms/<platform>/` 实现客户端及可选的数据工厂、状态预置器。
-3. 新增 `data/<platform>/`、`contracts/<platform>/` 和 `test-cases/<platform>/`。
-4. 在 `tests/<platform>/` 按业务板块组织用例，并提供该目录的 README。
-5. 使用通用 fixture（如 `platform_client`、`platform_data_factory`、`platform_state`），不得复制认证和 HTTP 实现。
+1. 在 `platforms/<platform>/definition.py` 注册客户端和平台能力。
+2. 在 `platforms/<platform>/contract.yaml` 声明本地契约快照、inventory 和覆盖矩阵，并提供 `test.sh` 入口。
+3. 在 `platforms/<platform>/` 实现客户端及可选的数据工厂、状态预置器。
+4. 新增 `data/<platform>/`、`contracts/<platform>/` 和 `test-cases/<platform>/`。
+5. 在 `tests/<platform>/` 按业务板块组织用例，并提供该目录的 README；使用通用 fixture，不复制认证和 HTTP 实现。
 
 平台注册由 `platforms/registry.py` 自动发现。用例函数使用 `test_<子平台短名>_<模块号>_<序号>_<动作>` 命名，Schema 与自动化覆盖矩阵由子平台自行维护。
+
+## 新增需求接口包
+
+每个新需求在所属子平台下保留必要的 Schema 和数据资产；测试函数归入已有业务模块，需求 ID、case、接口和测试函数映射追加到平台现有 `coverage.yaml`，避免按需求新增 conftest、覆盖文件或独立测试文件。需求 ID 使用稳定的需求名或版本日期（例如 `REQ-<domain>-20260910`），不要复用其他需求的 `TC` 编号，也不要拼接执行时分秒。每条 case ID 必须以需求 ID 开头，框架会在 contract 测试和 Allure teardown 时校验。每条需求用例声明 `requirement` 和 `case_id` marker；Allure 会按需求 ID 覆盖标题、`testId`、`requirement` 标签和 story。执行全部需求使用 `-m "requirement and live"`；精确执行一个或多个需求使用 `--requirement-id REQ-...`（支持重复传入或逗号分隔），不依赖其所在测试文件。执行时间只由 `scripts/report_history.py` 生成报告 `run_id`，用于 `reports/history/<run_id>/` 归档，不参与用例身份。CI 的需求 job 统一按 `requirement` marker 执行，新增需求不需要修改公共 CI 文件。
 
 ## 子平台文档
 

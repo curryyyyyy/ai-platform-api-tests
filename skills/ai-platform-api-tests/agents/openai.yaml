@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI 平台接口测试"
+  short_description: "维护、扩展并排查多平台接口自动化测试框架的契约与数据问题"
+  default_prompt: "使用 $ai-platform-api-tests 维护或扩展当前多平台接口测试框架。"

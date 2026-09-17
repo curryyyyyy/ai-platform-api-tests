@@ -14,12 +14,17 @@ cases:
       # 可直接传给接口或工厂的字段
 ```
 
+需求级数据集还应在 `meta` 中声明稳定的 `requirement_id`，例如
+`REQ-domain-20260910`。这个 ID 和 `cases.*[].id` 会贯穿 Schema、覆盖映射和
+Allure 历史；不要把执行时间写入 ID。执行时间由报告归档工具生成
+`reports/history/<run_id>/` 目录名。
+
 Python 用例通过 `framework.data.dataset` 读取：
 
 ```python
 from framework.data.dataset import case_payload, dataset_cases
 
-cases = dataset_cases("hawk_admin", "project", "invalid_notification_levels")
+cases = dataset_cases("<platform>", "<resource>", "<scenario>")
 pytest.mark.parametrize("case", cases, ids=lambda item: item["id"])
 payload = case_payload(case)
 ```

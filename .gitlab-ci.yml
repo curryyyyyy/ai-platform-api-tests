@@ -1,5 +1,6 @@
 stages:
   - contract
+  - requirement
   - core
 
 workflow:
@@ -19,7 +20,7 @@ default:
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-  CORE_EXPECTED_TESTS: "10"
+  GIT_DEPTH: "0"
 
 contract:
   stage: contract
@@ -30,7 +31,30 @@ contract:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
   script:
     - python -m pip install .
+    # 只使用仓库内已审核并提交的契约快照，不访问上游 GitLab。
     - ./scripts/run_tests.sh -m contract
+  artifacts:
+    when: always
+    expire_in: 14 days
+    reports:
+      junit: reports/junit/results.xml
+    paths:
+      - reports/
+
+requirements_live:
+  stage: requirement
+  resource_group: api-requirements-live
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH == $CI_PROJECT_PATH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  needs:
+    - job: contract
+      artifacts: false
+  script:
+    - python -m pip install .
+    - python scripts/validate_runtime.py
+    - ./scripts/run_tests.sh --no-skips -m "requirement and live"
   artifacts:
     when: always
     expire_in: 14 days
@@ -41,9 +65,9 @@ contract:
 
 core_live:
   stage: core
-  resource_group: hawk-core-live
+  resource_group: api-core-live
   rules:
-    # Protected CI variables must only be used by a trusted MR from this project.
+    # 仅同项目 MR 使用受保护线上变量；外部 fork 只执行契约门禁。
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH == $CI_PROJECT_PATH'
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
@@ -51,14 +75,8 @@ core_live:
     - job: contract
       artifacts: false
   script:
-    - test -n "$PLATFORM_HAWK_ADMIN_BASE_URL" || { echo "Missing PLATFORM_HAWK_ADMIN_BASE_URL" >&2; exit 1; }
-    - |
-      if [ -z "$API_TOKEN" ]; then
-        test -n "$AUTH_BASE_URL" || { echo "Missing AUTH_BASE_URL when API_TOKEN is not set" >&2; exit 1; }
-        test -n "$API_USER" || { echo "Missing API_USER when API_TOKEN is not set" >&2; exit 1; }
-        test -n "$API_PASSWORD" || { echo "Missing API_PASSWORD when API_TOKEN is not set" >&2; exit 1; }
-      fi
     - python -m pip install .
+    - python scripts/validate_runtime.py
     - ./scripts/run_tests.sh --no-skips -m "core and live"
   artifacts:
     when: always

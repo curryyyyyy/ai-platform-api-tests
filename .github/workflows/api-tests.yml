@@ -17,31 +17,17 @@ jobs:
   contract:
     name: Contract tests
     runs-on: ubuntu-latest
-    env:
-      # 远程契约来源是可选配置；未配置时使用仓库内已校验快照。
-      CONTRACT_GITLAB_PROJECT: ${{ vars.CONTRACT_GITLAB_PROJECT }}
-      CONTRACT_GITLAB_REF: ${{ vars.CONTRACT_GITLAB_REF }}
-      CONTRACT_OPENAPI_PATH: ${{ vars.CONTRACT_OPENAPI_PATH }}
-      CONTRACT_INVENTORY_PATH: ${{ vars.CONTRACT_INVENTORY_PATH }}
-      CONTRACT_GITLAB_TOKEN: ${{ secrets.CONTRACT_GITLAB_TOKEN }}
-      HAWK_CONTRACT_OPENAPI_URL: ${{ secrets.HAWK_CONTRACT_OPENAPI_URL }}
-      HAWK_CONTRACT_INVENTORY_URL: ${{ secrets.HAWK_CONTRACT_INVENTORY_URL }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
         run: python -m pip install .
-      - name: Fetch latest remote contract when configured
-        shell: bash
-        run: |
-          if [[ -n "$CONTRACT_GITLAB_PROJECT" || -n "$HAWK_CONTRACT_OPENAPI_URL" || -n "$HAWK_CONTRACT_INVENTORY_URL" ]]; then
-            python scripts/fetch_contracts.py --platform hawk_admin --required
-          else
-            echo "未配置 GitLab 契约来源，使用仓库内契约快照"
-          fi
+      # Contract tests intentionally consume the committed snapshots.
       - name: Run contract suite
         run: ./scripts/run_tests.sh -m contract
       - name: Upload test reports
@@ -52,8 +38,9 @@ jobs:
           path: reports/
           if-no-files-found: ignore
 
-  core:
-    name: Core live regression
+  requirements:
+    name: Requirement live regression
+    needs: contract
     if: >-
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
@@ -61,33 +48,64 @@ jobs:
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       AUTH_BASE_URL: ${{ secrets.AUTH_BASE_URL }}
-      PLATFORM_HAWK_ADMIN_BASE_URL: ${{ secrets.PLATFORM_HAWK_ADMIN_BASE_URL }}
       API_TOKEN: ${{ secrets.API_TOKEN }}
       API_USER: ${{ secrets.API_USER }}
       API_PASSWORD: ${{ secrets.API_PASSWORD }}
-      CORE_EXPECTED_TESTS: "10"
+      PLATFORM_BASE_URLS_JSON: ${{ secrets.PLATFORM_BASE_URLS_JSON }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
         run: python -m pip install .
-      - name: Validate live test secrets
-        shell: bash
-        run: |
-          test -n "$PLATFORM_HAWK_ADMIN_BASE_URL" || { echo "Missing PLATFORM_HAWK_ADMIN_BASE_URL" >&2; exit 1; }
-          if [[ -z "$API_TOKEN" ]]; then
-            test -n "$AUTH_BASE_URL" || { echo "Missing AUTH_BASE_URL when API_TOKEN is not set" >&2; exit 1; }
-            if [[ -z "$API_USER" || -z "$API_PASSWORD" ]]; then
-              echo "Set API_TOKEN or both API_USER and API_PASSWORD" >&2
-              exit 1
-            fi
-          fi
+      - name: Validate live test configuration
+        run: python scripts/validate_runtime.py
+      - name: Run requirement regression
+        run: ./scripts/run_tests.sh --no-skips -m "requirement and live"
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: requirement-live-reports
+          path: reports/
+          if-no-files-found: ignore
+
+  core:
+    name: Core live regression
+    needs: contract
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AUTH_BASE_URL: ${{ secrets.AUTH_BASE_URL }}
+      API_TOKEN: ${{ secrets.API_TOKEN }}
+      API_USER: ${{ secrets.API_USER }}
+      API_PASSWORD: ${{ secrets.API_PASSWORD }}
+      PLATFORM_BASE_URLS_JSON: ${{ secrets.PLATFORM_BASE_URLS_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install .
+      - name: Validate live test configuration
+        run: python scripts/validate_runtime.py
       - name: Run P0 core regression
         run: ./scripts/run_tests.sh --no-skips -m "core and live"
       - name: Upload test reports
@@ -95,56 +113,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: core-live-reports
-          path: reports/
-          if-no-files-found: ignore
-
-  hawk-stateful:
-    name: Hawk stateful prerequisites
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      AUTH_BASE_URL: ${{ secrets.AUTH_BASE_URL }}
-      PLATFORM_HAWK_ADMIN_BASE_URL: ${{ secrets.PLATFORM_HAWK_ADMIN_BASE_URL }}
-      API_TOKEN: ${{ secrets.API_TOKEN }}
-      API_USER: ${{ secrets.API_USER }}
-      API_PASSWORD: ${{ secrets.API_PASSWORD }}
-      HAWK_FAILED_BATCH_ID: ${{ secrets.HAWK_FAILED_BATCH_ID }}
-      HAWK_EXPORT_RUNNING_BATCH_ID: ${{ secrets.HAWK_EXPORT_RUNNING_BATCH_ID }}
-      HAWK_END_RUNNING_BATCH_ID: ${{ secrets.HAWK_END_RUNNING_BATCH_ID }}
-      HAWK_ERROR_LOG_BATCH_ID: ${{ secrets.HAWK_ERROR_LOG_BATCH_ID }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - name: Install dependencies
-        run: python -m pip install .
-      - name: Validate stateful Hawk prerequisites
-        shell: bash
-        run: |
-          test -n "$PLATFORM_HAWK_ADMIN_BASE_URL" || { echo "Missing PLATFORM_HAWK_ADMIN_BASE_URL" >&2; exit 1; }
-          if [[ -z "$API_TOKEN" ]]; then
-            test -n "$AUTH_BASE_URL" || { echo "Missing AUTH_BASE_URL when API_TOKEN is not set" >&2; exit 1; }
-            if [[ -z "$API_USER" || -z "$API_PASSWORD" ]]; then
-              echo "Set API_TOKEN or both API_USER and API_PASSWORD" >&2
-              exit 1
-            fi
-          fi
-          for name in HAWK_FAILED_BATCH_ID HAWK_EXPORT_RUNNING_BATCH_ID HAWK_END_RUNNING_BATCH_ID HAWK_ERROR_LOG_BATCH_ID; do
-            [[ -n "${!name}" ]] || { echo "Missing required stateful prerequisite: $name" >&2; exit 1; }
-          done
-      - name: Run stateful Hawk regression
-        run: >-
-          ./scripts/run_tests.sh
-          tests/hawk_admin/test_hawk_execution_api.py
-          tests/hawk_admin/test_batch_api.py::test_hawk_05_07_running_batch_rejects_input_update
-          -m "live and hawk_admin"
-      - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hawk-stateful-reports
           path: reports/
           if-no-files-found: ignore

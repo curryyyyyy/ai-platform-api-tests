@@ -1,0 +1,3 @@
+platform: hawk_admin
+base_url: "https://test-hawk-admin.tucdev.com"
+legacy_base_url_env: "HAWK_ADMIN_BASE_URL"

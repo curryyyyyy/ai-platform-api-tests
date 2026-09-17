@@ -3,6 +3,8 @@ defaults:
   desc: "自动化接口测试流程"
   schema: '{"input":["image_url"]}'
   config: '{"stages":[]}'
+  inputFields: '[]'
+  outputFields: '[]'
   status: 1
 
 cases:

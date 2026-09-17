@@ -1,0 +1,14 @@
+version: 1
+platform: hawk_admin
+
+# This file is owned by the platform adapter and points only to committed
+# local snapshots used by offline contract tests.
+local:
+  openapi:
+    - contracts/hawk_admin/openapi.yaml
+  inventory: contracts/hawk_admin/api_inventory.json
+  coverage: tests/hawk_admin/operation_coverage.yaml
+
+source:
+  openapi:
+    - openapi.yaml

@@ -3,10 +3,13 @@
 __pycache__/
 *.py[cod]
 .vscode/
+.DS_Store
 
 # Local credentials and overrides
 config/*.local.yaml
 config/*.local.yml
+platforms/*/config/*.local.yaml
+platforms/*/config/*.local.yml
 
 # Test reports
 reports/
