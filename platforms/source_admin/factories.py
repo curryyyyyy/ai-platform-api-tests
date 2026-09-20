@@ -66,6 +66,39 @@ def make_share_link(scope: DataScope, *, collection_id: int | str, **overrides: 
     return payload
 
 
+def make_collection_from_rowkeys(
+    scope: DataScope,
+    *,
+    parent_node_id: int | str,
+    source_collection_id: int | str,
+    rowkeys: list[str],
+    **overrides: Any,
+) -> dict[str, Any]:
+    payload = {
+        "parent_node_id": int(parent_node_id),
+        "name": scope.unique_name("rowkey-collection", max_length=48),
+        "cid": int(source_collection_id),
+        "rowkeys": rowkeys,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _collection_node_id(body: Mapping[str, Any], *, expected_name: str) -> str:
+    value = _payload_data(body)
+    path = value.get("path") if isinstance(value, Mapping) else None
+    if not isinstance(path, list) or not path:
+        raise AssertionError(f"圈选集节点路径为空，无法登记清理: {body}")
+    node = path[-1]
+    if not isinstance(node, Mapping) or node.get("id") is None:
+        raise AssertionError(f"圈选集节点路径末尾缺少 node.id: {body}")
+    if node.get("name") != expected_name:
+        raise AssertionError(
+            f"圈选集节点路径末尾不是新建集合节点: expected={expected_name!r}, body={body}"
+        )
+    return str(node["id"])
+
+
 class SourceAdminDataFactory:
     """创建资源并将逆序清理动作登记到单条用例的 DataScope。"""
 
@@ -106,6 +139,36 @@ class SourceAdminDataFactory:
 
     def _delete_node(self, node_id: str) -> None:
         assert_envelope(self.client.delete_node(node_id))
+
+    def create_collection_from_rowkeys(
+        self,
+        *,
+        parent_node_id: int | str,
+        source_collection_id: int | str,
+        rowkeys: list[str],
+        **overrides: Any,
+    ) -> tuple[str, dict[str, Any], Mapping[str, Any]]:
+        payload = make_collection_from_rowkeys(
+            self.scope,
+            parent_node_id=parent_node_id,
+            source_collection_id=source_collection_id,
+            rowkeys=rowkeys,
+            **overrides,
+        )
+        body = assert_envelope(
+            self.client.create_collection_from_rowkeys(**payload), required_keys=("data",)
+        )
+        value = _payload_data(body)
+        if not isinstance(value, Mapping) or value.get("collection_id") is None:
+            raise AssertionError(f"创建 rowkeys 圈选集响应缺少 collection_id: {body}")
+        collection_id = str(value["collection_id"])
+
+        path_body = assert_envelope(
+            self.client.get_collection_node_path(collection_id), required_keys=("data",)
+        )
+        node_id = _collection_node_id(path_body, expected_name=str(payload["name"]))
+        self.scope.track(f"删除 rowkeys 圈选集节点 {node_id}", lambda: self._delete_node(node_id))
+        return collection_id, payload, value
 
     def create_project_node(self, **overrides: Any) -> tuple[str, dict[str, Any]]:
         payload = make_project_node(self.scope, **overrides)

@@ -7,7 +7,8 @@ import pytest
 
 from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_cases, dataset_defaults
-from tests.source_admin.helpers import data, required_collection_id, required_schema
+from platforms.source_admin.factories import SourceAdminDataFactory
+from tests.source_admin.helpers import data, required_collection_id, required_root_node_id, required_schema
 
 
 pytestmark = [pytest.mark.live, pytest.mark.source_admin]
@@ -207,26 +208,33 @@ def test_source_02_18_create_collection_from_rowkeys_rejects_missing_source(plat
     "REQ-COLLECTION-ROWKEY-CREATION-API-03",
     title="按 rowkeys 创建圈选集后可立即读取新集数据",
 )
-@pytest.mark.skip(reason="接口未提供新建圈选集删除能力，无法满足 DataScope 清理要求")
-def test_source_02_19_create_collection_from_rowkeys_lifecycle_is_deferred(
-    platform_client, data_scope
+def test_source_02_19_create_collection_from_rowkeys_lifecycle(
+    platform_data_factory: SourceAdminDataFactory,
+    data_scope,
 ):
-    """保留正向入口，待服务端提供可回收的集合清理能力后恢复。"""
-    source_collection_id = required_collection_id(platform_client)
-    created = data(assert_envelope(
-        platform_client.create_collection_from_rowkeys(
-            parent_node_id=1,
-            name=data_scope.unique_name("rowkey-collection", max_length=48),
-            cid=source_collection_id,
-            rowkeys=["api-test-rowkey"],
+    """新圈选集同步写入 rowkey、可读回，并在用例结束后删除关联节点。"""
+    client = platform_data_factory.client
+    rowkey = data_scope.unique_name("rowkey", max_length=64)
+    collection_id, payload, created = platform_data_factory.create_collection_from_rowkeys(
+        parent_node_id=required_root_node_id(),
+        source_collection_id=required_collection_id(client),
+        rowkeys=[rowkey],
+    )
+    assert isinstance(created, dict)
+    assert int(collection_id) > 0
+    assert created["status"] == 2
+    detail = data(assert_envelope(
+        client.get_collection(collection_id), required_keys=("data",)
+    ))
+    assert detail.get("collection", {}).get("id") == int(collection_id)
+
+    rows = data(assert_envelope(
+        client.get_collection_data(
+            collection_id,
+            fields=[{"name": "rowkey", "source": 2}],
+            page=1,
+            page_size=10,
         ),
         required_keys=("data",),
     ))
-    assert isinstance(created, dict)
-    collection_id = int(created["collection_id"])
-    assert collection_id > 0
-    assert created["status"] == 2
-    detail = data(assert_envelope(
-        platform_client.get_collection(collection_id), required_keys=("data",)
-    ))
-    assert detail.get("collection", {}).get("id") == collection_id
+    assert any(item.get("rowkey") == payload["rowkeys"][0] for item in rows["data"])

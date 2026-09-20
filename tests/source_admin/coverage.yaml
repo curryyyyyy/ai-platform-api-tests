@@ -120,10 +120,9 @@ entries:
     tests: [tests/source_admin/test_data_manage_api.py::test_source_02_17_create_collection_from_rowkeys_rejects_invalid_input]
   - id: TC-02-18
     priority: P0
-    level: blocked
+    level: full
     operations: [DM-21]
-    note: "创建后没有公开删除圈选集能力，无法满足 DataScope 自动清理要求"
-    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_19_create_collection_from_rowkeys_lifecycle_is_deferred]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_19_create_collection_from_rowkeys_lifecycle]
   - id: TC-03-01
     priority: P0
     level: full
@@ -268,7 +267,6 @@ requirements:
       - id: REQ-COLLECTION-ROWKEY-CREATION-API-03
         source_id: DM-21-LIFECYCLE
         priority: P0
-        level: blocked
-        note: "接口没有公开删除新建圈选集能力，无法执行正向写入后清理"
-        test: tests/source_admin/test_data_manage_api.py::test_source_02_19_create_collection_from_rowkeys_lifecycle_is_deferred
+        level: full
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_19_create_collection_from_rowkeys_lifecycle
         endpoint: "POST /api/v1/collections/create-from-rowkeys"
