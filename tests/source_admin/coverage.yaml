@@ -113,6 +113,17 @@ entries:
     operations: [DM-11, DM-12]
     env: SOURCE_ADMIN_WRITABLE_COLLECTION_ID
     tests: [tests/source_admin/test_data_manage_api.py::test_source_02_16_collection_metadata_write]
+  - id: TC-02-17
+    priority: P0
+    level: full
+    operations: [DM-21]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_17_create_collection_from_rowkeys_rejects_invalid_input]
+  - id: TC-02-18
+    priority: P0
+    level: blocked
+    operations: [DM-21]
+    note: "创建后没有公开删除圈选集能力，无法满足 DataScope 自动清理要求"
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_19_create_collection_from_rowkeys_lifecycle_is_deferred]
   - id: TC-03-01
     priority: P0
     level: full
@@ -233,3 +244,31 @@ entries:
     note: "供应商接口没有删除能力，创建后无法满足 DataScope 清理要求"
     operations: [SP-02]
     tests: [tests/source_admin/test_supplier_api.py::test_source_07_04_supplier_create_is_deferred]
+
+# 需求级差异与平台常规用例共用覆盖矩阵。需求用例放入所属业务域脚本，
+# 稳定 requirement/case ID 仅用于筛选、报告和变更追溯。
+requirements:
+  - id: REQ-COLLECTION-ROWKEY-CREATION
+    name: collection_rowkey_creation
+    display_name: 基于 rowkeys 创建圈选集
+    marker: requirement
+    cases:
+      - id: REQ-COLLECTION-ROWKEY-CREATION-API-01
+        source_id: DM-21-VALIDATION
+        priority: P0
+        level: full
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_17_create_collection_from_rowkeys_rejects_invalid_input
+        endpoint: "POST /api/v1/collections/create-from-rowkeys"
+      - id: REQ-COLLECTION-ROWKEY-CREATION-API-02
+        source_id: DM-21-MISSING-SOURCE
+        priority: P1
+        level: full
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_18_create_collection_from_rowkeys_rejects_missing_source
+        endpoint: "POST /api/v1/collections/create-from-rowkeys"
+      - id: REQ-COLLECTION-ROWKEY-CREATION-API-03
+        source_id: DM-21-LIFECYCLE
+        priority: P0
+        level: blocked
+        note: "接口没有公开删除新建圈选集能力，无法执行正向写入后清理"
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_19_create_collection_from_rowkeys_lifecycle_is_deferred
+        endpoint: "POST /api/v1/collections/create-from-rowkeys"

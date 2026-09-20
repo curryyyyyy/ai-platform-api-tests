@@ -51,7 +51,14 @@
 .venv/bin/pytest -m 'live and source_admin and core' -q
 ```
 
-覆盖矩阵中的 61 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
+覆盖矩阵中的 62 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
+
+需求级用例继续归入业务域脚本，不按需求名新建测试文件。需求 ID、稳定 case ID 与接口映射统一登记在 `coverage.yaml` 的 `requirements` 节，可通过以下方式按需求执行：
+
+```bash
+.venv/bin/pytest tests/source_admin -m "requirement and live" \
+  --requirement-id REQ-COLLECTION-ROWKEY-CREATION -q
+```
 
 ## 暂未执行的链路
 

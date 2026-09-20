@@ -45,10 +45,12 @@
         "type": "object",
         "required": ["id", "name", "type", "path"],
         "properties": {
-          "id":   { "type": "integer", "format": "int64" },
-          "name": { "type": "string" },
-          "type": { "type": "integer", "description": "1=文件夹 2=图片文件 3=视频文件" },
-          "path": { "type": "string" }
+          "id":          { "type": "integer", "format": "int64" },
+          "name":        { "type": "string" },
+          "type":        { "type": "integer", "description": "节点类型：1=文件夹  2=图片文件  3=视频文件  4=音频文件  5=通用数据文件  6=3D 文件  99=其他" },
+          "path":        { "type": "string" },
+          "resource_id": { "type": "integer", "format": "int64", "description": "绑定的资源 ID（仅文件节点），如 collection_id" },
+          "row_count":   { "type": "integer", "format": "int64", "description": "文件节点的数据行数，目录节点不返回" }
         }
       },
       "ProjectNodeInfo": {
@@ -349,28 +351,29 @@
       "get": {
         "tags": ["Node"],
         "summary": "搜索节点",
+        "description": "按名称模糊匹配节点，最多返回 100 条。可选 `scope` 限定文件/目录，可选 `parents_node_id` 限定在某个子树内搜索。",
         "operationId": "SearchNodes",
         "parameters": [
-          {
-            "name": "X-Owner-ID",
-            "in": "header",
-            "required": false,
-            "description": "空间/用户 ID",
-            "schema": { "type": "integer", "format": "int64" }
-          },
           {
             "name": "q",
             "in": "query",
             "required": true,
-            "description": "搜索关键词（名称模糊匹配）",
+            "description": "搜索关键词（节点名称模糊匹配）",
             "schema": { "type": "string" }
           },
           {
             "name": "scope",
             "in": "query",
             "required": false,
-            "description": "搜索范围：folder | file | （空=全部）",
-            "schema": { "type": "string", "enum": ["folder", "file", ""] }
+            "description": "搜索范围：`path`=按路径匹配；`folder`=只匹配目录；`file`=只匹配文件；不传=匹配全部",
+            "schema": { "type": "string", "enum": ["path", "folder", "file"] }
+          },
+          {
+            "name": "parents_node_id",
+            "in": "query",
+            "required": false,
+            "description": "父节点 ID。> 0 时仅在该节点（含所有子孙）范围内搜索；不传或 0 表示全库搜索",
+            "schema": { "type": "integer", "format": "int64" }
           }
         ],
         "responses": {
@@ -402,7 +405,8 @@
                   "msg": "ok",
                   "data": {
                     "node": [
-                      { "id": 10, "name": "猫咪.jpg", "type": 2, "path": "/images/猫咪.jpg" }
+                      { "id": 10, "name": "猫咪.jpg", "type": 2, "path": "/images/猫咪.jpg", "resource_id": 88, "row_count": 1024 },
+                      { "id": 11, "name": "images", "type": 1, "path": "/images" }
                     ]
                   }
                 }

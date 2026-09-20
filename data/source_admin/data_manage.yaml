@@ -1,5 +1,6 @@
 defaults:
   missing_collection_id: 999999999
+  missing_source_collection_id: 999999999
   missing_task_id: 999999999
   invalid_node_type: 99
   valid_table_env: "SOURCE_ADMIN_TABLE_NAME"
@@ -25,3 +26,29 @@ cases:
   invalid_csv:
     - id: missing_tos_path
       payload: {}
+  invalid_create_from_rowkeys:
+    - id: blank_name
+      parent_node_id: 1
+      name: ""
+      cid: 1
+      rowkeys: ["api-test-rowkey"]
+    - id: invalid_parent_node
+      parent_node_id: 0
+      name: "api-test-rowkey-collection"
+      cid: 1
+      rowkeys: ["api-test-rowkey"]
+    - id: invalid_source_collection
+      parent_node_id: 1
+      name: "api-test-rowkey-collection"
+      cid: 0
+      rowkeys: ["api-test-rowkey"]
+    - id: empty_rowkeys
+      parent_node_id: 1
+      name: "api-test-rowkey-collection"
+      cid: 1
+      rowkeys: []
+    - id: rowkeys_over_limit
+      parent_node_id: 1
+      name: "api-test-rowkey-collection"
+      cid: 1
+      rowkey_count: 100001

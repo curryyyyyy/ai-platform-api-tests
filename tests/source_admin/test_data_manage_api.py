@@ -16,6 +16,9 @@ INVALID_DOWNLOAD_CASES = dataset_cases("source_admin", "data_manage", "invalid_o
 INVALID_SET_CASES = dataset_cases("source_admin", "data_manage", "invalid_set_operation")
 INVALID_IMPORT_CASES = dataset_cases("source_admin", "data_manage", "invalid_import")
 INVALID_CSV_CASES = dataset_cases("source_admin", "data_manage", "invalid_csv")
+INVALID_ROWKEY_COLLECTION_CASES = dataset_cases(
+    "source_admin", "data_manage", "invalid_create_from_rowkeys"
+)
 
 
 @pytest.mark.core
@@ -155,3 +158,75 @@ def test_source_02_16_collection_metadata_write(platform_client):
     names = [item["name"] for item in labels.get("labels", []) if item.get("name") != "rowkey"]
     assert_envelope(platform_client.update_collection_columns(collection_id, show_col=names[:3]))
     assert_envelope(platform_client.update_collection_set_type(collection_id, set_type=2))
+
+
+@pytest.mark.core
+@pytest.mark.requirement(
+    id="REQ-COLLECTION-ROWKEY-CREATION", name="collection_rowkey_creation"
+)
+@pytest.mark.case_id(
+    "REQ-COLLECTION-ROWKEY-CREATION-API-01",
+    title="按 rowkeys 创建圈选集在写入前拒绝非法参数",
+)
+@pytest.mark.parametrize("case", INVALID_ROWKEY_COLLECTION_CASES, ids=lambda item: item["id"])
+def test_source_02_17_create_collection_from_rowkeys_rejects_invalid_input(
+    case, platform_client
+):
+    """参数校验必须在读取源集或创建新集之前生效。"""
+    payload = case_payload(case)
+    rowkey_count = payload.pop("rowkey_count", None)
+    if rowkey_count is not None:
+        payload["rowkeys"] = ["api-test-rowkey"] * rowkey_count
+    assert_rejected(platform_client.create_collection_from_rowkeys(**payload))
+
+
+@pytest.mark.requirement(
+    id="REQ-COLLECTION-ROWKEY-CREATION", name="collection_rowkey_creation"
+)
+@pytest.mark.case_id(
+    "REQ-COLLECTION-ROWKEY-CREATION-API-02",
+    title="按 rowkeys 创建圈选集拒绝不存在的源集合",
+)
+def test_source_02_18_create_collection_from_rowkeys_rejects_missing_source(platform_client):
+    """源集不存在时不应创建新集，且要返回明确业务失败。"""
+    assert_rejected(
+        platform_client.create_collection_from_rowkeys(
+            parent_node_id=1,
+            name="api-test-missing-source-collection",
+            cid=DATA_DEFAULTS["missing_source_collection_id"],
+            rowkeys=["api-test-rowkey"],
+        )
+    )
+
+
+@pytest.mark.core
+@pytest.mark.requirement(
+    id="REQ-COLLECTION-ROWKEY-CREATION", name="collection_rowkey_creation"
+)
+@pytest.mark.case_id(
+    "REQ-COLLECTION-ROWKEY-CREATION-API-03",
+    title="按 rowkeys 创建圈选集后可立即读取新集数据",
+)
+@pytest.mark.skip(reason="接口未提供新建圈选集删除能力，无法满足 DataScope 清理要求")
+def test_source_02_19_create_collection_from_rowkeys_lifecycle_is_deferred(
+    platform_client, data_scope
+):
+    """保留正向入口，待服务端提供可回收的集合清理能力后恢复。"""
+    source_collection_id = required_collection_id(platform_client)
+    created = data(assert_envelope(
+        platform_client.create_collection_from_rowkeys(
+            parent_node_id=1,
+            name=data_scope.unique_name("rowkey-collection", max_length=48),
+            cid=source_collection_id,
+            rowkeys=["api-test-rowkey"],
+        ),
+        required_keys=("data",),
+    ))
+    assert isinstance(created, dict)
+    collection_id = int(created["collection_id"])
+    assert collection_id > 0
+    assert created["status"] == 2
+    detail = data(assert_envelope(
+        platform_client.get_collection(collection_id), required_keys=("data",)
+    ))
+    assert detail.get("collection", {}).get("id") == collection_id

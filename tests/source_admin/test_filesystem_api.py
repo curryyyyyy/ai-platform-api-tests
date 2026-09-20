@@ -54,7 +54,12 @@ def test_source_03_01_folder_crud_move_and_search(
     assert moved["parent_id"] == int(target_id)
 
     results = _data(assert_envelope(
-        platform_client.search_nodes(q=renamed, scope="folder"), required_keys=("data",)
+        platform_client.search_nodes(
+            q=renamed,
+            scope="folder",
+            parents_node_id=int(target_id),
+        ),
+        required_keys=("data",),
     ))
     assert any(item["id"] == int(source_id) for item in results["node"])
 

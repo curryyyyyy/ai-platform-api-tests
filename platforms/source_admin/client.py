@@ -32,6 +32,7 @@ OPERATION_ROUTES: dict[str, tuple[str, str]] = {
     "DM-18": ("GET", "/api/v1/collections/{collection_id}/import-status"),
     "DM-19": ("GET", "/api/v1/collections/{collection_id}/import-errors"),
     "DM-20": ("POST", "/api/v1/composite/preview"),
+    "DM-21": ("POST", "/api/v1/collections/create-from-rowkeys"),
     "FS-01": ("GET", "/api/v1/nodes/{id}/list"),
     "FS-02": ("GET", "/api/v1/nodes/{id}"),
     "FS-03": ("POST", "/api/v1/nodes"),
@@ -96,6 +97,7 @@ OPERATION_METHODS: dict[str, str] = {
     "DM-18": "get_import_status",
     "DM-19": "get_import_errors",
     "DM-20": "preview_composite",
+    "DM-21": "create_collection_from_rowkeys",
     "FS-01": "list_nodes",
     "FS-02": "get_node",
     "FS-03": "create_node",
@@ -145,7 +147,7 @@ def _compact(values: Mapping[str, Any]) -> dict[str, Any]:
 
 
 class SourceAdminClient(ApiClient):
-    """资源管理平台 61 个已确认操作的客户端封装。"""
+    """资源管理平台 62 个已确认操作的客户端封装。"""
 
     def _operation(
         self,
@@ -239,6 +241,25 @@ class SourceAdminClient(ApiClient):
     def preview_composite(self, *, node_type: int, payload: Mapping[str, Any] | None = None):
         return self._operation("DM-20", params={"node_type": node_type}, json=payload, has_json=payload is not None)
 
+    def create_collection_from_rowkeys(
+        self,
+        *,
+        parent_node_id: int,
+        name: str,
+        cid: int,
+        rowkeys: list[str],
+    ):
+        return self._operation(
+            "DM-21",
+            json={
+                "parent_node_id": parent_node_id,
+                "name": name,
+                "cid": cid,
+                "rowkeys": rowkeys,
+            },
+            has_json=True,
+        )
+
     # 文件系统
     def list_nodes(self, node_id: Any, *, type: str | None = None):
         return self._operation("FS-01", path_params={"id": node_id}, params=_compact({"type": type}))
@@ -260,9 +281,19 @@ class SourceAdminClient(ApiClient):
     def move_node(self, node_id: Any, *, target_parent_id: int):
         return self._operation("FS-06", path_params={"id": node_id}, json={"target_parent_id": target_parent_id}, has_json=True)
 
-    def search_nodes(self, *, q: str, scope: str | None = None, owner_id: str | None = None):
-        headers = {"X-Owner-ID": owner_id} if owner_id is not None else None
-        return self._operation("FS-07", params=_compact({"q": q, "scope": scope}), headers=headers)
+    def search_nodes(
+        self,
+        *,
+        q: str,
+        scope: str | None = None,
+        parents_node_id: int | None = None,
+    ):
+        return self._operation(
+            "FS-07",
+            params=_compact(
+                {"q": q, "scope": scope, "parents_node_id": parents_node_id}
+            ),
+        )
 
     def batch_list_nodes(self, ids: Any):
         return self._operation("FS-08", params={"ids": ids})

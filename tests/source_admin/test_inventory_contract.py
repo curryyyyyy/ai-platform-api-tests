@@ -18,13 +18,13 @@ def _inventory() -> dict:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-def test_source_admin_inventory_has_61_unique_operations() -> None:
+def test_source_admin_inventory_has_62_unique_operations() -> None:
     inventory = _inventory()
     operations = inventory["operations"]
-    assert len(operations) == 61
-    assert len({item["id"] for item in operations}) == 61
-    assert len({(item["method"], item["path"]) for item in operations}) == 61
-    assert sum(item["documented_in_primary"] for item in operations) == 42
+    assert len(operations) == 62
+    assert len({item["id"] for item in operations}) == 62
+    assert len({(item["method"], item["path"]) for item in operations}) == 62
+    assert sum(item["documented_in_primary"] for item in operations) == 43
     assert len(inventory["documented_gaps"]) == 19
 
 
@@ -68,4 +68,42 @@ def test_source_admin_client_uses_bearer_token_and_formats_path(monkeypatch) -> 
             "/api/v1/collections/collection%2F42/data",
             {"json": {"fields": [{"name": "rowkey", "source": 2}], "page": 1}},
         )
+    ]
+
+
+def test_source_admin_client_uses_latest_collection_and_search_inputs(monkeypatch) -> None:
+    client = SourceAdminClient("http://source-admin.invalid", retries=0)
+    calls: list[tuple[str, str, dict]] = []
+
+    def fake_request(method: str, path: str, **kwargs):
+        calls.append((method, path, kwargs))
+        return object()
+
+    monkeypatch.setattr(client, "request", fake_request)
+    client.create_collection_from_rowkeys(
+        parent_node_id=7,
+        name="rowkey-collection",
+        cid=42,
+        rowkeys=["rowkey-1"],
+    )
+    client.search_nodes(q="folder", scope="path", parents_node_id=7)
+
+    assert calls == [
+        (
+            "POST",
+            "/api/v1/collections/create-from-rowkeys",
+            {
+                "json": {
+                    "parent_node_id": 7,
+                    "name": "rowkey-collection",
+                    "cid": 42,
+                    "rowkeys": ["rowkey-1"],
+                }
+            },
+        ),
+        (
+            "GET",
+            "/api/v1/nodes/search",
+            {"params": {"q": "folder", "scope": "path", "parents_node_id": 7}},
+        ),
     ]
