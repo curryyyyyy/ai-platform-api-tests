@@ -60,6 +60,7 @@ pytest -m "core and live" -v
 | `API_TOKEN` | 已有总平台 Token |
 | `API_USER` / `API_PASSWORD` | 总平台登录凭证 |
 | `API_TIMEOUT` | HTTP 超时时间 |
+| `FEISHU_WEBHOOK_URL` | GitLab 定时流水线的飞书机器人 Webhook，仅配置在 CI/CD Secret |
 | `CONTRACT_DIFF_ALLOW_BREAKING` | 经维护者确认后临时放行契约破坏性变更，仅限受保护 CI 变量 |
 
 配置优先级为：环境变量 > 平台/根目录 `*.local.yaml` > 平台/根目录 `*.yaml`。不得提交真实账号、密码或 Token。
@@ -78,6 +79,8 @@ pytest -m "core and live" -v
 推荐 CI 将 `contract` 与线上回归分开。仓库已提供 [`.github/workflows/api-tests.yml`](.github/workflows/api-tests.yml)：PR/主分支推送执行契约门禁，受信任流水线在契约门禁通过后执行线上回归和需求接口包。
 
 GitLab 项目可使用 [`.gitlab-ci.yml`](.gitlab-ci.yml) 接入 Merge Request 门禁：contract 对所有 MR 执行，同项目受信任 MR 执行核心和需求回归。请在 GitLab 受保护分支中将对应 pipeline status 设为 Required，并将线上地址和凭证配置为受保护 CI/CD Variables。外部 fork 不应直接执行带线上凭证的测试代码。
+
+每日定时流水线会在测试 job 完成后执行 `feishu_daily_report` 通知 job。启用通知时，在 GitLab 项目 `Settings -> CI/CD -> Variables` 新增受保护变量 `FEISHU_WEBHOOK_URL`，值填写飞书机器人的 Webhook 地址，并勾选 Masked/Protected；不要把地址写入仓库或普通日志。通知 job 读取上游 job 生成的 JUnit 汇总，只在 `CI_PIPELINE_SOURCE=schedule` 时发送，通知失败不会覆盖测试 job 的结果。可通过 GitLab `Build -> Pipeline schedules` 设置每日执行时间，先手动运行一次 schedule 验证群消息和报告链接。
 
 每个平台在 `platforms/<platform>/contract.yaml` 内声明自己的本地快照、接口清单和覆盖矩阵，在 `platforms/<platform>/config/` 管理运行地址。`contracts/<platform>/` 是日常测试使用的已提交快照；公共工具只读取这些协议，不包含具体平台的 URL、路径或业务分支。
 

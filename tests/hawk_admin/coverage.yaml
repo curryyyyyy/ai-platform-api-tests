@@ -67,6 +67,13 @@ entries:
 # 需求级追溯与平台 case 共用同一份覆盖矩阵，避免每个需求新增一份 coverage 文件。
 # requirement/case ID 是 Allure 历史的稳定身份；运行时间只进入报告目录。
 requirements:
+  - id: REQ-DONE-END-EMPTY-OUTPUT
+    name: done_end_empty_output
+    display_name: 结束异常空输出导出
+    marker: requirement
+    source_schema: test-cases/hawk_admin/结束异常空输出_接口测试.schema.yaml
+    cases:
+      - {id: REQ-DONE-END-EMPTY-OUTPUT-API-01, source_id: EMPTY-OUTPUT-01, priority: P0, test: tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_10_allow_empty_output_from_done_end_alert, endpoint: "POST /api/v1/hawk/done-end-alert/allow-empty-output/{batchId}"}
   - id: REQ-PROJECT-FAVORITE
     name: project_favorite
     display_name: 项目收藏

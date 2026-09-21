@@ -17,7 +17,7 @@ Hawk 子平台的接口测试、数据集、Schema 覆盖和 CI 前置均在本�
 | 批次管理 | `test_batch_api.py` | `batch.yaml` | 创建、CID、引用校验、名称、列表、元数据/输入/状态更新、删除 |
 | 执行与统计 | `test_hawk_execution_api.py` | `execution.yaml` | 状态操作、任务流、统计、字段、错误日志、导出 |
 | 批次辅助能力 | `test_batch_api.py` | `batch.yaml` | 流程图、复制、统计批次、文件上传负向校验 |
-| 执行辅助能力 | `test_hawk_execution_api.py` | `execution.yaml` | 系统负载、任务流刷新、结束告警、隐藏任务流批次 |
+| 执行辅助能力 | `test_hawk_execution_api.py` | `execution.yaml` | 系统负载、任务流刷新、结束告警、空输出导出、隐藏任务流批次 |
 | 模板工作流 | `test_template_workflow_api.py` | `template_workflow.yaml` | 模板列表、批量查询、空工作流和补全校验 |
 | 凭证管理 | `test_credential_api.py` | `credential.yaml` | 查询及非法创建、更新、删除 |
 | 工具与文件 | `test_tools_file_api.py` | - | 临时文件、下载链接、CSV/HBase 运维工具 |
@@ -146,6 +146,7 @@ CORE_EXPECTED_TESTS=10 ./scripts/run_tests.sh --no-skips -m "core and live"
 | `HAWK_EXPORT_RUNNING_BATCH_ID` | 已有任务运行且可导出的批次 | `TC-06-11` |
 | `HAWK_END_RUNNING_BATCH_ID` | 存在可结束任务的处理中批次 | `TC-06-05` |
 | `HAWK_ERROR_LOG_BATCH_ID` | 错误 CSV 超过 100 行的批次 | `TC-06-10` |
+| `HAWK_EMPTY_OUTPUT_BATCH_ID` | 当前账号可访问、状态为 5（已结束）的专用结束异常批次；用例会开启空输出并触发导出重试 | `REQ-DONE-END-EMPTY-OUTPUT-API-01` |
 
 权限场景可配置：
 
@@ -169,7 +170,7 @@ GitLab Merge Request 门禁位于根目录 [`.gitlab-ci.yml`](../../.gitlab-ci.y
 
 ## 需求级接入与持续集成
 
-资源成本看板使用独立需求 ID `REQ-RCB-20260910`，来源 case `TC-04-01` 至 `TC-04-05` 映射见 [`coverage.yaml`](coverage.yaml) 的 `requirements` 节。需求 ID 和 case ID 在所有运行中保持不变；执行时间只作为 `reports/history/<run_id>/` 的报告目录名，不进入 Allure 用例身份。
+资源成本看板使用独立需求 ID `REQ-RCB-20260910`，结束异常空输出导出使用 `REQ-DONE-END-EMPTY-OUTPUT`；来源 case 映射见 [`coverage.yaml`](coverage.yaml) 的 `requirements` 节。需求 ID 和 case ID 在所有运行中保持不变；执行时间只作为 `reports/history/<run_id>/` 的报告目录名，不进入 Allure 用例身份。
 用例函数保留平台命名约定（`test_hawk_10_01` 至 `test_hawk_10_05`），按接口所属业务模块放入既有测试文件；报告身份由每条用例的 `requirement` 和 `case_id` marker 覆盖，因此 Allure 标题、`testId`、`requirement` 标签都带有稳定需求 ID，不会与既有 Hawk 的 `TC-04-*` 混淆。
 `source_id` 只表示原始人工用例的追溯关系，不是被测接口的响应断言；它由离线覆盖契约一次性校验 Schema 和平台覆盖矩阵，在线函数不重复断言。当前 5 条仅覆盖成功响应结构、关键标识和可解析非负金额，非法资源、权限、空数据以及金额跨接口一致性仍需后续补充。
 

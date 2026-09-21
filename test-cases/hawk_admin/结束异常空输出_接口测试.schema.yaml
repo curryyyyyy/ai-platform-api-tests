@@ -1,0 +1,29 @@
+meta:
+  requirement_id: REQ-DONE-END-EMPTY-OUTPUT
+  requirement_name: done_end_empty_output
+  display_name: 结束异常空输出导出
+  execution_model: api
+  source: biaozhu:test api/hawk/v1/hawk.proto
+
+shared:
+  preconditions:
+    - 测试账号已通过总平台登录并取得有效 Token。
+    - HAWK_EMPTY_OUTPUT_BATCH_ID 指向当前账号可访问且状态为 5（已结束）的批次。
+
+cases:
+  - id: REQ-DONE-END-EMPTY-OUTPUT-API-01
+    source_id: EMPTY-OUTPUT-01
+    title: 结束异常批次允许空输出并触发导出重试
+    module: Hawk 结束异常告警接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint:
+      method: POST
+      path: /api/v1/hawk/done-end-alert/allow-empty-output/{batchId}
+    request:
+      batchId: "<HAWK_EMPTY_OUTPUT_BATCH_ID>"
+    expected:
+      - code 为 0
+      - message 为“已允许空输出，正在继续导出”
+      - 服务端接受空输出补偿并立即触发导出重试

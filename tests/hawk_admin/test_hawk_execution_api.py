@@ -244,6 +244,34 @@ def test_hawk_07_04_list_task_stream_stats(platform_client):
 def test_hawk_07_16_done_end_alert_actions_reject_missing_batch(platform_client):
     assert_rejected(platform_client.done_end_delete(_missing_batch_id()))
     assert_rejected(platform_client.done_end_rollback(_missing_batch_id()))
+    assert_rejected(platform_client.done_end_allow_empty_output(_missing_batch_id()))
+
+
+@pytest.mark.requirement(id="REQ-DONE-END-EMPTY-OUTPUT", name="结束异常空输出导出")
+@pytest.mark.case_id(
+    "REQ-DONE-END-EMPTY-OUTPUT-API-01",
+    title="结束异常批次允许空输出并触发导出重试",
+)
+def test_hawk_10_10_allow_empty_output_from_done_end_alert(platform_client):
+    """已结束批次开启空输出后，接口应接受请求并继续导出。"""
+    env_name = EXECUTION_DEFAULTS["emptyOutputBatchIdEnv"]
+    raw_batch_id = os.getenv(env_name, "").strip()
+    if not raw_batch_id:
+        pytest.skip(f"未配置 {env_name}；需要当前账号可访问且状态为已结束的批次")
+    try:
+        batch_id = int(raw_batch_id)
+    except ValueError:
+        raise AssertionError(f"{env_name} 必须是正整数，当前值: {raw_batch_id!r}") from None
+    if batch_id <= 0:
+        raise AssertionError(f"{env_name} 必须是正整数，当前值: {batch_id}")
+
+    detail = assert_envelope(platform_client.get_batch(batch_id), required_keys=("data",))
+    assert int(detail["data"].get("status")) == 5, (
+        f"{env_name} 必须指向状态为 5（已结束）的批次: {detail}"
+    )
+    body = assert_envelope(platform_client.done_end_allow_empty_output(batch_id))
+    assert body["code"] == 0, body
+    assert body.get("message") == "已允许空输出，正在继续导出", body
 
 
 def test_hawk_08_05_hide_missing_task_stream_batch_is_rejected(platform_client):

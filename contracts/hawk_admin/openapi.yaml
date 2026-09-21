@@ -676,6 +676,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.hawk.v1.GetProjectCostDetailResponse'
+    /api/v1/hawk/done-end-alert/allow-empty-output/{batchId}:
+        post:
+            tags:
+                - BatchOperationService
+            description: 从结束异常告警卡片允许缺失字段按空值输出，并立即重试导出
+            operationId: BatchOperationService_AllowEmptyOutputFromDoneEndAlert
+            parameters:
+                - name: batchId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.hawk.v1.AllowEmptyOutputFromDoneEndAlertResponse'
     /api/v1/hawk/done-end-alert/delete/{batchId}:
         get:
             tags:
@@ -2807,6 +2826,15 @@ components:
                 status:
                     type: integer
                     format: int32
+        api.hawk.v1.AllowEmptyOutputFromDoneEndAlertResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+            description: 从结束异常告警卡片允许空输出响应
         api.hawk.v1.BatchErrorLogData:
             type: object
             properties:

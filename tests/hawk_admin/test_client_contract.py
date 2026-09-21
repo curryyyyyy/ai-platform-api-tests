@@ -106,6 +106,7 @@ def test_project_favorite_and_template_lifecycle_routes_match_openapi(monkeypatc
     client.batch_get_templates([7, 8])
     client.create_empty_template(name="workflow", description="description")
     client.complete_template(7, tplId=8, info={"name": "workflow"})
+    client.done_end_allow_empty_output(9)
 
     assert calls == [
         ("GET", "/api/v1/project", {"params": {"page": 2, "pageSize": 5, "onlyFavorite": True}}),
@@ -122,4 +123,5 @@ def test_project_favorite_and_template_lifecycle_routes_match_openapi(monkeypatc
             "/api/v1/tpl/wf/7/complete",
             {"json": {"id": 7, "tplId": 8, "info": {"name": "workflow"}}},
         ),
+        ("POST", "/api/v1/hawk/done-end-alert/allow-empty-output/9", {}),
     ]

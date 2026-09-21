@@ -3,6 +3,7 @@ defaults:
   statsBatchIdEnv: "HAWK_STATS_BATCH_ID"
   fieldsBatchIdEnv: "HAWK_RUNNING_BATCH_ID"
   errorLogBatchIdEnv: "HAWK_ERROR_LOG_BATCH_ID"
+  emptyOutputBatchIdEnv: "HAWK_EMPTY_OUTPUT_BATCH_ID"
 
 cases:
   operations:

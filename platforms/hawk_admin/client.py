@@ -223,6 +223,9 @@ class HawkAdminClient(ApiClient):
     def done_end_rollback(self, batch_id, *, action_token=""):
         return self.get(f"/api/v1/hawk/done-end-alert/rollback/{batch_id}", params={"actionToken": action_token})
 
+    def done_end_allow_empty_output(self, batch_id):
+        return self.post(f"/api/v1/hawk/done-end-alert/allow-empty-output/{batch_id}")
+
     def system_load(self):
         return self.get("/api/v1/hawk/system-load")
 
