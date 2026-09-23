@@ -18,13 +18,13 @@ def _inventory() -> dict:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-def test_source_admin_inventory_has_62_unique_operations() -> None:
+def test_source_admin_inventory_has_66_unique_operations() -> None:
     inventory = _inventory()
     operations = inventory["operations"]
-    assert len(operations) == 62
-    assert len({item["id"] for item in operations}) == 62
-    assert len({(item["method"], item["path"]) for item in operations}) == 62
-    assert sum(item["documented_in_primary"] for item in operations) == 43
+    assert len(operations) == 66
+    assert len({item["id"] for item in operations}) == 66
+    assert len({(item["method"], item["path"]) for item in operations}) == 66
+    assert sum(item["documented_in_primary"] for item in operations) == 47
     assert len(inventory["documented_gaps"]) == 19
 
 
@@ -86,6 +86,16 @@ def test_source_admin_client_uses_latest_collection_and_search_inputs(monkeypatc
         cid=42,
         rowkeys=["rowkey-1"],
     )
+    client.submit_temporary_query(
+        sql="SELECT rowkey FROM image",
+        name="temporary-query",
+        config_snapshot="{}",
+        table_name="image",
+        from_collection_id=42,
+    )
+    client.promote_temporary_collection(42, parent_node_id=7, name="promoted-query")
+    client.get_temporary_children(42)
+    client.get_derived_collections(42)
     client.search_nodes(q="folder", scope="path", parents_node_id=7)
 
     assert calls == [
@@ -101,6 +111,26 @@ def test_source_admin_client_uses_latest_collection_and_search_inputs(monkeypatc
                 }
             },
         ),
+        (
+            "POST",
+            "/api/v1/collections/temporary",
+            {
+                "json": {
+                    "sql": "SELECT rowkey FROM image",
+                    "name": "temporary-query",
+                    "config_snapshot": "{}",
+                    "table_name": "image",
+                    "from_collection_id": 42,
+                }
+            },
+        ),
+        (
+            "POST",
+            "/api/v1/collections/42/promote",
+            {"json": {"parent_node_id": 7, "name": "promoted-query"}},
+        ),
+        ("GET", "/api/v1/collections/42/temporary-children", {}),
+        ("GET", "/api/v1/collections/42/derived", {}),
         (
             "GET",
             "/api/v1/nodes/search",

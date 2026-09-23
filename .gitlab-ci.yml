@@ -99,6 +99,8 @@ core_live:
 feishu_daily_report:
   stage: notify
   resource_group: api-daily-notification
+  # Always collect whatever reports exist, including when an upstream test job fails.
+  when: always
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: always
@@ -106,10 +108,13 @@ feishu_daily_report:
   needs:
     - job: contract
       artifacts: true
+      optional: true
     - job: requirements_live
       artifacts: true
+      optional: true
     - job: core_live
       artifacts: true
+      optional: true
   script:
     - python scripts/notify_feishu.py --reports-dir reports/ci
   allow_failure: true

@@ -33,6 +33,10 @@ OPERATION_ROUTES: dict[str, tuple[str, str]] = {
     "DM-19": ("GET", "/api/v1/collections/{collection_id}/import-errors"),
     "DM-20": ("POST", "/api/v1/composite/preview"),
     "DM-21": ("POST", "/api/v1/collections/create-from-rowkeys"),
+    "DM-22": ("POST", "/api/v1/collections/temporary"),
+    "DM-23": ("POST", "/api/v1/collections/{collection_id}/promote"),
+    "DM-24": ("GET", "/api/v1/collections/{collection_id}/temporary-children"),
+    "DM-25": ("GET", "/api/v1/collections/{collection_id}/derived"),
     "FS-01": ("GET", "/api/v1/nodes/{id}/list"),
     "FS-02": ("GET", "/api/v1/nodes/{id}"),
     "FS-03": ("POST", "/api/v1/nodes"),
@@ -98,6 +102,10 @@ OPERATION_METHODS: dict[str, str] = {
     "DM-19": "get_import_errors",
     "DM-20": "preview_composite",
     "DM-21": "create_collection_from_rowkeys",
+    "DM-22": "submit_temporary_query",
+    "DM-23": "promote_temporary_collection",
+    "DM-24": "get_temporary_children",
+    "DM-25": "get_derived_collections",
     "FS-01": "list_nodes",
     "FS-02": "get_node",
     "FS-03": "create_node",
@@ -147,7 +155,7 @@ def _compact(values: Mapping[str, Any]) -> dict[str, Any]:
 
 
 class SourceAdminClient(ApiClient):
-    """资源管理平台 62 个已确认操作的客户端封装。"""
+    """资源管理平台 66 个已确认操作的客户端封装。"""
 
     def _operation(
         self,
@@ -259,6 +267,23 @@ class SourceAdminClient(ApiClient):
             },
             has_json=True,
         )
+
+    def submit_temporary_query(self, **payload: Any):
+        return self._operation("DM-22", json=payload, has_json=True)
+
+    def promote_temporary_collection(self, collection_id: Any, **payload: Any):
+        return self._operation(
+            "DM-23",
+            path_params={"collection_id": collection_id},
+            json=payload,
+            has_json=True,
+        )
+
+    def get_temporary_children(self, collection_id: Any):
+        return self._operation("DM-24", path_params={"collection_id": collection_id})
+
+    def get_derived_collections(self, collection_id: Any):
+        return self._operation("DM-25", path_params={"collection_id": collection_id})
 
     # 文件系统
     def list_nodes(self, node_id: Any, *, type: str | None = None):

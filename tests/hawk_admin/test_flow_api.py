@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from framework.assertions import assert_envelope, assert_rejected
@@ -19,7 +21,8 @@ def test_hawk_04_01_create_flow(platform_data_factory: HawkDataFactory):
     flow_id, payload = platform_data_factory.create_flow(**case_payload(FLOW_CREATE_CASES[0]))
     data = assert_envelope(platform_data_factory.client.get_flow(flow_id), required_keys=("data",))["data"]
     assert data["flowName"] == payload["flowName"]
-    assert data["config"] == payload["config"]
+    assert json.loads(data["config"]) == json.loads(payload["config"])
+    assert json.loads(data["configTemplate"]) == json.loads(payload["configTemplate"])
 
 
 # TC-04-02：配置格式边界

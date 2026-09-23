@@ -20,6 +20,9 @@ INVALID_CSV_CASES = dataset_cases("source_admin", "data_manage", "invalid_csv")
 INVALID_ROWKEY_COLLECTION_CASES = dataset_cases(
     "source_admin", "data_manage", "invalid_create_from_rowkeys"
 )
+INVALID_TEMPORARY_QUERY_CASES = dataset_cases(
+    "source_admin", "data_manage", "invalid_temporary_query"
+)
 
 
 @pytest.mark.core
@@ -73,6 +76,15 @@ def test_source_02_03_collection_filters_and_pagination(platform_client):
     ), required_keys=("data",)))
     assert isinstance(body.get("collections"), list)
     assert isinstance(body.get("total"), int)
+    temporary_filtered = data(assert_envelope(platform_client.list_collections(
+        is_temporary=False,
+        parent_collection_id=DATA_DEFAULTS["missing_collection_id"],
+        from_collection_id=DATA_DEFAULTS["missing_collection_id"],
+        limit=1,
+        offset=0,
+    ), required_keys=("data",)))
+    assert isinstance(temporary_filtered.get("collections"), list)
+    assert temporary_filtered.get("total") == 0
 
 
 @pytest.mark.parametrize("case", INVALID_DOWNLOAD_CASES, ids=lambda item: item["id"])
@@ -238,3 +250,33 @@ def test_source_02_19_create_collection_from_rowkeys_lifecycle(
         required_keys=("data",),
     ))
     assert any(item.get("rowkey") == payload["rowkeys"][0] for item in rows["data"])
+
+
+@pytest.mark.parametrize("case", INVALID_TEMPORARY_QUERY_CASES, ids=lambda item: item["id"])
+def test_source_02_20_invalid_temporary_query_is_rejected(case, platform_client):
+    """临时查询的必填字段和演进来源 ID 必须在进入 Spark 前拒绝。"""
+    payload = case_payload(case)
+    payload.update(payload.pop("payload", {}))
+    assert_rejected(
+        platform_client.submit_temporary_query(**payload), allow_error_data=True
+    )
+
+
+def test_source_02_21_invalid_temporary_collection_promotion_is_rejected(platform_client):
+    """转正请求必须拒绝无效临时集合 ID 和父节点 ID。"""
+    assert_rejected(platform_client.promote_temporary_collection(
+        DATA_DEFAULTS["missing_collection_id"], parent_node_id=1,
+    ))
+    assert_rejected(platform_client.promote_temporary_collection(
+        0, parent_node_id=0,
+    ))
+
+
+def test_source_02_22_temporary_collection_relation_semantics(platform_client):
+    """子临时查询拒绝不存在集合，直接衍生查询对无结果返回合法空集。"""
+    collection_id = DATA_DEFAULTS["missing_collection_id"]
+    assert_rejected(platform_client.get_temporary_children(collection_id))
+    derived = data(assert_envelope(
+        platform_client.get_derived_collections(collection_id), required_keys=("data",)
+    ))
+    assert derived["collections"] == []

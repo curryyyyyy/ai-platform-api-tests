@@ -147,6 +147,14 @@ python scripts/contract_pipeline.py --platform <platform> \
 ./scripts/run_tests.sh -m contract --report
 ```
 
+本地需要验证飞书通知时，可显式开启通知选项；Webhook 只从当前 shell 环境读取，不会写入报告或仓库：
+
+```bash
+FEISHU_WEBHOOK_URL="$FEISHU_WEBHOOK_URL" ./scripts/run_tests.sh --notify-feishu -m contract
+```
+
+通知在测试执行和报告归档后发送，即使测试失败也会尝试推送；未配置 Webhook 时仅提示跳过。
+
 产物位于 `reports/`，已加入 `.gitignore`。`reports/history/` 默认保留最近 5 轮，可通过 `REPORT_KEEP` 调整。
 
 ## 新增子平台

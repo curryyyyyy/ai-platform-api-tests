@@ -132,7 +132,7 @@ CORE_EXPECTED_TESTS=10 ./scripts/run_tests.sh --no-skips -m "core and live"
 
 写入型场景统一使用 `HawkDataFactory` 和 `DataScope`，每条用例生成唯一名称并在结束时逆序清理。`init`、`running`、`stopped` 状态默认按用例现场创建独立批次；状态预置会轮询确认异步状态落库，并对节点锁冲突做有限重试。
 
-状态变量优先级为：环境变量指定批次 > 现场独立造数 > 明确跳过。可造数状态包括 `init`、`running`、`stopped`；流程创建接口不可用时，批次造数只读复用环境中的流程，可用 `HAWK_PRESET_FLOW_NAME` 和 `HAWK_PRESET_INPUT_PATH` 覆盖。
+状态变量优先级为：环境变量指定批次 > 现场独立造数 > 明确跳过。可造数状态包括 `init`、`running`、`stopped`；批次造数只读复用环境中的流程，避免状态测试额外创建流程资源，可用 `HAWK_PRESET_FLOW_NAME` 和 `HAWK_PRESET_INPUT_PATH` 覆盖。
 
 可通过 `HAWK_STATE_TIMEOUT`（默认 15 秒）和 `HAWK_STATE_POLL_INTERVAL`（默认 0.5 秒）调整状态等待。
 
@@ -166,7 +166,7 @@ GitLab Merge Request 门禁位于根目录 [`.gitlab-ci.yml`](../../.gitlab-ci.y
 - `failed`、`running_with_tasks`、`running_end` 依赖真实执行任务或失败产物，未配置前置时会跳过。
 - 网关返回 `no healthy upstream` 表示 `tc-hawk` 下游没有健康实例，属于环境阻塞，不应归因于测试代码。
 - `TC-07-15` 的 `POST /api/v1/tools/csv_info` 属于测试分支 OpenAPI 契约；若线上返回纯文本 `404 page not found`，说明部署实例未注册该路由或版本落后于契约，应先发布/核对服务版本，不能放宽负向断言。
-- 流程创建接口若返回“数据库操作失败”，创建场景必须失败并要求排查服务端持久化层；批次场景继续复用已有流程。
+- 流程创建请求必须携带合法且非空的 `configTemplate` JSON object；当前测试环境缺失该字段会统一返回“数据库操作失败”，虽然 OpenAPI 将其标为可选。批次场景继续复用已有流程。
 
 ## 需求级接入与持续集成
 

@@ -123,6 +123,24 @@ entries:
     level: full
     operations: [DM-21]
     tests: [tests/source_admin/test_data_manage_api.py::test_source_02_19_create_collection_from_rowkeys_lifecycle]
+  - id: TC-02-19
+    priority: P1
+    level: partial
+    note: "仅覆盖临时查询参数拒绝；正向提交依赖 Spark 异步任务且当前无独立清理接口"
+    operations: [DM-22]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_20_invalid_temporary_query_is_rejected]
+  - id: TC-02-20
+    priority: P1
+    level: partial
+    note: "仅覆盖无效临时集合和父节点；正向转正会创建节点，需确认异步临时查询可清理后补全"
+    operations: [DM-23]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_21_invalid_temporary_collection_promotion_is_rejected]
+  - id: TC-02-21
+    priority: P1
+    level: partial
+    note: "覆盖子临时查询的缺失资源拒绝和直接衍生查询的合法空结果；正向关系数据依赖临时查询异步链路"
+    operations: [DM-24, DM-25]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_22_temporary_collection_relation_semantics]
   - id: TC-03-01
     priority: P0
     level: full

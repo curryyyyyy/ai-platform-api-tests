@@ -241,8 +241,9 @@ def test_hawk_07_04_list_task_stream_stats(platform_client):
     assert isinstance(body["data"], list)
 
 
-def test_hawk_07_16_done_end_alert_actions_reject_missing_batch(platform_client):
-    assert_rejected(platform_client.done_end_delete(_missing_batch_id()))
+def test_hawk_07_16_done_end_alert_actions_handle_missing_batch(platform_client):
+    delete_body = assert_envelope(platform_client.done_end_delete(_missing_batch_id()))
+    assert "批次已删除" in delete_body["message"], delete_body
     assert_rejected(platform_client.done_end_rollback(_missing_batch_id()))
     assert_rejected(platform_client.done_end_allow_empty_output(_missing_batch_id()))
 

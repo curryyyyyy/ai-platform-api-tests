@@ -831,13 +831,13 @@ cases:
     automation: {supported: yes, framework: api}
     status: active
   - id: TC-07-06
-    title: 结束告警缺失批次操作被拒绝
+    title: 结束告警缺失批次操作遵循幂等与拒绝语义
     module: "7. Hawk 辅助查询接口"
     priority: P1
     type: exception
     execution_model: dev-collab
     steps: ["对不存在批次调用结束告警删除和回滚接口"]
-    expected: ["返回非 0 业务码，不改变任何批次状态"]
+    expected: ["删除接口对不存在批次幂等返回成功；回滚接口返回非 0 业务码，不改变任何批次状态"]
     test_data: {"1": "batchId=999999999"}
     code_refs: ["internal/service/hawk.go"]
     evidence: {level: E3, source: "结束告警操作实现", confidence: high}

@@ -2,8 +2,8 @@
   "openapi": "3.0.0",
   "info": {
     "title": "数据管理 API",
-    "version": "1.1.0",
-    "description": "圈选 SQL 构建、任务提交、圈选集管理、集合运算及原始图片异步下载"
+    "version": "1.2.0",
+    "description": "圈选 SQL 构建、任务提交、圈选集管理（含临时查询）、集合运算及原始图片异步下载"
   },
   "servers": [
     {
@@ -142,7 +142,11 @@
           "source":          { "type": "integer", "format": "int32", "description": "创建来源：1=圈选查询 2=机器标注平台 3=众包 4=集合运算" },
           "config_snapshot": { "type": "string",  "description": "提交任务时的配置快照（JSON 字符串）" },
           "node_id":         { "type": "integer", "format": "int64", "description": "collection 在文件系统中绑定的节点 ID，可用于查询节点路径或批量拉取节点信息" },
-          "business_source": { "type": "string",  "description": "平台来源：lance=资管圈选 / op=资管运算 / hawk=机器标注 / label=人工标注" }
+          "business_source": { "type": "string",  "description": "平台来源：lance=资管圈选 / op=资管运算 / hawk=机器标注 / label=人工标注" },
+          "is_temporary": { "type": "boolean", "description": "是否为临时查询：true=临时查询，false=正式圈选" },
+          "parent_collection_id": { "type": "integer", "format": "int64", "description": "关联的父圈选 ID；临时查询被其他圈选转正时可关联到该正式圈选" },
+          "from_collection_id": { "type": "integer", "format": "int64", "description": "演进来源圈选 ID，记录该查询基于哪个正式圈选创建" },
+          "temporary_query_id": { "type": "string", "description": "临时查询 ID 的八进制字符串，仅临时查询返回，供前端展示为临时查询ID" }
         }
       },
       "LabelSource": {
@@ -469,7 +473,8 @@
                           "properties": {
                             "collection_id": { "type": "string", "description": "圈选集 ID" },
                             "status":        { "$ref": "#/components/schemas/JobStatus" },
-                            "created_at":    { "type": "string", "format": "date-time" }
+                            "created_at":    { "type": "string", "format": "date-time" },
+                            "temporary_query_id": { "type": "string", "description": "临时查询 ID 的八进制字符串；正式查询不返回" }
                           }
                         }
                       }
@@ -544,6 +549,21 @@
             "description": "平台来源多选，逗号分隔。可选值：lance（资管圈选）/ op（资管运算）/ hawk（机器标注）/ label（人工标注）。示例：hawk,label"
           },
           {
+            "name": "is_temporary", "in": "query", "required": false,
+            "schema": { "type": "boolean" },
+            "description": "临时状态筛选：true=仅临时查询，false=仅正式圈选；不传时默认只查正式圈选"
+          },
+          {
+            "name": "parent_collection_id", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 },
+            "description": "按关联的父圈选 ID 筛选"
+          },
+          {
+            "name": "from_collection_id", "in": "query", "required": false,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 },
+            "description": "按演进来源圈选 ID 筛选"
+          },
+          {
             "name": "limit", "in": "query", "required": false,
             "schema": { "type": "integer", "default": 20 }
           },
@@ -593,7 +613,8 @@
                         "updated_at": 1748304120,
                         "total_rows": 5000,
                         "source": 1,
-                        "node_id": 101
+                        "node_id": 101,
+                        "is_temporary": false
                       }
                     ],
                     "total": 1
@@ -1394,6 +1415,283 @@
                   "source_not_found": {
                     "summary": "源集不存在",
                     "value": { "code": 1, "msg": "源圈选集不存在: cid=999999" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/temporary": {
+      "post": {
+        "tags": ["Collection"],
+        "summary": "提交临时查询",
+        "description": "提交一个不绑定文件节点的临时查询。请求参数与 `/api/v1/query/submit` 一致，但不需要 `file_node_id`；调用方身份从 Bearer 认证上下文获取并透传给数据服务。接口异步执行 Spark SQL，成功后返回任务关联的 collection_id 和八进制临时查询 ID。",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sql", "name", "config_snapshot", "table_name"],
+                "properties": {
+                  "sql": { "type": "string", "minLength": 1, "description": "待执行的 Spark SQL" },
+                  "name": { "type": "string", "minLength": 1, "description": "临时查询名称，去除首尾空白后不能为空" },
+                  "config_snapshot": { "type": "string", "minLength": 1, "description": "提交任务时的配置快照（JSON 字符串）" },
+                  "table_name": { "type": "string", "minLength": 1, "description": "来源表名/数据类型，如 image、video" },
+                  "partition": { "type": "string", "description": "可选的查询分区" },
+                  "from_collection_id": { "type": "integer", "format": "int64", "minimum": 1, "description": "可选；基于哪个正式圈选创建，写入临时查询的演进来源（必须是正式圈选 ID）" }
+                }
+              },
+              "example": {
+                "sql": "SELECT rowkey FROM image WHERE score >= 0.9",
+                "name": "人像筛选-临时查询",
+                "config_snapshot": "{\"filters\":[{\"field\":\"score\",\"operator\":\">=\",\"value\":0.9}]}",
+                "table_name": "image",
+                "partition": "20260919",
+                "from_collection_id": 1001
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "请求已处理；业务是否成功由顶层 code 判断",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "required": ["data"],
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "collection_id": { "type": "string", "description": "异步任务创建的临时 collection ID" },
+                            "status": { "$ref": "#/components/schemas/JobStatus" },
+                            "created_at": { "type": "string", "format": "date-time" },
+                            "temporary_query_id": { "type": "string", "description": "临时查询 ID 的八进制字符串，供前端展示为临时查询ID" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "collection_id": "2001",
+                    "temporary_query_id": "3721",
+                    "status": 0,
+                    "created_at": "2026-09-20T00:00:00Z"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/promote": {
+      "post": {
+        "tags": ["Collection"],
+        "summary": "临时查询转为正式圈选",
+        "description": "将指定临时查询转为正式圈选并绑定到目标文件夹节点。可同时把其他临时查询关联为该正式圈选的子临时查询。操作者身份从 Bearer 认证上下文获取。",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 },
+            "description": "待转正的临时查询 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["parent_node_id"],
+                "properties": {
+                  "parent_node_id": { "type": "integer", "format": "int64", "minimum": 1, "description": "转正后绑定的父文件夹节点 ID" },
+                  "child_collection_ids": {
+                    "type": "array",
+                    "items": { "type": "integer", "format": "int64", "minimum": 1 },
+                    "description": "可选；转正后需要关联到本圈选的其他临时查询 ID"
+                  },
+                  "name": { "type": "string", "minLength": 1, "description": "可选；转正时重命名，不传则保留原名，绑定的文件节点继承最终名称" }
+                }
+              },
+              "example": {
+                "parent_node_id": 42,
+                "child_collection_ids": [2002, 2003],
+                "name": "猫咪二次筛选"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "请求已处理；业务是否成功由顶层 code 判断",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "required": ["data"],
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "collection": { "$ref": "#/components/schemas/Collection" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "collection": {
+                      "id": 2001,
+                      "name": "人像筛选-临时查询",
+                      "status": 2,
+                      "created_at": 1789891200,
+                      "updated_at": 1789891260,
+                      "node_id": 2101,
+                      "is_temporary": false,
+                      "from_collection_id": 1001
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/temporary-children": {
+      "get": {
+        "tags": ["Collection"],
+        "summary": "查询关联的子临时查询",
+        "description": "查询 parent_collection_id 指向指定正式圈选的临时查询。没有结果时返回 collections: []。",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 },
+            "description": "父正式圈选 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "请求已处理；业务是否成功由顶层 code 判断",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "required": ["data"],
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["collections", "temporary_query_ids"],
+                          "properties": {
+                            "collections": { "type": "array", "items": { "$ref": "#/components/schemas/Collection" } },
+                            "temporary_query_ids": { "type": "array", "items": { "type": "string" }, "description": "collections 对应的八进制临时查询 ID 列表" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "collections": [
+                      {
+                        "id": 2002,
+                        "name": "后续筛选-临时查询",
+                        "status": 2,
+                        "created_at": 1789891300,
+                        "updated_at": 1789891300,
+                        "is_temporary": true,
+                        "parent_collection_id": 2001,
+                        "temporary_query_id": "3722"
+                      }
+                    ],
+                    "temporary_query_ids": ["3722"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/collections/{collection_id}/derived": {
+      "get": {
+        "tags": ["Collection"],
+        "summary": "查询直接衍生圈选",
+        "description": "查询 from_collection_id 指向指定圈选的下一层圈选，不递归查询更深层级。没有结果时返回 collections: []。",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "collection_id", "in": "path", "required": true,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 },
+            "description": "演进来源圈选 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "请求已处理；业务是否成功由顶层 code 判断",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/BaseResponse" },
+                    {
+                      "type": "object",
+                      "required": ["data"],
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["collections"],
+                          "properties": {
+                            "collections": { "type": "array", "items": { "$ref": "#/components/schemas/Collection" } }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "ok",
+                  "data": {
+                    "collections": [
+                      {
+                        "id": 2001,
+                        "name": "人像筛选-临时查询",
+                        "status": 2,
+                        "created_at": 1789891200,
+                        "updated_at": 1789891200,
+                        "is_temporary": true,
+                        "from_collection_id": 1001
+                      }
+                    ]
                   }
                 }
               }

@@ -7,6 +7,8 @@
 #   ./scripts/run_tests.sh -m contract --serve         用临时目录起服务并打开（不落盘 HTML）
 #   ./scripts/run_tests.sh -m contract --no-clean      保留当前结果目录，用于趋势对比
 #   ./scripts/run_tests.sh --no-skips -m "core and live"  将跳过视为门禁失败
+#   FEISHU_WEBHOOK_URL=... ./scripts/run_tests.sh --notify-feishu -m contract
+#                                                        本地发送本轮 JUnit 汇总
 #   REPORT_KEEP=3 ./scripts/run_tests.sh -m contract   临时保留最近 3 次报告
 set -euo pipefail
 
@@ -21,6 +23,7 @@ MODE="results"
 CLEAN=1
 REPORT_KEEP="${REPORT_KEEP:-5}"
 FAIL_ON_SKIP=0
+NOTIFY_FEISHU=0
 PYTEST_ARGS=()
 
 while [ "$#" -gt 0 ]; do
@@ -30,6 +33,7 @@ while [ "$#" -gt 0 ]; do
     --serve) MODE="serve"; shift ;;
     --no-clean) CLEAN=0; shift ;;
     --no-skips) FAIL_ON_SKIP=1; shift ;;
+    --notify-feishu) NOTIFY_FEISHU=1; shift ;;
     --keep) REPORT_KEEP="${2:-}"; shift 2 ;;
     -h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) PYTEST_ARGS+=("$1"); shift ;;
@@ -123,6 +127,12 @@ if [ "$INCLUDE_HTML" -eq 1 ]; then
 fi
 if ! "$PYTHON" "$ROOT/scripts/report_history.py" "${ARCHIVE_ARGS[@]}"; then
   echo "警告：本轮报告归档失败，当前报告仍保留在 $ROOT/$ALLURE_DIR 和 $ROOT/$JUNIT_DIR" >&2
+fi
+
+if [ "$NOTIFY_FEISHU" -eq 1 ]; then
+  if ! "$PYTHON" "$ROOT/scripts/notify_feishu.py" --reports-dir "$ROOT/$JUNIT_DIR"; then
+    echo "警告：飞书通知发送失败，测试结果仍按原状态返回" >&2
+  fi
 fi
 
 case "$MODE" in

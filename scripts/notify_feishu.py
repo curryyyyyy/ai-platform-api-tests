@@ -62,9 +62,9 @@ def build_message(summaries: Iterable[ReportSummary], *, pipeline_url: str = "")
     failures = sum(item.failures for item in items)
     errors = sum(item.errors for item in items)
     skipped = sum(item.skipped for item in items)
-    status = "失败" if failures or errors else "通过"
+    status = "失败，存在失败用例" if failures or errors else "通过"
     lines = [
-        f"AI 平台接口自动化每日流水线：{status}",
+        f"AI 基建平台接口自动化扫描结果：{status}",
         f"测试总数：{tests}，失败：{failures}，错误：{errors}，跳过：{skipped}",
     ]
     for item in items:

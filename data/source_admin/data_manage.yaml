@@ -52,3 +52,32 @@ cases:
       name: "api-test-rowkey-collection"
       cid: 1
       rowkey_count: 100001
+  invalid_temporary_query:
+    - id: empty_payload
+      payload: {}
+    - id: blank_sql
+      sql: ""
+      name: "api-test-temporary-query"
+      config_snapshot: "{}"
+      table_name: "image"
+    - id: blank_name
+      sql: "SELECT rowkey FROM image"
+      name: ""
+      config_snapshot: "{}"
+      table_name: "image"
+    - id: blank_config_snapshot
+      sql: "SELECT rowkey FROM image"
+      name: "api-test-temporary-query"
+      config_snapshot: ""
+      table_name: "image"
+    - id: blank_table_name
+      sql: "SELECT rowkey FROM image"
+      name: "api-test-temporary-query"
+      config_snapshot: "{}"
+      table_name: ""
+    - id: invalid_from_collection
+      sql: "SELECT rowkey FROM image"
+      name: "api-test-temporary-query"
+      config_snapshot: "{}"
+      table_name: "image"
+      from_collection_id: 0

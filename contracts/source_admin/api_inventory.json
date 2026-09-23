@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://gitlab.ituchong.com/ai-dataset/ai-source-admin",
     "branch": "test",
-    "commit": "9ec0805",
+    "commit": "ae1b340",
     "primary_document": "docs/api.md",
     "structured_documents": [
       "docs/data-manage-api.json",
@@ -15,11 +15,11 @@
       "docs/contract-api.json",
       "docs/supplier-api.json"
     ],
-    "analyzed_at": "2026-09-17"
+    "analyzed_at": "2026-09-22"
   },
   "counts": {
-    "primary_document_operations": 43,
-    "structured_contract_operations": 62,
+    "primary_document_operations": 47,
+    "structured_contract_operations": 66,
     "primary_document_gaps": 19
   },
   "common_contract": {
@@ -102,7 +102,7 @@
       "path": "/api/v1/collections",
       "source": "docs/api.md:265",
       "documented_in_primary": true,
-      "inputs": {"query_optional": ["name", "status", "data_type", "start_at_from", "start_at_to", "limit", "offset", "source", "id", "operator", "business_sources"]},
+      "inputs": {"query_optional": ["name", "status", "data_type", "start_at_from", "start_at_to", "limit", "offset", "source", "id", "operator", "business_sources", "is_temporary", "parent_collection_id", "from_collection_id"]},
       "summary": "查询圈选集列表"
     },
     {
@@ -110,7 +110,7 @@
       "module": "data_manage",
       "method": "GET",
       "path": "/api/v1/collections/{collection_id}",
-      "source": "docs/api.md:308",
+      "source": "docs/api.md:434",
       "documented_in_primary": true,
       "inputs": {"path_required": ["collection_id"]},
       "summary": "查询圈选元数据"
@@ -120,7 +120,7 @@
       "module": "data_manage",
       "method": "GET",
       "path": "/api/v1/collections/{collection_id}/labels",
-      "source": "docs/api.md:337",
+      "source": "docs/api.md:466",
       "documented_in_primary": true,
       "inputs": {"path_required": ["collection_id"]},
       "summary": "查询圈选集列定义"
@@ -130,7 +130,7 @@
       "module": "data_manage",
       "method": "POST",
       "path": "/api/v1/collections/{collection_id}/data",
-      "source": "docs/api.md:380",
+      "source": "docs/api.md:509",
       "documented_in_primary": true,
       "inputs": {"path_required": ["collection_id"], "body_required": ["fields"], "body_optional": ["page", "page_size"]},
       "summary": "查询圈选集分页数据"
@@ -140,7 +140,7 @@
       "module": "data_manage",
       "method": "GET",
       "path": "/api/v1/collections/{collection_id}/node-path",
-      "source": "docs/api.md:423",
+      "source": "docs/api.md:552",
       "documented_in_primary": true,
       "inputs": {"path_required": ["collection_id"]},
       "summary": "查询圈选 Node 面包屑路径"
@@ -150,7 +150,7 @@
       "module": "data_manage",
       "method": "PUT",
       "path": "/api/v1/collections/{collection_id}/columns",
-      "source": "docs/api.md:457",
+      "source": "docs/api.md:586",
       "documented_in_primary": true,
       "inputs": {"path_required": ["collection_id"], "body_required": ["show_col"]},
       "summary": "更新圈选集列设置"
@@ -160,7 +160,7 @@
       "module": "data_manage",
       "method": "PUT",
       "path": "/api/v1/collections/{collection_id}/set-type",
-      "source": "docs/api.md:486",
+      "source": "docs/api.md:615",
       "documented_in_primary": true,
       "inputs": {"path_required": ["collection_id"], "body_required": ["set_type"]},
       "summary": "更新圈选集类型"
@@ -250,17 +250,57 @@
       "module": "data_manage",
       "method": "POST",
       "path": "/api/v1/collections/create-from-rowkeys",
-      "source": "docs/api.md:533",
+      "source": "docs/api.md:662",
       "documented_in_primary": true,
       "inputs": {"body_required": ["parent_node_id", "name", "cid", "rowkeys"]},
       "summary": "基于源圈选集和 rowkeys 同步创建圈选集"
+    },
+    {
+      "id": "DM-22",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/collections/temporary",
+      "source": "docs/api.md:315",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["sql", "name", "config_snapshot", "table_name"], "body_optional": ["partition", "from_collection_id"]},
+      "summary": "提交临时查询"
+    },
+    {
+      "id": "DM-23",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/collections/{collection_id}/promote",
+      "source": "docs/api.md:351",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"], "body_required": ["parent_node_id"], "body_optional": ["child_collection_ids", "name"]},
+      "summary": "临时查询转为正式圈选"
+    },
+    {
+      "id": "DM-24",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections/{collection_id}/temporary-children",
+      "source": "docs/api.md:386",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "查询正式圈选关联的子临时查询"
+    },
+    {
+      "id": "DM-25",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/collections/{collection_id}/derived",
+      "source": "docs/api.md:411",
+      "documented_in_primary": true,
+      "inputs": {"path_required": ["collection_id"]},
+      "summary": "查询直接衍生圈选"
     },
     {
       "id": "FS-01",
       "module": "filesystem",
       "method": "GET",
       "path": "/api/v1/nodes/{id}/list",
-      "source": "docs/api.md:589",
+      "source": "docs/api.md:718",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"], "query_optional": ["type"]},
       "summary": "列出目录内容"
@@ -270,7 +310,7 @@
       "module": "filesystem",
       "method": "GET",
       "path": "/api/v1/nodes/{id}",
-      "source": "docs/api.md:629",
+      "source": "docs/api.md:758",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"]},
       "summary": "获取节点元数据"
@@ -280,7 +320,7 @@
       "module": "filesystem",
       "method": "POST",
       "path": "/api/v1/nodes",
-      "source": "docs/api.md:635",
+      "source": "docs/api.md:764",
       "documented_in_primary": true,
       "inputs": {"header_optional": ["X-Owner-ID"], "body_required": ["name", "type", "parent_id"], "body_optional": ["resource_id"]},
       "summary": "创建节点"
@@ -290,7 +330,7 @@
       "module": "filesystem",
       "method": "PUT",
       "path": "/api/v1/nodes/{id}",
-      "source": "docs/api.md:659",
+      "source": "docs/api.md:788",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"], "body_optional": ["name", "resource_id"]},
       "summary": "更新节点名称或资源绑定"
@@ -300,7 +340,7 @@
       "module": "filesystem",
       "method": "DELETE",
       "path": "/api/v1/nodes/{id}",
-      "source": "docs/api.md:674",
+      "source": "docs/api.md:803",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"]},
       "summary": "删除节点"
@@ -310,7 +350,7 @@
       "module": "filesystem",
       "method": "POST",
       "path": "/api/v1/nodes/{id}/move",
-      "source": "docs/api.md:680",
+      "source": "docs/api.md:809",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"], "body_required": ["target_parent_id"]},
       "summary": "移动节点"
@@ -320,7 +360,7 @@
       "module": "filesystem",
       "method": "GET",
       "path": "/api/v1/nodes/search",
-      "source": "docs/api.md:694",
+      "source": "docs/api.md:823",
       "documented_in_primary": true,
       "inputs": {"query_required": ["q"], "query_optional": ["scope", "parents_node_id"]},
       "summary": "搜索节点"
@@ -340,7 +380,7 @@
       "module": "filesystem",
       "method": "POST",
       "path": "/api/v1/nodes/project",
-      "source": "docs/api.md:734",
+      "source": "docs/api.md:863",
       "documented_in_primary": true,
       "inputs": {"body_required": ["node_name"], "body_optional": ["force"]},
       "summary": "创建项目节点（幂等）"
@@ -350,7 +390,7 @@
       "module": "filesystem",
       "method": "GET",
       "path": "/api/v1/nodes/project/info",
-      "source": "docs/api.md:767",
+      "source": "docs/api.md:896",
       "documented_in_primary": true,
       "inputs": {"query_required": ["ids"]},
       "summary": "批量查询项目节点信息"
@@ -360,7 +400,7 @@
       "module": "schema",
       "method": "POST",
       "path": "/api/v1/schema",
-      "source": "docs/api.md:657",
+      "source": "docs/api.md:931",
       "documented_in_primary": true,
       "inputs": {"body_required": ["name"]},
       "summary": "创建 Schema"
@@ -370,7 +410,7 @@
       "module": "schema",
       "method": "PUT",
       "path": "/api/v1/schema",
-      "source": "docs/api.md:674",
+      "source": "docs/api.md:948",
       "documented_in_primary": true,
       "inputs": {"body_required": ["id"]},
       "summary": "更新 Schema"
@@ -380,7 +420,7 @@
       "module": "schema",
       "method": "DELETE",
       "path": "/api/v1/schema/{id}",
-      "source": "docs/api.md:690",
+      "source": "docs/api.md:964",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"]},
       "summary": "删除 Schema"
@@ -390,7 +430,7 @@
       "module": "schema",
       "method": "GET",
       "path": "/api/v1/schema/{id}",
-      "source": "docs/api.md:696",
+      "source": "docs/api.md:970",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"]},
       "summary": "获取 Schema 详情"
@@ -400,7 +440,7 @@
       "module": "schema",
       "method": "GET",
       "path": "/api/v1/schema/by-name",
-      "source": "docs/api.md:702",
+      "source": "docs/api.md:976",
       "documented_in_primary": true,
       "inputs": {"query_required": ["name"]},
       "summary": "通过名称获取 Schema 及字段"
@@ -410,7 +450,7 @@
       "module": "schema",
       "method": "GET",
       "path": "/api/v1/schema/list",
-      "source": "docs/api.md:708",
+      "source": "docs/api.md:982",
       "documented_in_primary": true,
       "inputs": {"query_optional": ["page", "page_size"]},
       "summary": "获取 Schema 列表"
@@ -420,7 +460,7 @@
       "module": "schema",
       "method": "POST",
       "path": "/api/v1/schema/field",
-      "source": "docs/api.md:714",
+      "source": "docs/api.md:988",
       "documented_in_primary": true,
       "inputs": {"body_required": ["schema_id", "qualifier", "type"], "body_optional": ["name", "options", "w_rule", "as_from", "display_format", "sort_order"]},
       "summary": "创建字段"
@@ -430,7 +470,7 @@
       "module": "schema",
       "method": "PUT",
       "path": "/api/v1/schema/field",
-      "source": "docs/api.md:745",
+      "source": "docs/api.md:1019",
       "documented_in_primary": true,
       "inputs": {"body_required": ["id", "schema_id", "qualifier", "type"]},
       "summary": "更新字段"
@@ -440,7 +480,7 @@
       "module": "schema",
       "method": "DELETE",
       "path": "/api/v1/schema/field/{id}",
-      "source": "docs/api.md:751",
+      "source": "docs/api.md:1025",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"]},
       "summary": "删除字段"
@@ -450,7 +490,7 @@
       "module": "schema",
       "method": "GET",
       "path": "/api/v1/schema/field/{id}",
-      "source": "docs/api.md:757",
+      "source": "docs/api.md:1031",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"]},
       "summary": "获取字段详情"
@@ -460,7 +500,7 @@
       "module": "schema",
       "method": "GET",
       "path": "/api/v1/schema/field/list",
-      "source": "docs/api.md:763",
+      "source": "docs/api.md:1037",
       "documented_in_primary": true,
       "inputs": {"query_required": ["schema_id"], "query_optional": ["page", "page_size", "scene"]},
       "summary": "获取字段列表"
@@ -470,7 +510,7 @@
       "module": "schema",
       "method": "PUT",
       "path": "/api/v1/schema/field/batch",
-      "source": "docs/api.md:774",
+      "source": "docs/api.md:1048",
       "documented_in_primary": true,
       "inputs": {"body_required": ["schema_id", "fields"], "body_optional": ["delete_ids"]},
       "summary": "批量更新字段"
@@ -480,7 +520,7 @@
       "module": "schema",
       "method": "POST",
       "path": "/api/v1/schema/field/sync-tos",
-      "source": "docs/api.md:797",
+      "source": "docs/api.md:1071",
       "documented_in_primary": true,
       "inputs": {"body_required": ["schema_id"]},
       "summary": "同步字段到 TOS"
@@ -490,7 +530,7 @@
       "module": "schema",
       "method": "GET",
       "path": "/api/v1/schema/field/versions",
-      "source": "docs/api.md:811",
+      "source": "docs/api.md:1085",
       "documented_in_primary": true,
       "inputs": {"query_required": ["schema_id"]},
       "summary": "获取字段版本列表"
@@ -500,7 +540,7 @@
       "module": "schema",
       "method": "GET",
       "path": "/api/v1/schema/field/versions/{version_id}/snapshot",
-      "source": "docs/api.md:817",
+      "source": "docs/api.md:1091",
       "documented_in_primary": true,
       "inputs": {"path_required": ["version_id"]},
       "summary": "获取版本快照"
@@ -510,7 +550,7 @@
       "module": "schema",
       "method": "POST",
       "path": "/api/v1/schema/field/versions/{version_id}/rollback",
-      "source": "docs/api.md:823",
+      "source": "docs/api.md:1097",
       "documented_in_primary": true,
       "inputs": {"path_required": ["version_id"], "body_optional": true},
       "summary": "回滚到指定版本"
@@ -520,7 +560,7 @@
       "module": "share",
       "method": "POST",
       "path": "/api/v1/share/link",
-      "source": "docs/api.md:831",
+      "source": "docs/api.md:1105",
       "documented_in_primary": true,
       "inputs": {"body_required_primary": ["name", "collection_id"], "body_required_structured": ["name", "collection_id", "expire_at"], "body_optional_structured": ["share_name", "max_count"]},
       "summary": "创建分享链接"
@@ -530,7 +570,7 @@
       "module": "share",
       "method": "GET",
       "path": "/api/v1/share/link/{id}",
-      "source": "docs/api.md:863",
+      "source": "docs/api.md:1137",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"]},
       "summary": "获取分享链接详情"
@@ -540,7 +580,7 @@
       "module": "share",
       "method": "GET",
       "path": "/api/v1/share/link/list",
-      "source": "docs/api.md:869",
+      "source": "docs/api.md:1143",
       "documented_in_primary": true,
       "inputs": {"query_optional": ["name", "status", "collection_id", "limit", "offset", "creator"]},
       "summary": "查询分享链接列表"
@@ -550,7 +590,7 @@
       "module": "share",
       "method": "PUT",
       "path": "/api/v1/share/link/{id}/terminate",
-      "source": "docs/api.md:885",
+      "source": "docs/api.md:1159",
       "documented_in_primary": true,
       "inputs": {"path_required": ["id"]},
       "summary": "终止分享链接"
@@ -560,7 +600,7 @@
       "module": "audit",
       "method": "GET",
       "path": "/api/v1/audit/logs",
-      "source": "docs/api.md:893",
+      "source": "docs/api.md:1167",
       "documented_in_primary": true,
       "inputs": {"query_optional": ["operation_type", "operator", "start_time", "end_time", "limit", "offset"]},
       "summary": "查询审计日志列表"

@@ -50,6 +50,7 @@ def test_hawk_flow_defaults_keep_json_field_columns_valid() -> None:
 
     assert json.loads(defaults["inputFields"]) == []
     assert json.loads(defaults["outputFields"]) == []
+    assert isinstance(json.loads(defaults["configTemplate"]), dict)
 
 
 def test_hawk_requirement_datasets_define_stable_template_and_favorite_inputs() -> None:

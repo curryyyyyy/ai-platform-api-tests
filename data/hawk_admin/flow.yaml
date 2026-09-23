@@ -3,6 +3,8 @@ defaults:
   desc: "自动化接口测试流程"
   schema: '{"input":["image_url"]}'
   config: '{"stages":[]}'
+  # 测试环境 flow 表对 config_template 实际要求非空；OpenAPI 当前未标出该约束。
+  configTemplate: '{"key":"批次配置","val":[]}'
   inputFields: '[]'
   outputFields: '[]'
   status: 1

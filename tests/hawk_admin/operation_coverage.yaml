@@ -33,8 +33,8 @@ entries:
   - {id: Flow_DeleteFlow, operations: [Flow_DeleteFlow], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_05_delete_flow_then_get]}
   - {id: Flow_GetFlow, operations: [Flow_GetFlow], tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_07_get_existing_flow]}
   - {id: Flow_UpdateFlow, operations: [Flow_UpdateFlow], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_04_update_flow]}
-  - {id: BatchOperationService_DeleteBatchFromDoneEndAlert, operations: [BatchOperationService_DeleteBatchFromDoneEndAlert], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_07_16_done_end_alert_actions_reject_missing_batch]}
-  - {id: BatchOperationService_RollbackBatchFromDoneEndAlert, operations: [BatchOperationService_RollbackBatchFromDoneEndAlert], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_07_16_done_end_alert_actions_reject_missing_batch]}
+  - {id: BatchOperationService_DeleteBatchFromDoneEndAlert, operations: [BatchOperationService_DeleteBatchFromDoneEndAlert], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_07_16_done_end_alert_actions_handle_missing_batch]}
+  - {id: BatchOperationService_RollbackBatchFromDoneEndAlert, operations: [BatchOperationService_RollbackBatchFromDoneEndAlert], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_07_16_done_end_alert_actions_handle_missing_batch]}
   - {id: BatchOperationService_AllowEmptyOutputFromDoneEndAlert, operations: [BatchOperationService_AllowEmptyOutputFromDoneEndAlert], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_10_allow_empty_output_from_done_end_alert]}
   - {id: BatchOperationService_GetBatchErrorLog, operations: [BatchOperationService_GetBatchErrorLog], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_10_error_log_for_missing_batch]}
   - {id: BatchOperationService_ListBatchKeyFields, operations: [BatchOperationService_ListBatchKeyFields], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_06_09_fields_for_missing_batch_are_not_fabricated]}
