@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from framework.types import Timeout
 from platforms.hawk_admin.client import HawkAdminClient
 from platforms.hawk_admin.factories import HawkDataFactory
 from platforms.hawk_admin.presets import prepare_batch
@@ -9,7 +10,7 @@ from platforms.hawk_admin.runtime import HawkRuntimeContext
 from platforms.registry import PlatformDefinition, register_platform
 
 
-def _client(base_url: str, token: str, timeout: float) -> HawkAdminClient:
+def _client(base_url: str, token: str, timeout: Timeout) -> HawkAdminClient:
     return HawkAdminClient(base_url, token=token, timeout=timeout)
 
 

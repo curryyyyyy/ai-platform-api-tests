@@ -8,6 +8,7 @@ from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_case_map, dataset_cases
 from platforms.source_admin.client import SourceAdminClient
 from platforms.source_admin.factories import SourceAdminDataFactory
+from tests.source_admin.helpers import data
 
 
 pytestmark = [pytest.mark.live, pytest.mark.source_admin]
@@ -17,19 +18,14 @@ MISSING_RESOURCE_CASE = dataset_case_map("source_admin", "schema", "missing_reso
 MISSING_UPDATE_CASES = dataset_cases("source_admin", "schema", "missing_update")
 
 
-def _data(body: Mapping[str, Any]) -> Any:
-    value = body.get("data")
-    if isinstance(value, dict) and set(value) == {"data"}:
-        return value["data"]
-    return value
-
-
 def _case_id(case: Mapping[str, Any]) -> str:
     return str(case["id"])
 
 
 @pytest.mark.core
-@pytest.mark.skip(reason="Schema 创建当前被服务端 node_type 数据库默认值错误阻塞")
+@pytest.mark.skip(
+    reason="线上数据库残留 node_type 非空列且无默认值，需先执行服务端 Schema 表迁移"
+)
 def test_source_04_01_schema_field_crud_and_readback(
     platform_data_factory: SourceAdminDataFactory,
 ) -> None:
@@ -37,16 +33,16 @@ def test_source_04_01_schema_field_crud_and_readback(
     schema_id, schema_payload = platform_data_factory.create_schema()
     field_id, field_payload = platform_data_factory.create_schema_field(schema_id=schema_id)
 
-    schema = _data(assert_envelope(platform_data_factory.client.get_schema(schema_id), required_keys=("data",)))
+    schema = data(assert_envelope(platform_data_factory.client.get_schema(schema_id), required_keys=("data",)))
     assert schema["id"] == int(schema_id)
     assert schema["name"] == schema_payload["name"]
 
-    field = _data(assert_envelope(platform_data_factory.client.get_schema_field(field_id), required_keys=("data",)))
+    field = data(assert_envelope(platform_data_factory.client.get_schema_field(field_id), required_keys=("data",)))
     assert field["id"] == int(field_id)
     assert field["qualifier"] == field_payload["qualifier"]
 
     update = case_payload(FIELD_UPDATE_CASES["standard"])
-    updated = _data(assert_envelope(
+    updated = data(assert_envelope(
         platform_data_factory.client.update_schema_field(
             id=int(field_id), schema_id=int(schema_id), qualifier=field_payload["qualifier"],
             type=field_payload["type"], **update,
@@ -56,7 +52,7 @@ def test_source_04_01_schema_field_crud_and_readback(
     assert updated["name"] == update["name"]
     assert updated["sort_order"] == update["sort_order"]
 
-    listed = _data(assert_envelope(
+    listed = data(assert_envelope(
         platform_data_factory.client.list_schema_fields(schema_id=schema_id, page=1, page_size=20),
         required_keys=("data",),
     ))
@@ -64,7 +60,7 @@ def test_source_04_01_schema_field_crud_and_readback(
 
     schema_update = case_payload(SCHEMA_UPDATE_CASES["standard"])
     assert_envelope(platform_data_factory.client.update_schema(id=int(schema_id), **schema_update))
-    final_schema = _data(assert_envelope(platform_data_factory.client.get_schema(schema_id), required_keys=("data",)))
+    final_schema = data(assert_envelope(platform_data_factory.client.get_schema(schema_id), required_keys=("data",)))
     assert final_schema["comment"] == schema_update["comment"]
 
 
@@ -83,7 +79,7 @@ def test_source_04_02_missing_schema_and_empty_batch_semantics(
         platform_client.batch_update_schema_fields(schema_id=missing_id, fields=[]),
         required_keys=("data",),
     )
-    assert _data(empty_update) == []
+    assert data(empty_update) == []
     assert_rejected(platform_client.sync_schema_fields_to_tos(schema_id=missing_id))
     assert_envelope(platform_client.list_schema_field_versions(schema_id=missing_id), required_keys=("data",))
     assert_rejected(platform_client.get_schema_field_version_snapshot(missing_id))
@@ -93,14 +89,14 @@ def test_source_04_02_missing_schema_and_empty_batch_semantics(
 @pytest.mark.core
 def test_source_04_04_schema_list_and_lookup(platform_client: SourceAdminClient) -> None:
     """Schema 只读查询覆盖分页和按名称查询，不依赖创建链路。"""
-    listing = _data(assert_envelope(platform_client.list_schemas(page=1, page_size=20), required_keys=("data",)))
+    listing = data(assert_envelope(platform_client.list_schemas(page=1, page_size=20), required_keys=("data",)))
     assert isinstance(listing, list)
     if not listing:
         pytest.skip("当前环境没有可查询的 Schema")
     schema = listing[0]
     assert schema.get("id") is not None and schema.get("name")
     lookup = assert_envelope(platform_client.get_schema_by_name(name=schema["name"]), required_keys=("data",))
-    lookup_data = _data(lookup)
+    lookup_data = data(lookup)
     assert lookup_data is None or isinstance(lookup_data, (dict, list))
 
 
@@ -115,7 +111,9 @@ def test_source_04_05_missing_schema_update_is_rejected(
 
 
 @pytest.mark.core
-@pytest.mark.skip(reason="Schema 创建当前被服务端 node_type 数据库默认值错误阻塞")
+@pytest.mark.skip(
+    reason="线上数据库残留 node_type 非空列且无默认值，需先执行服务端 Schema 表迁移"
+)
 def test_source_04_03_schema_field_version_snapshot_and_rollback(
     platform_data_factory: SourceAdminDataFactory,
 ) -> None:
@@ -129,13 +127,13 @@ def test_source_04_03_schema_field_version_snapshot_and_rollback(
         )
     )
 
-    versions = _data(assert_envelope(
+    versions = data(assert_envelope(
         platform_data_factory.client.list_schema_field_versions(schema_id=schema_id),
         required_keys=("data",),
     ))
     assert isinstance(versions, list) and versions
     version_id = versions[-1]["id"]
-    snapshot = _data(assert_envelope(
+    snapshot = data(assert_envelope(
         platform_data_factory.client.get_schema_field_version_snapshot(version_id),
         required_keys=("data",),
     ))

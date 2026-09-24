@@ -11,8 +11,10 @@ import importlib
 import pkgutil
 from typing import Any, Callable
 
+from framework.types import Timeout
 
-ClientFactory = Callable[[str, str, float], Any]
+
+ClientFactory = Callable[[str, str, Timeout], Any]
 DataFactoryFactory = Callable[[Any, Any], Any]
 RuntimeContextFactory = Callable[[Any], Any]
 

@@ -9,6 +9,8 @@ from typing import Any
 
 import yaml
 
+from framework.types import Settings
+
 
 def _merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     result = dict(base)
@@ -20,24 +22,26 @@ def _merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def load_settings(root: Path, environment: str = "test") -> dict[str, Any]:
+def _load_yaml_object(path: Path, label: str) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        raise ValueError(f"{label}读取失败: {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"{label}必须是对象: {path}")
+    return value
+
+
+def load_settings(root: Path, environment: str = "test") -> Settings:
     config_dir = root / "config"
     settings: dict[str, Any] = {}
 
-    def merge_file(path: Path, label: str) -> None:
-        if not path.is_file():
-            return
-        try:
-            with path.open(encoding="utf-8") as stream:
-                value = yaml.safe_load(stream) or {}
-        except (OSError, yaml.YAMLError) as exc:
-            raise ValueError(f"{label}读取失败: {path}: {exc}") from exc
-        if not isinstance(value, dict):
-            raise ValueError(f"{label}必须是对象: {path}")
-        settings.update(_merge(settings, value))
-
     for path in (config_dir / f"{environment}.yaml", config_dir / f"{environment}.local.yaml"):
-        merge_file(path, "根目录配置")
+        value = _load_yaml_object(path, "根目录配置")
+        if value is not None:
+            settings = _merge(settings, value)
 
     auth = settings.setdefault("auth", {})
     platforms = settings.setdefault("platforms", {})
@@ -53,15 +57,9 @@ def load_settings(root: Path, environment: str = "test") -> dict[str, Any]:
         for config_dir in sorted(platform_root.glob("*/config")):
             platform_name = config_dir.parent.name
             for path in (config_dir / f"{environment}.yaml", config_dir / f"{environment}.local.yaml"):
-                if not path.is_file():
+                value = _load_yaml_object(path, "平台配置")
+                if value is None:
                     continue
-                try:
-                    with path.open(encoding="utf-8") as stream:
-                        value = yaml.safe_load(stream) or {}
-                except (OSError, yaml.YAMLError) as exc:
-                    raise ValueError(f"平台配置读取失败: {path}: {exc}") from exc
-                if not isinstance(value, dict):
-                    raise ValueError(f"平台配置必须是对象: {path}")
                 # Accept an optional platform key for readability, but never
                 # let it select a different package than the owning directory.
                 declared = value.get("platform")

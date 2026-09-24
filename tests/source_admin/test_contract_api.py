@@ -76,7 +76,6 @@ def test_source_06_04_missing_contract_archive_cases_are_rejected(
     )
 
 
-@pytest.mark.skip(reason="会触发全量飞书同步，需维护者确认外部依赖和限流窗口")
 def test_source_06_05_contract_sync_is_deferred(platform_client: SourceAdminClient) -> None:
-    """手动同步接口保留用例入口，但不在共享环境触发副作用。"""
+    """手动同步接口应返回标准响应信封。"""
     assert_envelope(platform_client.trigger_contract_sync())

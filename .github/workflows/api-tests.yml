@@ -30,6 +30,11 @@ jobs:
       # Contract tests intentionally consume the committed snapshots.
       - name: Run contract suite
         run: ./scripts/run_tests.sh -m contract
+      - name: Compare contracts with Git baseline
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push'
+        env:
+          CONTRACT_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: python scripts/contract_pipeline.py --base-ref "$CONTRACT_BASE_SHA" --fail-on-breaking
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4

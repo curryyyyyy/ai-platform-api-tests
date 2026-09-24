@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Compare two OpenAPI contracts and report consumer-breaking changes.
+"""
+Compare two OpenAPI contracts and report consumer-breaking changes.
 
 This is intentionally a small, dependency-free (apart from the project's
 PyYAML dependency) guard for CI.  It does not update tests or contracts: an
@@ -387,6 +388,7 @@ def compare_contracts(
     baseline_inventory: Optional[Path] = None,
     current_inventory: Optional[Path] = None,
 ) -> JSONDict:
+    """OpenAPI 契约比对器，输出破坏性变更与兼容性变更"""
     baseline_paths = _paths(baseline_openapi)
     current_paths = _paths(current_openapi)
     if len(baseline_paths) > 1 or len(current_paths) > 1:

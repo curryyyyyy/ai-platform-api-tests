@@ -54,12 +54,20 @@ def test_hawk_02_02_get_project_matches_create(platform_data_factory):
     assert body["data"]["description"] == case["description"]
 
 
-def test_hawk_02_03_list_project_filters_and_defaults(platform_client, platform_data_factory):
+def test_hawk_02_03_list_project_filters_and_defaults(
+    platform_client, platform_data_factory, openapi_contracts
+):
     """按名称模糊搜索并分页查询项目：page/pageSize 传 0 走默认分页，应命中刚创建的项目。"""
     _, payload = platform_data_factory.create_project()
+    response = platform_client.get(
+        "/api/v1/project", params={"page": 0, "pageSize": 0, "name": payload["name"]}
+    )
     body = assert_envelope(
-        platform_client.get("/api/v1/project", params={"page": 0, "pageSize": 0, "name": payload["name"]}),
+        response,
         required_keys=("data",),
+    )
+    openapi_contracts.assert_response(
+        body, method="GET", path="/api/v1/project", status_code=response.status_code
     )
     data = body["data"]
     assert isinstance(data["list"], list)

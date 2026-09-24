@@ -117,6 +117,7 @@ def test_inventory_diff_is_reported_and_fail_on_breaking_returns_one(tmp_path: P
 
 
 def test_compare_contracts_follows_shared_schema_references(tmp_path: Path) -> None:
+    """验证 compare_contracts 能沿着 OpenAPI 的 $ref 引用，正确识别出“共享 schema 的类型变更"""
     baseline = tmp_path / "baseline.yaml"
     current = tmp_path / "current.yaml"
     base_schema = {

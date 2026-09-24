@@ -7,7 +7,11 @@ stages:
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      variables:
+        CONTRACT_BASE_SHA: '$CI_MERGE_REQUEST_DIFF_BASE_SHA'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      variables:
+        CONTRACT_BASE_SHA: '$CI_COMMIT_BEFORE_SHA'
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
     - when: never
@@ -34,6 +38,12 @@ contract:
     - python -m pip install .
     # 只使用仓库内已审核并提交的契约快照，不访问上游 GitLab。
     - ./scripts/run_tests.sh -m contract
+    - |
+      if [ -n "${CONTRACT_BASE_SHA:-}" ]; then
+        python scripts/contract_pipeline.py --base-ref "$CONTRACT_BASE_SHA" --fail-on-breaking
+      else
+        echo "当前流水线没有 Git 比较基线，仅执行已提交快照校验。"
+      fi
   after_script:
     - mkdir -p reports/ci
     - if [ -f reports/junit/results.xml ]; then cp reports/junit/results.xml reports/ci/contract.xml; fi
@@ -116,5 +126,10 @@ feishu_daily_report:
       artifacts: true
       optional: true
   script:
-    - python scripts/notify_feishu.py --reports-dir reports/ci
+    - >-
+      python scripts/notify_feishu.py
+      --reports-dir reports/ci
+      --expected-report contract.xml
+      --expected-report requirements_live.xml
+      --expected-report core_live.xml
   allow_failure: true

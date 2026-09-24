@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 
 import pytest
@@ -160,17 +159,21 @@ def test_source_02_15_audit_log_filters(platform_client):
     assert isinstance(body.get("total"), int)
 
 
-@pytest.mark.skipif(
-    not os.getenv("SOURCE_ADMIN_WRITABLE_COLLECTION_ID"),
-    reason="需要通过 SOURCE_ADMIN_WRITABLE_COLLECTION_ID 显式提供隔离圈选集",
-)
-def test_source_02_16_collection_metadata_write(platform_client):
-    """在显式隔离集合上覆盖展示列和资源类型更新，避免修改共享集合。"""
-    collection_id = int(os.environ["SOURCE_ADMIN_WRITABLE_COLLECTION_ID"])
-    labels = data(assert_envelope(platform_client.get_collection_labels(collection_id), required_keys=("data",)))
+def test_source_02_16_collection_metadata_write(
+    platform_data_factory: SourceAdminDataFactory,
+    data_scope,
+):
+    """在现场创建的隔离集合上覆盖展示列和资源类型更新。"""
+    client = platform_data_factory.client
+    collection_id, _, _ = platform_data_factory.create_collection_from_rowkeys(
+        parent_node_id=required_root_node_id(),
+        source_collection_id=required_collection_id(client),
+        rowkeys=[data_scope.unique_name("rowkey", max_length=64)],
+    )
+    labels = data(assert_envelope(client.get_collection_labels(collection_id), required_keys=("data",)))
     names = [item["name"] for item in labels.get("labels", []) if item.get("name") != "rowkey"]
-    assert_envelope(platform_client.update_collection_columns(collection_id, show_col=names[:3]))
-    assert_envelope(platform_client.update_collection_set_type(collection_id, set_type=2))
+    assert_envelope(client.update_collection_columns(collection_id, show_col=names[:3]))
+    assert_envelope(client.update_collection_set_type(collection_id, set_type=2))
 
 
 @pytest.mark.core

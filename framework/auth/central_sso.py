@@ -6,16 +6,17 @@ from typing import Any, cast
 
 from framework.auth.crypto import rsa_encrypt
 from framework.http.client import ApiClient
+from framework.types import ResponseEnvelope, Timeout
 
 
-def _object_field(payload: dict[str, Any], field: str) -> dict[str, Any]:
+def _object_field(payload: ResponseEnvelope, field: str) -> dict[str, Any]:
     """读取对象类型的响应字段，避免 Optional 值继续传入认证流程。"""
     value = payload.get(field)
     return cast(dict[str, Any], value) if isinstance(value, dict) else {}
 
 
 class CentralSSO:
-    def __init__(self, base_url: str, rsa_path: str, login_path: str, timeout: float = 10.0, retries: int = 1):
+    def __init__(self, base_url: str, rsa_path: str, login_path: str, timeout: Timeout = 10.0, retries: int = 1):
         self.client = ApiClient(base_url, timeout=timeout, retries=retries)
         self.rsa_path = rsa_path
         self.login_path = login_path
@@ -53,3 +54,12 @@ class CentralSSO:
         if not token:
             raise AssertionError(f"总平台登录响应缺少 token/accessToken: {payload}")
         return str(token)
+
+    def close(self) -> None:
+        self.client.close()
+
+    def __enter__(self) -> "CentralSSO":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.close()

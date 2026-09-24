@@ -173,19 +173,19 @@ entries:
     priority: P0
     level: blocked
     operations: [SC-01, SC-02, SC-03, SC-07, SC-08, SC-09, SC-10, SC-11]
-    note: "Schema 创建被服务端 node_type 数据库默认值错误阻塞"
+    note: "服务端代码已移除 node_type，但线上数据库残留该非空无默认列；需先执行 Schema 表迁移"
     tests: [tests/source_admin/test_schema_api.py::test_source_04_01_schema_field_crud_and_readback]
   - id: TC-04-02
     priority: P1
     level: partial
-    note: "覆盖只读/缺失资源及 fields=[] 合法空操作；Schema 写入正向链路受服务端 node_type 错误阻塞"
+    note: "覆盖只读/缺失资源及 fields=[] 合法空操作；Schema 写入受线上数据库残留 node_type 列阻塞"
     operations: [SC-04, SC-05, SC-09, SC-10, SC-11, SC-12, SC-13, SC-14, SC-15, SC-16]
     tests: [tests/source_admin/test_schema_api.py::test_source_04_02_missing_schema_and_empty_batch_semantics]
   - id: TC-04-03
     priority: P0
     level: blocked
     operations: [SC-01, SC-03, SC-07, SC-08, SC-09, SC-14, SC-15, SC-16]
-    note: "Schema 创建被服务端 node_type 数据库默认值错误阻塞"
+    note: "服务端代码已移除 node_type，但线上数据库残留该非空无默认列；需先执行 Schema 表迁移"
     tests: [tests/source_admin/test_schema_api.py::test_source_04_03_schema_field_version_snapshot_and_rollback]
   - id: TC-04-04
     priority: P0
@@ -236,8 +236,8 @@ entries:
     tests: [tests/source_admin/test_contract_api.py::test_source_06_04_missing_contract_archive_cases_are_rejected]
   - id: TC-06-05
     priority: P1
-    level: blocked
-    note: "手动同步会触发全量飞书同步，需维护者确认外部依赖和限流窗口"
+    level: full
+    note: "会触发全量飞书同步，运行需纳入外部依赖和限流窗口"
     operations: [CT-05]
     tests: [tests/source_admin/test_contract_api.py::test_source_06_05_contract_sync_is_deferred]
   - id: TC-07-01
@@ -257,10 +257,10 @@ entries:
     tests: [tests/source_admin/test_supplier_api.py::test_source_07_03_missing_supplier_read_and_update_are_rejected]
   - id: TC-07-04
     priority: P1
-    level: blocked
-    note: "供应商接口没有删除能力，创建后无法满足 DataScope 清理要求"
+    level: partial
+    note: "服务端没有供应商删除接口，覆盖不会落库的非法创建请求；正向创建需服务端提供回收能力"
     operations: [SP-02]
-    tests: [tests/source_admin/test_supplier_api.py::test_source_07_04_supplier_create_is_deferred]
+    tests: [tests/source_admin/test_supplier_api.py::test_source_07_04_invalid_supplier_create_is_rejected]
 
 # 需求级差异与平台常规用例共用覆盖矩阵。需求用例放入所属业务域脚本，
 # 稳定 requirement/case ID 仅用于筛选、报告和变更追溯。

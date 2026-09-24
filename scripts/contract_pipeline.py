@@ -23,7 +23,6 @@ try:  # Supports both ``python scripts/contract_pipeline.py`` and module imports
     from scripts.contract_diff import compare_contracts
     from scripts.contract_manifest import (
         discover_manifests,
-        load_manifest,
         relative_paths,
         select_manifests,
     )
@@ -31,19 +30,9 @@ except ModuleNotFoundError:  # pragma: no cover - exercised by the CLI entry poi
     from contract_diff import compare_contracts
     from contract_manifest import (
         discover_manifests,
-        load_manifest,
         relative_paths,
         select_manifests,
     )
-
-
-def _load_manifest(path: Path) -> dict[str, Any]:
-    """Backward-compatible wrapper used by callers that imported this helper."""
-    return load_manifest(path)
-
-
-def _relative_paths(values: Any) -> list[Path]:
-    return relative_paths(values, field="平台 local.openapi")
 
 
 def _copy_from_git(root: Path, relative: Path, destination: Path, base_ref: str) -> None:
@@ -56,9 +45,10 @@ def _copy_from_git(root: Path, relative: Path, destination: Path, base_ref: str)
             stderr=subprocess.DEVNULL,
             check=False,
         )
-        if result.returncode == 0:
-            destination.write_bytes(result.stdout)
-            return
+        if result.returncode != 0:
+            raise ValueError(f"无法从 Git 基线 {base_ref!r} 读取契约文件: {relative}")
+        destination.write_bytes(result.stdout)
+        return
     source = root / relative
     if not source.is_file():
         raise ValueError(f"本地契约文件不存在: {source}")
@@ -104,7 +94,7 @@ def _copy_source_snapshot(
     """Copy reviewed documents from a locally checked-out service tree."""
     source = definition.get("source")
     source_openapi = source.get("openapi") if isinstance(source, dict) else None
-    source_relative = _relative_paths(source_openapi)
+    source_relative = relative_paths(source_openapi, field="平台 source.openapi")
     if len(source_relative) != len(local_relative):
         raise ValueError("source.openapi 与 local.openapi 数量不一致")
     current_openapi: list[Path] = []
@@ -139,10 +129,12 @@ def run_platform(
     report_root: Path,
     source_root: Optional[Path] = None,
 ) -> dict[str, Any]:
+    if not base_ref and source_root is None:
+        raise ValueError("契约比较必须提供 Git 基线 base_ref 或本地服务仓库 source_root")
     local = definition.get("local")
     if not isinstance(local, dict):
         raise ValueError(f"平台 {platform} 缺少 local 配置")
-    local_relative = _relative_paths(local.get("openapi"))
+    local_relative = relative_paths(local.get("openapi"), field="平台 local.openapi")
     baseline_root = Path(tempfile.mkdtemp(prefix=f"contract-baseline-{platform}-"))
     current_root = Path(tempfile.mkdtemp(prefix=f"contract-current-{platform}-"))
     try:
@@ -194,6 +186,9 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
     args = _parser().parse_args(argv)
+    if not args.base_ref and args.source_root is None:
+        print("契约比较必须提供 --base-ref 或 --source-root，拒绝将当前快照与自身比较", file=sys.stderr)
+        return 2
     root = Path(__file__).resolve().parents[1]
     try:
         manifest_paths = args.manifest

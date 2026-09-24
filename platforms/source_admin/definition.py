@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from framework.types import Timeout
 from platforms.registry import PlatformDefinition, register_platform
 from platforms.source_admin.client import SourceAdminClient
 from platforms.source_admin.factories import SourceAdminDataFactory
 
 
-def _client(base_url: str, token: str, timeout: float) -> SourceAdminClient:
+def _client(base_url: str, token: str, timeout: Timeout) -> SourceAdminClient:
     return SourceAdminClient(base_url, token=token, timeout=timeout)
 
 

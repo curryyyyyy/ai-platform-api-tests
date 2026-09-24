@@ -109,7 +109,7 @@ config/test.yaml 的 base_url
 
 需要更新契约时，先在服务代码仓库拉取 `test` 分支最新代码，再审核 `openapi.yaml` 与本仓库差异，并从本地工作树更新快照。随后同步更新 client、数据、testcase、inventory 和覆盖矩阵，先跑受影响用例，再跑本平台全量并提交。
 
-契约 job 会将 MR 目标分支的 Hawk 契约保存为基线，并通过 [`../../scripts/contract_diff.py`](../../scripts/contract_diff.py) 检查删除接口、必填参数、请求/响应 Schema、枚举和共享组件等破坏性变化。报告保存于 `reports/contracts/hawk_admin-diff.json`；默认发现破坏性变化即阻断合并。确认是有意变更时，必须同步 `client.py`、数据 YAML、测试 Schema、断言和本文件，并由维护者通过受保护变量 `CONTRACT_DIFF_ALLOW_BREAKING=1` 临时放行。
+契约 job 会使用 PR/MR 目标提交或主分支推送前的提交作为 Git 基线，并通过 [`../../scripts/contract_pipeline.py`](../../scripts/contract_pipeline.py) 检查删除接口、必填参数、请求/响应 Schema、枚举和共享组件等破坏性变化。报告保存于 `reports/contracts/hawk_admin-diff.json`；基线无效或发现破坏性变化都会阻断合并。确认是有意变更时，必须同步 `client.py`、数据 YAML、测试 Schema、断言和本文件，并由维护者通过受保护变量 `CONTRACT_DIFF_ALLOW_BREAKING=1` 临时放行。
 
 ## 本地运行
 

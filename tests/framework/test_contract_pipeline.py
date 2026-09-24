@@ -1,15 +1,35 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
-from scripts.contract_pipeline import run_platform
+from scripts.contract_pipeline import main, run_platform
 
 
 pytestmark = pytest.mark.contract
+
+
+def _commit_repo(root: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Contract Test",
+            "-c",
+            "user.email=contract@example.invalid",
+            "commit",
+            "-qm",
+            "baseline",
+        ],
+        cwd=root,
+        check=True,
+    )
 
 
 def test_run_platform_uses_manifest_paths_and_writes_report(tmp_path: Path) -> None:
@@ -28,6 +48,7 @@ def test_run_platform_uses_manifest_paths_and_writes_report(tmp_path: Path) -> N
         json.dumps({"operations": [{"method": "GET", "path": "/items", "operationId": "listItems"}]}),
         encoding="utf-8",
     )
+    _commit_repo(root)
 
     report = run_platform(
         root,
@@ -38,7 +59,7 @@ def test_run_platform_uses_manifest_paths_and_writes_report(tmp_path: Path) -> N
                 "inventory": "contracts/demo/api_inventory.json",
             },
         },
-        base_ref="",
+        base_ref="HEAD",
         report_root=tmp_path / "reports",
     )
 
@@ -49,6 +70,33 @@ def test_run_platform_uses_manifest_paths_and_writes_report(tmp_path: Path) -> N
         "current_operations": 1,
     }
     assert (tmp_path / "reports/demo-diff.json").is_file()
+
+
+def test_run_platform_rejects_unreadable_git_baseline(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    openapi = root / "contracts/demo/openapi.yaml"
+    openapi.parent.mkdir(parents=True)
+    openapi.write_text(
+        yaml.safe_dump(
+            {"openapi": "3.0.3", "paths": {"/items": {"get": {"responses": {"200": {"description": "ok"}}}}}},
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="无法从 Git 基线"):
+        run_platform(
+            root,
+            "demo",
+            {"local": {"openapi": ["contracts/demo/openapi.yaml"]}},
+            base_ref="missing-ref",
+            report_root=tmp_path / "reports",
+        )
+
+
+def test_main_rejects_self_comparison(capsys) -> None:
+    assert main([]) == 2
+    assert "拒绝将当前快照与自身比较" in capsys.readouterr().err
 
 
 def test_run_platform_reads_latest_contract_from_local_source_tree(tmp_path: Path) -> None:

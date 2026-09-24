@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from typing import Any, Optional
 
 from framework.http.client import ApiClient
+from framework.types import ResponseEnvelope
 
 
 def assert_amount_yuan(value: Any, *, field: str = "amountYuan") -> None:
@@ -45,7 +46,7 @@ def assert_envelope(
     expected_http: int = 200,
     expected_code: Optional[int] = 0,
     required_keys: Iterable[str] = (),
-) -> dict[str, Any]:
+) -> ResponseEnvelope:
     """校验响应信封。
 
     `expected_code=None` 表示跳过业务码校验，供"异常输入应被拒绝"的反向用例使用。
@@ -66,7 +67,7 @@ def assert_rejected(
     expected_http: int = 200,
     forbidden_messages: Iterable[str] = (),
     allow_error_data: bool = False,
-) -> dict[str, Any]:
+) -> ResponseEnvelope:
     """严格校验非法请求确实被业务层拒绝。
 
     HTTP 200 是本平台的统一传输约定，不能作为成功证据。负向用例必须同时

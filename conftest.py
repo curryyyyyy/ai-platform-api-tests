@@ -11,9 +11,11 @@ import pytest
 
 from framework.auth.central_sso import CentralSSO
 from framework.data.scope import DataScope
+from framework.openapi import OpenApiContracts
 from framework.settings import load_settings
 from framework.requirements import validate_requirement_identifiers
 from platforms.registry import discover_platforms, get_platform
+from scripts.contract_manifest import load_manifest, relative_paths
 
 ROOT = Path(__file__).resolve().parent
 # 注意：不要在项目根目录建 allure/ 目录，会遮蔽 allure 包
@@ -34,6 +36,16 @@ PLATFORM_REPORTING: dict[str, dict[str, Any]] = {
     }
     for definition in discover_platforms().values()
 }
+
+
+def _api_timeout() -> float | tuple[float, float]:
+    """读取统一超时；需要时用环境变量拆分连接和读取阶段。"""
+    default = float(os.getenv("API_TIMEOUT", "10"))
+    connect = os.getenv("API_CONNECT_TIMEOUT", "").strip()
+    read = os.getenv("API_READ_TIMEOUT", "").strip()
+    if not connect and not read:
+        return default
+    return (float(connect or default), float(read or default))
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -108,18 +120,32 @@ def central_token(settings: dict[str, Any]) -> str:
     credentials = settings["credentials"]
     if not credentials.get("username") or not credentials.get("password"):
         pytest.fail("未配置总平台账号密码，或设置 API_TOKEN；线上用例不能以跳过计为通过")
-    return CentralSSO(
+    sso = CentralSSO(
         auth["base_url"],
         auth["rsa_path"],
         auth["login_path"],
-        timeout=float(os.getenv("API_TIMEOUT", "10")),
-    ).login(credentials["username"], credentials["password"])
+        timeout=_api_timeout(),
+    )
+    try:
+        return sso.login(credentials["username"], credentials["password"])
+    finally:
+        sso.close()
 
 
 @pytest.fixture(scope="session")
-def platform_client_factory(settings: dict[str, Any]):
-    """返回按平台名称构造客户端的统一入口。"""
-    timeout = float(os.getenv("API_TIMEOUT", "10"))
+def platform_client_factory(settings: dict[str, Any], request: pytest.FixtureRequest):
+    """返回按平台和 Token 缓存客户端的统一入口。"""
+    timeout = _api_timeout()
+    clients: dict[tuple[str, str], Any] = {}
+
+    def close_clients() -> None:
+        for client in clients.values():
+            close = getattr(client, "close", None)
+            if callable(close):
+                close()
+        clients.clear()
+
+    request.addfinalizer(close_clients)
 
     def create(name: str, *, token: str = ""):
         definition = get_platform(name)
@@ -127,7 +153,10 @@ def platform_client_factory(settings: dict[str, Any]):
         base_url = config.get("base_url", "")
         if not base_url:
             pytest.fail(f"未配置平台 {name} 的 base_url；线上用例不能以跳过计为通过")
-        return definition.client_factory(base_url, token, timeout)
+        key = (name, token)
+        if key not in clients:
+            clients[key] = definition.client_factory(base_url, token, timeout)
+        return clients[key]
 
     return create
 
@@ -138,11 +167,6 @@ def client_for(platform_client_factory, central_token: str):
         return platform_client_factory(name, token=central_token)
 
     return create
-
-
-@pytest.fixture(scope="session")
-def anonymous_for(platform_client_factory):
-    return platform_client_factory
 
 
 @pytest.fixture(scope="session")
@@ -158,10 +182,14 @@ def viewer_for(settings: dict[str, Any], platform_client_factory):
             if not username or not password:
                 pytest.skip(f"未配置平台 {name} 的查看者 Token 或账号密码，跳过查看者权限用例")
             auth = settings["auth"]
-            token = CentralSSO(
+            sso = CentralSSO(
                 auth["base_url"], auth["rsa_path"], auth["login_path"],
-                timeout=float(os.getenv("API_TIMEOUT", "10")),
-            ).login(username, password)
+                timeout=_api_timeout(),
+            )
+            try:
+                token = sso.login(username, password)
+            finally:
+                sso.close()
         return platform_client_factory(name, token=token)
 
     return create
@@ -285,6 +313,26 @@ def platform_data_factory(data_factory_for, request: pytest.FixtureRequest):
 def platform_context(platform_context_factory, request: pytest.FixtureRequest):
     """当前平台的共享运行时上下文，供只读数据发现类用例使用。"""
     return platform_context_factory(_platform_name_for_node(request.node))
+
+
+@pytest.fixture(scope="session")
+def openapi_contracts_for():
+    """按平台懒加载已提交的 OpenAPI 快照。"""
+    contracts: dict[str, OpenApiContracts] = {}
+
+    def create(name: str) -> OpenApiContracts:
+        if name not in contracts:
+            definition = load_manifest(ROOT / "platforms" / name / "contract.yaml")
+            paths = relative_paths(definition["local"]["openapi"], field="local.openapi")
+            contracts[name] = OpenApiContracts.from_files(ROOT / path for path in paths)
+        return contracts[name]
+
+    return create
+
+
+@pytest.fixture
+def openapi_contracts(openapi_contracts_for, request: pytest.FixtureRequest) -> OpenApiContracts:
+    return openapi_contracts_for(_platform_name_for_node(request.node))
 
 
 def _allure_dir(config: pytest.Config) -> Path | None:

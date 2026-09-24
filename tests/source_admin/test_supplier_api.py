@@ -60,12 +60,8 @@ def test_source_07_03_missing_supplier_read_and_update_are_rejected(
     assert_rejected(platform_client.update_supplier(supplier_id, name="missing-supplier"))
 
 
-@pytest.mark.skip(reason="供应商接口没有删除能力，创建后无法满足 DataScope 清理要求")
-def test_source_07_04_supplier_create_is_deferred(
+def test_source_07_04_invalid_supplier_create_is_rejected(
     platform_client: SourceAdminClient,
 ) -> None:
-    assert_envelope(platform_client.create_supplier(
-        name="api-test-supplier",
-        alias="api-test-supplier-alias",
-        type="机构供应商",
-    ))
+    """供应商当前没有删除 API，先覆盖不会落库的创建参数校验链路。"""
+    assert_rejected(platform_client.create_supplier(name="", alias="", type="机构供应商"))
