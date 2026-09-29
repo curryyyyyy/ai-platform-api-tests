@@ -12,11 +12,10 @@ from typing import Any, Tuple, TypedDict, Union
 Timeout = Union[float, Tuple[float, float]]
 
 
-class ResponseEnvelope(TypedDict, total=False):
-    code: int
-    message: str
-    msg: str
-    data: Any
+# 平台接口的信封字段和 data 内容会随接口而变化。字段存在性由
+# assert_envelope(required_keys=...) 在实际断言点校验，不能用 total=False
+# TypedDict 假装所有响应字段都可选，否则静态检查无法表达该动态约束。
+ResponseEnvelope = dict[str, Any]
 
 
 class AuthSettings(TypedDict, total=False):

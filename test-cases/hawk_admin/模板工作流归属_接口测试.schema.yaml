@@ -1,0 +1,30 @@
+meta:
+  requirement_id: REQ-TEMPLATE-WORKFLOW-OWNERSHIP
+  requirement_name: template_workflow_ownership
+  display_name: 模板工作流归属
+  execution_model: api
+  source: biaozhu:test api/template/v1/template.proto
+
+cases:
+  - id: REQ-TEMPLATE-WORKFLOW-OWNERSHIP-API-01
+    source_id: TPL-OWNERSHIP-01
+    title: 查询归属枚举并按归属筛选模板工作流
+    module: 模板工作流接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint:
+      methods: [GET, GET]
+      paths: [/api/v1/tpl/ownership-options, /api/v1/tpl/wf]
+    expected: [归属枚举包含唯一非空 ID 和名称, 筛选结果只包含指定归属]
+  - id: REQ-TEMPLATE-WORKFLOW-OWNERSHIP-API-02
+    source_id: TPL-OWNERSHIP-02
+    title: 写入接口拒绝不存在的归属编号
+    module: 模板工作流接口
+    priority: P0
+    type: exception
+    execution_model: api
+    endpoint:
+      methods: [POST, POST, PUT]
+      paths: [/api/v1/tpl/wf/empty, "/api/v1/tpl/wf/{id}/complete", "/api/v1/tpl/wf/{id}"]
+    expected: [非法归属编号在持久化前被拒绝]

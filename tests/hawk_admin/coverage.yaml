@@ -101,3 +101,23 @@ requirements:
       - {id: REQ-RCB-20260910-API-03, source_id: TC-04-03, priority: P0, test: tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_03_rcb_batch_stat_cost, endpoint: "GET /api/v1/hawk/stat/{batchId}"}
       - {id: REQ-RCB-20260910-API-04, source_id: TC-04-04, priority: P0, test: tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_04_rcb_batch_cost_detail, endpoint: "GET /api/v1/hawk/cost/batches/{batchId}/detail"}
       - {id: REQ-RCB-20260910-API-05, source_id: TC-04-05, priority: P0, test: tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_05_rcb_stage_cost_detail, endpoint: "GET /api/v1/hawk/cost/batches/{batchId}/stages/{stageIndex}"}
+  - id: REQ-FLOW-DRAFT-LIFECYCLE
+    name: flow_draft_lifecycle
+    display_name: 流程草稿生命周期
+    marker: requirement
+    source_schema: test-cases/hawk_admin/流程草稿生命周期_接口测试.schema.yaml
+    cases:
+      - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-01, source_id: FLOW-DRAFT-01, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_04_01_create_flow, endpoint: "POST /api/v1/flow"}
+      - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-02, source_id: FLOW-DRAFT-02, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_10_11_save_flow_draft_graph, endpoint: "PUT /api/v1/flow/draft/{draftId}"}
+      - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-03, source_id: FLOW-DRAFT-03, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_10_14_publish_flow_draft_rejects_invalid_id, endpoint: "POST /api/v1/flow/draft/{draftId}/publish"}
+      - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-04, source_id: FLOW-DRAFT-04, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_04_05_delete_flow_then_get, endpoint: "DELETE /api/v1/flow/draft/{draftId}"}
+      - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-05, source_id: FLOW-DRAFT-05, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_10_12_list_flow_drafts_by_project, endpoint: "GET /api/v1/flow/project/list"}
+      - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-06, source_id: FLOW-DRAFT-06, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_10_13_list_flow_draft_versions, endpoint: "GET /api/v1/flow/draft/{draftId}/versions"}
+  - id: REQ-TEMPLATE-WORKFLOW-OWNERSHIP
+    name: template_workflow_ownership
+    display_name: 模板工作流归属
+    marker: requirement
+    source_schema: test-cases/hawk_admin/模板工作流归属_接口测试.schema.yaml
+    cases:
+      - {id: REQ-TEMPLATE-WORKFLOW-OWNERSHIP-API-01, source_id: TPL-OWNERSHIP-01, priority: P0, test: tests/hawk_admin/test_template_workflow_api.py::test_hawk_10_15_template_workflow_ownership_options_and_filter, endpoint: "GET /api/v1/tpl/ownership-options; GET /api/v1/tpl/wf?ownershipId"}
+      - {id: REQ-TEMPLATE-WORKFLOW-OWNERSHIP-API-02, source_id: TPL-OWNERSHIP-02, priority: P0, test: tests/hawk_admin/test_template_workflow_api.py::test_hawk_10_16_template_workflow_rejects_unknown_ownership, endpoint: "POST /api/v1/tpl/wf/empty; POST /api/v1/tpl/wf/{id}/complete; PUT /api/v1/tpl/wf/{id}"}

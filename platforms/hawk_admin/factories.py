@@ -25,7 +25,7 @@ def make_stage(scope: DataScope, **overrides: Any) -> dict[str, Any]:
 
 def make_flow(scope: DataScope, **overrides: Any) -> dict[str, Any]:
     payload: dict[str, Any] = dataset_defaults("hawk_admin", "flow")
-    payload["flowName"] = scope.unique_name("flow", max_length=48)
+    payload["alias"] = scope.unique_name("flow", max_length=48)
     payload.update(overrides)
     return payload
 
@@ -75,6 +75,9 @@ class HawkDataFactory:
             raise AssertionError(f"删除测试阶段失败: {response.status_code} {body}")
 
     def create_flow(self, **overrides: Any) -> tuple[str, dict[str, Any]]:
+        if "projectId" not in overrides:
+            project_id, _ = self.create_project()
+            overrides["projectId"] = project_id
         payload = make_flow(self.scope, **overrides)
         response = self.client.create_flow(**payload)
         body = self.client.json(response)
@@ -83,7 +86,7 @@ class HawkDataFactory:
         flow_id = body.get("id") or (body.get("data") or {}).get("id")
         if not flow_id:
             raise AssertionError(f"创建流程响应缺少 id: {body}")
-        self.scope.track(f"删除流程 {flow_id}", lambda: self._delete_flow(str(flow_id)))
+        self.scope.track(f"删除流程草稿 {flow_id}", lambda: self._delete_flow_draft(str(flow_id)))
         return str(flow_id), payload
 
     def _delete_flow(self, flow_id: str) -> None:
@@ -91,6 +94,12 @@ class HawkDataFactory:
         body = self.client.json(response)
         if response.status_code != 200 or body.get("code") != 0:
             raise AssertionError(f"删除测试流程失败: {response.status_code} {body}")
+
+    def _delete_flow_draft(self, flow_id: str) -> None:
+        response = self.client.delete_flow_draft(flow_id)
+        body = self.client.json(response)
+        if response.status_code != 200 or body.get("code") != 0:
+            raise AssertionError(f"删除测试流程草稿失败: {response.status_code} {body}")
 
     def create_batch(self, *, project_id: str, flow_name: str, input_file_path: str, **overrides: Any) -> tuple[str, dict[str, Any]]:
         payload = dataset_defaults("hawk_admin", "batch")

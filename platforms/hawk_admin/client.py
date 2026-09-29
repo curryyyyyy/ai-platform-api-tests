@@ -39,7 +39,7 @@ class HawkAdminClient(ApiClient):
         return self.delete(f"/api/v1/project/{project_id}")
 
     def favorite_project(self, project_id):
-        return self.post(f"/api/v1/project/{project_id}/favorite")
+        return self.post(f"/api/v1/project/{project_id}/favorite", json={"id": project_id})
 
     def unfavorite_project(self, project_id):
         return self.delete(f"/api/v1/project/{project_id}/favorite")
@@ -75,6 +75,28 @@ class HawkAdminClient(ApiClient):
 
     def delete_flow(self, flow_id):
         return self.delete(f"/api/v1/flow/{flow_id}")
+
+    def list_flows_by_project(self, **params):
+        return self.get("/api/v1/flow/project/list", params=params)
+
+    def list_flow_versions(self, draft_id):
+        return self.get(f"/api/v1/flow/draft/{draft_id}/versions")
+
+    def save_flow_draft(self, draft_id, *, expected_graph_version, graph):
+        return self.put(
+            f"/api/v1/flow/draft/{draft_id}",
+            json={
+                "draftId": draft_id,
+                "expectedGraphVersion": expected_graph_version,
+                "graph": graph,
+            },
+        )
+
+    def delete_flow_draft(self, draft_id):
+        return self.delete(f"/api/v1/flow/draft/{draft_id}")
+
+    def publish_flow_draft(self, draft_id):
+        return self.post(f"/api/v1/flow/draft/{draft_id}/publish", json={"draftId": draft_id})
 
     # 批次
     def list_batches(self, **params):
@@ -224,7 +246,10 @@ class HawkAdminClient(ApiClient):
         return self.get(f"/api/v1/hawk/done-end-alert/rollback/{batch_id}", params={"actionToken": action_token})
 
     def done_end_allow_empty_output(self, batch_id):
-        return self.post(f"/api/v1/hawk/done-end-alert/allow-empty-output/{batch_id}")
+        return self.post(
+            f"/api/v1/hawk/done-end-alert/allow-empty-output/{batch_id}",
+            json={"batchId": batch_id},
+        )
 
     def system_load(self):
         return self.get("/api/v1/hawk/system-load")
@@ -237,6 +262,9 @@ class HawkAdminClient(ApiClient):
 
     def list_templates(self, **params):
         return self.get("/api/v1/tpl/wf", params=params)
+
+    def list_template_ownership_options(self):
+        return self.get("/api/v1/tpl/ownership-options")
 
     def create_template(self, **payload):
         return self.post("/api/v1/tpl/wf", json=payload)

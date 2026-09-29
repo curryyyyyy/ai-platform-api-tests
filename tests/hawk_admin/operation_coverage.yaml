@@ -33,6 +33,11 @@ entries:
   - {id: Flow_DeleteFlow, operations: [Flow_DeleteFlow], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_05_delete_flow_then_get]}
   - {id: Flow_GetFlow, operations: [Flow_GetFlow], tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_07_get_existing_flow]}
   - {id: Flow_UpdateFlow, operations: [Flow_UpdateFlow], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_04_update_flow]}
+  - {id: Flow_PublishFlow, operations: [Flow_PublishFlow], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_10_14_publish_flow_draft_rejects_invalid_id]}
+  - {id: Flow_ListFlowByProject, operations: [Flow_ListFlowByProject], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_10_12_list_flow_drafts_by_project]}
+  - {id: Flow_ListFlowVersions, operations: [Flow_ListFlowVersions], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_10_13_list_flow_draft_versions]}
+  - {id: Flow_SaveFlowDraft, operations: [Flow_SaveFlowDraft], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_10_11_save_flow_draft_graph]}
+  - {id: Flow_DeleteFlowDraft, operations: [Flow_DeleteFlowDraft], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_05_delete_flow_then_get]}
   - {id: BatchOperationService_DeleteBatchFromDoneEndAlert, operations: [BatchOperationService_DeleteBatchFromDoneEndAlert], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_07_16_done_end_alert_actions_handle_missing_batch]}
   - {id: BatchOperationService_RollbackBatchFromDoneEndAlert, operations: [BatchOperationService_RollbackBatchFromDoneEndAlert], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_07_16_done_end_alert_actions_handle_missing_batch]}
   - {id: BatchOperationService_AllowEmptyOutputFromDoneEndAlert, operations: [BatchOperationService_AllowEmptyOutputFromDoneEndAlert], tests: [tests/hawk_admin/test_hawk_execution_api.py::test_hawk_10_10_allow_empty_output_from_done_end_alert]}
@@ -69,6 +74,7 @@ entries:
   - {id: Tools_RefreshStageRefCounts, operations: [Tools_RefreshStageRefCounts], tests: [tests/hawk_admin/test_tools_file_api.py::test_hawk_07_15_tools_validate_inputs_and_trigger_commands]}
   - {id: Tools_CsvInfo, operations: [Tools_CsvInfo], tests: [tests/hawk_admin/test_tools_file_api.py::test_hawk_07_15_tools_validate_inputs_and_trigger_commands]}
   - {id: Template_ListTemplateWorkflow, operations: [Template_ListTemplateWorkflow], tests: [tests/hawk_admin/test_template_workflow_api.py::test_hawk_07_17_list_template_workflows]}
+  - {id: Template_ListOwnershipOptions, operations: [Template_ListOwnershipOptions], tests: [tests/hawk_admin/test_template_workflow_api.py::test_hawk_10_15_template_workflow_ownership_options_and_filter]}
   - {id: Template_CreateTemplateWorkflow, operations: [Template_CreateTemplateWorkflow], tests: [tests/hawk_admin/test_template_workflow_api.py::test_hawk_07_11_invalid_template_write_is_rejected]}
   - {id: Template_BatchGetTemplateWorkflow, operations: [Template_BatchGetTemplateWorkflow], tests: [tests/hawk_admin/test_template_workflow_api.py::test_hawk_10_07_batch_get_template_workflows]}
   - {id: Template_CreateEmptyTemplateWorkflow, operations: [Template_CreateEmptyTemplateWorkflow], tests: [tests/hawk_admin/test_template_workflow_api.py::test_hawk_10_08_create_empty_template_requires_name]}

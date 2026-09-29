@@ -12,13 +12,13 @@ Hawk 子平台的接口测试、数据集、Schema 覆盖和 CI 前置均在本�
 | 项目管理 | `test_project_api.py` | `project.yaml` | 创建、查询、列表、更新、OWNER、通知级别、删除 |
 | 项目收藏需求 | `test_project_api.py` | `project.yaml` | 收藏/取消收藏幂等、详情 `isFavorite`、`onlyFavorite` 筛选 |
 | 阶段管理 | `test_stage_api.py` | `stage.yaml` | 创建、列表筛选、更新、缺失查询、删除 |
-| 流程生命周期（写入类） | `test_flow_api.py` | `flow.yaml` | 创建、非法 JSON、更新、删除 |
+| 流程草稿生命周期（写入类） | `test_flow_api.py` | `flow.yaml` | 创建关联项目的草稿、图乐观锁保存、草稿列表/版本、删除、非法发布编号 |
 | 流程只读查询类 | `test_flow_read_api.py` | `flow.yaml` | 详情、缺失查询、Stage/状态筛选、调用次数排序、`canOffline` 条件 |
 | 批次管理 | `test_batch_api.py` | `batch.yaml` | 创建、CID、引用校验、名称、列表、元数据/输入/状态更新、删除 |
 | 执行与统计 | `test_hawk_execution_api.py` | `execution.yaml` | 状态操作、任务流、统计、字段、错误日志、导出 |
 | 批次辅助能力 | `test_batch_api.py` | `batch.yaml` | 流程图、复制、统计批次、文件上传负向校验 |
 | 执行辅助能力 | `test_hawk_execution_api.py` | `execution.yaml` | 系统负载、任务流刷新、结束告警、空输出导出、隐藏任务流批次 |
-| 模板工作流 | `test_template_workflow_api.py` | `template_workflow.yaml` | 模板列表、批量查询、空工作流和补全校验 |
+| 模板工作流 | `test_template_workflow_api.py` | `template_workflow.yaml` | 模板列表、归属枚举/筛选、批量查询、空工作流和补全校验 |
 | 凭证管理 | `test_credential_api.py` | `credential.yaml` | 查询及非法创建、更新、删除 |
 | 工具与文件 | `test_tools_file_api.py` | - | 临时文件、下载链接、CSV/HBase 运维工具 |
 | 传输任务 | `test_transfer_task_api.py` | `transfer_task.yaml` | 公共模板、任务列表/详情、非法操作和配置更新 |
@@ -166,11 +166,12 @@ GitLab Merge Request 门禁位于根目录 [`.gitlab-ci.yml`](../../.gitlab-ci.y
 - `failed`、`running_with_tasks`、`running_end` 依赖真实执行任务或失败产物，未配置前置时会跳过。
 - 网关返回 `no healthy upstream` 表示 `tc-hawk` 下游没有健康实例，属于环境阻塞，不应归因于测试代码。
 - `TC-07-15` 的 `POST /api/v1/tools/csv_info` 属于测试分支 OpenAPI 契约；若线上返回纯文本 `404 page not found`，说明部署实例未注册该路由或版本落后于契约，应先发布/核对服务版本，不能放宽负向断言。
-- 流程创建请求必须携带合法且非空的 `configTemplate` JSON object；当前测试环境缺失该字段会统一返回“数据库操作失败”，虽然 OpenAPI 将其标为可选。批次场景继续复用已有流程。
+- `test` 分支的 Flow 已升级为草稿协议：`POST /api/v1/flow` 只接收 `alias`、`desc`、`projectId` 并创建状态 `99` 的草稿；图数据通过草稿保存接口维护，发布会调用下游 Hawk 预热。测试仅自动执行可回收的草稿链路；真实发布成功需要可用的 Hawk 下游且会创建不可删除的发布版本，因此不作为常规 CI 写入场景。
+- 当前测试环境的 `POST /api/v1/flow` 存在已捕获缺陷：服务端未将请求中的 `alias` 写入草稿，导致详情回查为空。`REQ-FLOW-DRAFT-LIFECYCLE-API-01` 保持失败以阻断回归；修复后执行 `pytest tests/hawk_admin -m 'requirement and live' --requirement-id REQ-FLOW-DRAFT-LIFECYCLE -v` 验证。
 
 ## 需求级接入与持续集成
 
-资源成本看板使用独立需求 ID `REQ-RCB-20260910`，结束异常空输出导出使用 `REQ-DONE-END-EMPTY-OUTPUT`；来源 case 映射见 [`coverage.yaml`](coverage.yaml) 的 `requirements` 节。需求 ID 和 case ID 在所有运行中保持不变；执行时间只作为 `reports/history/<run_id>/` 的报告目录名，不进入 Allure 用例身份。
+资源成本看板使用独立需求 ID `REQ-RCB-20260910`，结束异常空输出导出使用 `REQ-DONE-END-EMPTY-OUTPUT`，流程草稿生命周期使用 `REQ-FLOW-DRAFT-LIFECYCLE`，模板工作流归属使用 `REQ-TEMPLATE-WORKFLOW-OWNERSHIP`；来源 case 映射见 [`coverage.yaml`](coverage.yaml) 的 `requirements` 节。需求 ID 和 case ID 在所有运行中保持不变；执行时间只作为 `reports/history/<run_id>/` 的报告目录名，不进入 Allure 用例身份。
 用例函数保留平台命名约定（`test_hawk_10_01` 至 `test_hawk_10_05`），按接口所属业务模块放入既有测试文件；报告身份由每条用例的 `requirement` 和 `case_id` marker 覆盖，因此 Allure 标题、`testId`、`requirement` 标签都带有稳定需求 ID，不会与既有 Hawk 的 `TC-04-*` 混淆。
 `source_id` 只表示原始人工用例的追溯关系，不是被测接口的响应断言；它由离线覆盖契约一次性校验 Schema 和平台覆盖矩阵，在线函数不重复断言。当前 5 条仅覆盖成功响应结构、关键标识和可解析非负金额，非法资源、权限、空数据以及金额跨接口一致性仍需后续补充。
 

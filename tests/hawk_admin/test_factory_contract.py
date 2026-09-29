@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 
 import pytest
 from requests import Response
@@ -14,20 +13,26 @@ from platforms.hawk_admin.factories import HawkDataFactory
 pytestmark = [pytest.mark.contract, pytest.mark.hawk_admin]
 
 
+def _success_response() -> Response:
+    response = Response()
+    response.status_code = 200
+    return response
+
+
 class FakeClient(HawkAdminClient):
     """继承真实客户端保证类型一致，只重写请求出口以记录调用，不发起网络请求。"""
 
     def __init__(self) -> None:
         super().__init__("http://hawk.invalid", retries=0)
-        self.calls: list[tuple[str, str, dict]] = []
+        self.calls: list[tuple[str, str, dict[str, Any]]] = []
 
     def post(self, path: str, **kwargs: Any) -> Response:
         self.calls.append(("POST", path, kwargs))
-        return cast(Response, SimpleNamespace(status_code=200))
+        return _success_response()
 
     def delete(self, path: str, **kwargs: Any) -> Response:
         self.calls.append(("DELETE", path, kwargs))
-        return cast(Response, SimpleNamespace(status_code=200))
+        return _success_response()
 
     @staticmethod
     def json(response: Response) -> dict[str, Any]:
@@ -62,4 +67,4 @@ def test_hawk_factory_fails_known_flow_schema_failure() -> None:
     factory = HawkDataFactory(FlowSchemaUnavailableClient(), DataScope("TC-HAWK-FLOW-001"))
 
     with pytest.raises(AssertionError, match="创建测试流程失败"):
-        factory.create_flow()
+        factory.create_flow(projectId="1")

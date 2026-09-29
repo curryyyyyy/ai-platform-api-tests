@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 
 import pytest
@@ -44,13 +43,12 @@ def test_hawk_batch_cid_fixtures_use_numeric_collection_ids() -> None:
                     )
 
 
-def test_hawk_flow_defaults_keep_json_field_columns_valid() -> None:
-    """Flow 写入时两个 JSON 列必须收到合法 JSON，而不是空字符串。"""
+def test_hawk_flow_defaults_match_draft_create_contract() -> None:
+    """草稿创建仅允许客户端提供 alias、desc，项目编号由数据工厂动态补充。"""
     defaults = dataset_defaults("hawk_admin", "flow")
 
-    assert json.loads(defaults["inputFields"]) == []
-    assert json.loads(defaults["outputFields"]) == []
-    assert isinstance(json.loads(defaults["configTemplate"]), dict)
+    assert set(defaults) == {"alias", "desc"}
+    assert all(isinstance(defaults[key], str) and defaults[key] for key in defaults)
 
 
 def test_hawk_requirement_datasets_define_stable_template_and_favorite_inputs() -> None:

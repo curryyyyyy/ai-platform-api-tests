@@ -38,8 +38,3 @@ include = ["framework*", "platforms*"]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.9"
-
-[tool.pyright]
-venvPath = "."
-venv = ".venv"
-pythonVersion = "3.9"

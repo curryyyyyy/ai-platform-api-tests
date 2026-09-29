@@ -555,6 +555,120 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.flow.v1.CreateFlowReply'
+    /api/v1/flow/draft/{draftId}:
+        put:
+            tags:
+                - Flow
+            operationId: Flow_SaveFlowDraft
+            parameters:
+                - name: draftId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.flow.v1.SaveFlowDraftRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.SaveFlowDraftReply'
+        delete:
+            tags:
+                - Flow
+            operationId: Flow_DeleteFlowDraft
+            parameters:
+                - name: draftId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.DeleteFlowDraftReply'
+    /api/v1/flow/draft/{draftId}/publish:
+        post:
+            tags:
+                - Flow
+            operationId: Flow_PublishFlow
+            parameters:
+                - name: draftId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.flow.v1.PublishFlowRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.PublishFlowReply'
+    /api/v1/flow/draft/{draftId}/versions:
+        get:
+            tags:
+                - Flow
+            operationId: Flow_ListFlowVersions
+            parameters:
+                - name: draftId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.ListFlowVersionsReply'
+    /api/v1/flow/project/list:
+        get:
+            tags:
+                - Flow
+            operationId: Flow_ListFlowByProject
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: keyword
+                  in: query
+                  schema:
+                    type: string
+                - name: projectId
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.flow.v1.ListFlowByProjectReply'
     /api/v1/flow/{id}:
         get:
             tags:
@@ -688,6 +802,12 @@ paths:
                   required: true
                   schema:
                     type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.hawk.v1.AllowEmptyOutputFromDoneEndAlertRequest'
+                required: true
             responses:
                 "200":
                     description: OK
@@ -1122,6 +1242,12 @@ paths:
                   required: true
                   schema:
                     type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.project.v1.FavoriteProjectRequest'
+                required: true
             responses:
                 "200":
                     description: OK
@@ -1365,6 +1491,21 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.tools.RefreshStageRefCountsReply'
+    /api/v1/tpl/ownership-options:
+        get:
+            tags:
+                - Template
+            description: |-
+                ListOwnershipOptions 查询项目归属信息下拉枚举（后端硬编码全集）：
+                 id 为 XM 编号（如 XM202609181049），name 为展示名称。
+            operationId: Template_ListOwnershipOptions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.template.ListOwnershipOptionsReply'
     /api/v1/tpl/wf:
         get:
             tags:
@@ -1418,6 +1559,10 @@ paths:
                     type: array
                     items:
                         type: string
+                - name: ownershipId
+                  in: query
+                  schema:
+                    type: string
             responses:
                 "200":
                     description: OK
@@ -2656,6 +2801,11 @@ components:
                     type: string
                 endpoint:
                     type: string
+        api.flow.v1.CreateFlowData:
+            type: object
+            properties:
+                id:
+                    type: string
         api.flow.v1.CreateFlowReply:
             type: object
             properties:
@@ -2666,36 +2816,39 @@ components:
                     type: string
                 timestamp:
                     type: string
-                id:
-                    type: string
+                data:
+                    $ref: '#/components/schemas/api.flow.v1.CreateFlowData'
         api.flow.v1.CreateFlowRequest:
             type: object
             properties:
-                flowName:
-                    type: string
                 alias:
                     type: string
                 desc:
                     type: string
-                domain:
+                projectId:
                     type: string
-                type:
+        api.flow.v1.DeleteFlowDraftData:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                draftId:
                     type: string
-                extendInfo:
-                    type: object
-                schema:
-                    type: string
-                config:
-                    type: string
-                configTemplate:
-                    type: string
-                status:
+                runningBatchCount:
                     type: integer
                     format: int32
-                inputFields:
+        api.flow.v1.DeleteFlowDraftReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
                     type: string
-                outputFields:
+                timestamp:
                     type: string
+                data:
+                    $ref: '#/components/schemas/api.flow.v1.DeleteFlowDraftData'
         api.flow.v1.DeleteFlowReply:
             type: object
             properties:
@@ -2752,6 +2905,57 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/api.flow.v1.StageRelation'
+                graph:
+                    type: string
+                graphVersion:
+                    type: integer
+                    format: int32
+                projectIds:
+                    type: array
+                    items:
+                        type: string
+                source:
+                    type: integer
+                    format: int32
+                groupId:
+                    type: string
+                version:
+                    type: integer
+                    format: int32
+        api.flow.v1.FlowDraftItem:
+            type: object
+            properties:
+                draft:
+                    $ref: '#/components/schemas/api.flow.v1.FlowSummary'
+                latestOnlineFlow:
+                    $ref: '#/components/schemas/api.flow.v1.FlowSummary'
+        api.flow.v1.FlowProjectGroup:
+            type: object
+            properties:
+                projectId:
+                    type: string
+                projectName:
+                    type: string
+                flows:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.flow.v1.FlowDraftItem'
+        api.flow.v1.FlowSummary:
+            type: object
+            properties:
+                id:
+                    type: string
+                flowName:
+                    type: string
+                alias:
+                    type: string
+                desc:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                outputFields:
+                    type: string
         api.flow.v1.GetFlowReply:
             type: object
             properties:
@@ -2764,6 +2968,28 @@ components:
                     type: string
                 data:
                     $ref: '#/components/schemas/api.flow.v1.FlowData'
+        api.flow.v1.ListFlowByProjectData:
+            type: object
+            properties:
+                groups:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.flow.v1.FlowProjectGroup'
+                total:
+                    type: integer
+                    format: int32
+        api.flow.v1.ListFlowByProjectReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.flow.v1.ListFlowByProjectData'
         api.flow.v1.ListFlowData:
             type: object
             properties:
@@ -2786,6 +3012,93 @@ components:
                     type: string
                 data:
                     $ref: '#/components/schemas/api.flow.v1.ListFlowData'
+        api.flow.v1.ListFlowVersionsData:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.flow.v1.FlowData'
+                total:
+                    type: integer
+                    format: int32
+        api.flow.v1.ListFlowVersionsReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.flow.v1.ListFlowVersionsData'
+        api.flow.v1.PublishFlowData:
+            type: object
+            properties:
+                id:
+                    type: string
+                flowName:
+                    type: string
+                version:
+                    type: integer
+                    format: int32
+        api.flow.v1.PublishFlowReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.flow.v1.PublishFlowData'
+        api.flow.v1.PublishFlowRequest:
+            type: object
+            properties:
+                draftId:
+                    type: string
+        api.flow.v1.SaveFlowDraftData:
+            type: object
+            properties:
+                graphVersion:
+                    type: integer
+                    format: int32
+                updatedAt:
+                    type: string
+                draftId:
+                    type: string
+                expectedGraphVersion:
+                    type: integer
+                    format: int32
+                currentGraphVersion:
+                    type: integer
+                    format: int32
+        api.flow.v1.SaveFlowDraftReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.flow.v1.SaveFlowDraftData'
+        api.flow.v1.SaveFlowDraftRequest:
+            type: object
+            properties:
+                draftId:
+                    type: string
+                expectedGraphVersion:
+                    type: integer
+                    format: int32
+                graph:
+                    type: string
         api.flow.v1.StageRelation:
             type: object
             properties:
@@ -2826,6 +3139,12 @@ components:
                 status:
                     type: integer
                     format: int32
+        api.hawk.v1.AllowEmptyOutputFromDoneEndAlertRequest:
+            type: object
+            properties:
+                batchId:
+                    type: string
+            description: 从结束异常告警卡片允许缺失字段按空值输出并继续导出
         api.hawk.v1.AllowEmptyOutputFromDoneEndAlertResponse:
             type: object
             properties:
@@ -3392,6 +3711,11 @@ components:
                     type: string
                 timestamp:
                     type: string
+        api.project.v1.FavoriteProjectRequest:
+            type: object
+            properties:
+                id:
+                    type: string
         api.project.v1.FeishuProjectData:
             type: object
             properties:
@@ -3749,6 +4073,8 @@ components:
                     type: object
                 input:
                     type: object
+                ownershipId:
+                    type: string
             description: |-
                 CompleteInfoTemplateWorkflowRequest 补齐空工作流：
                  首次调用（tpl_wf.tpl_wf_ctl_id=0）时必须携带 tpl_id，用于物化 tpl_wf_ctl。
@@ -3770,6 +4096,8 @@ components:
                 name:
                     type: string
                 description:
+                    type: string
+                ownershipId:
                     type: string
             description: |-
                 CreateEmptyTemplateWorkflowRequest 创建空工作流的请求：
@@ -3798,6 +4126,10 @@ components:
                     type: object
                 input:
                     type: object
+                name:
+                    type: string
+                ownershipId:
+                    type: string
         api.template.GetTemplateMetricReply:
             type: object
             properties:
@@ -3834,6 +4166,20 @@ components:
                     type: string
                 data:
                     $ref: '#/components/schemas/api.template.TemplateWorkflow'
+        api.template.ListOwnershipOptionsReply:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                message:
+                    type: string
+                timestamp:
+                    type: string
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.template.OwnershipOption'
         api.template.ListTemplateWorkflowReply:
             type: object
             properties:
@@ -3846,6 +4192,14 @@ components:
                     type: string
                 data:
                     $ref: '#/components/schemas/api.template.BatchData'
+        api.template.OwnershipOption:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+            description: OwnershipOption 项目归属下拉枚举项：id 为 XM 编号，name 为展示名称。
         api.template.TemplateMetric:
             type: object
             properties:
@@ -3892,6 +4246,10 @@ components:
                     type: string
                 description:
                     type: string
+                ownershipId:
+                    type: string
+                ownershipName:
+                    type: string
         api.template.TemplateWorkflowBrief:
             type: object
             properties:
@@ -3924,6 +4282,8 @@ components:
                     type: object
                 input:
                     type: object
+                ownershipId:
+                    type: string
         api.tools.CsvFirstRowReply:
             type: object
             properties:

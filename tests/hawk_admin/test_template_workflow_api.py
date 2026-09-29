@@ -22,6 +22,51 @@ def test_hawk_07_17_list_template_workflows(platform_client):
     assert isinstance(data.get("data"), list)
 
 
+@pytest.mark.requirement(id="REQ-TEMPLATE-WORKFLOW-OWNERSHIP", name="template_workflow_ownership")
+@pytest.mark.case_id(
+    "REQ-TEMPLATE-WORKFLOW-OWNERSHIP-API-01",
+    title="模板工作流归属枚举和归属筛选可用",
+)
+def test_hawk_10_15_template_workflow_ownership_options_and_filter(platform_client):
+    """归属枚举必须可展示，按枚举值筛选时返回记录不得混入其它归属。"""
+    options = assert_envelope(
+        platform_client.list_template_ownership_options(), required_keys=("data",)
+    )["data"]
+    assert isinstance(options, list) and options, "归属枚举不应为空"
+    option_ids: set[str] = set()
+    for option in options:
+        assert isinstance(option, dict), f"归属枚举项必须是对象: {option!r}"
+        option_id = str(option.get("id", "")).strip()
+        assert option_id and isinstance(option.get("name"), str) and option["name"].strip(), option
+        assert option_id not in option_ids, f"归属枚举存在重复 ID: {option_id}"
+        option_ids.add(option_id)
+
+    selected = str(options[0]["id"])
+    listing = assert_envelope(
+        platform_client.list_templates(page=1, pageSize=20, ownershipId=selected),
+        required_keys=("data",),
+    )["data"]
+    items = listing.get("data")
+    assert isinstance(items, list), f"归属筛选响应 data 应为数组: {listing}"
+    assert all(str(item.get("ownershipId", "")) == selected for item in items), listing
+    assert all("ownershipName" in item for item in items), listing
+
+
+@pytest.mark.requirement(id="REQ-TEMPLATE-WORKFLOW-OWNERSHIP", name="template_workflow_ownership")
+@pytest.mark.case_id(
+    "REQ-TEMPLATE-WORKFLOW-OWNERSHIP-API-02",
+    title="模板工作流写入接口拒绝不存在的归属编号",
+)
+def test_hawk_10_16_template_workflow_rejects_unknown_ownership(platform_client):
+    """归属校验必须在创建或更新持久化前完成，避免产生脏工作流记录。"""
+    unknown = "XM-NOT-EXIST"
+    assert_rejected(
+        platform_client.create_empty_template(name="ownership-validation", ownershipId=unknown)
+    )
+    assert_rejected(platform_client.complete_template(1, ownershipId=unknown))
+    assert_rejected(platform_client.update_template(1, ownershipId=unknown))
+
+
 @pytest.mark.requirement(id="REQ-TEMPLATE-WORKFLOW-LIFECYCLE", name="template_workflow_lifecycle")
 @pytest.mark.case_id("REQ-TEMPLATE-WORKFLOW-LIFECYCLE-API-01", title="批量查询模板工作流过滤非法编号并保留有效条目")
 def test_hawk_10_07_batch_get_template_workflows(platform_client):

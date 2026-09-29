@@ -75,16 +75,17 @@ def assert_rejected(
     成功文案，否则会把接口的伪成功判成通过。
     """
     body = assert_envelope(response, expected_http=expected_http, expected_code=None)
-    assert body["code"] != 0, f"非法或不存在资源请求未被拒绝: {body}"
+    code = body.get("code")
+    assert isinstance(code, int), f"拒绝响应的业务码应为整数: {body}"
+    assert code != 0, f"非法或不存在资源请求未被拒绝: {body}"
 
-    # Some legacy services use message; newer services use the standard msg key.
     message = body.get("message") or body.get("msg")
     assert isinstance(message, str) and message.strip(), (
         f"拒绝响应缺少有效错误消息: {body}"
     )
 
     if "data" in body and not allow_error_data:
-        data = body["data"]
+        data = body.get("data")
 
         def is_empty(value: Any) -> bool:
             if value in (None, {}, [], ""):

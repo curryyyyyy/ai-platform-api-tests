@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import inspect
-from types import SimpleNamespace
-from typing import Any, cast
+import json
+from typing import Any
 
 import pytest
 from requests import Response
@@ -11,6 +11,13 @@ from platforms.hawk_admin.client import HawkAdminClient
 
 
 pytestmark = [pytest.mark.contract, pytest.mark.hawk_admin]
+
+
+def _json_response(body: dict[str, Any]) -> Response:
+    response = Response()
+    response.status_code = 200
+    response._content = json.dumps(body).encode("utf-8")
+    return response
 
 
 class FakeHawkClient(HawkAdminClient):
@@ -22,7 +29,7 @@ class FakeHawkClient(HawkAdminClient):
     def operate_batch(self, batch_id: int, operation: int) -> Response:
         self.calls += 1
         body = next(self.bodies)
-        return cast(Response, SimpleNamespace(status_code=200, json=lambda: body, text=str(body)))
+        return _json_response(body)
 
 
 def test_operate_batch_with_retry_retries_transient_node_lock(monkeypatch):
@@ -37,6 +44,7 @@ def test_operate_batch_with_retry_retries_transient_node_lock(monkeypatch):
 
     assert client.calls == 2
     assert sleeps == [0.1]
+    assert response is not None
     assert client.json(response)["code"] == 0
 
 
@@ -47,6 +55,7 @@ def test_operate_batch_with_retry_does_not_retry_other_business_errors(monkeypat
     response = client.operate_batch_with_retry(123, 3, retries=2)
 
     assert client.calls == 1
+    assert response is not None
     assert client.json(response)["message"] == "invalid operation"
 
 
@@ -98,6 +107,7 @@ def test_project_favorite_and_template_lifecycle_routes_match_openapi(monkeypatc
 
     monkeypatch.setattr(client, "get", record("GET"))
     monkeypatch.setattr(client, "post", record("POST"))
+    monkeypatch.setattr(client, "put", record("PUT"))
     monkeypatch.setattr(client, "delete", record("DELETE"))
 
     client.list_projects(page=2, page_size=5, onlyFavorite=True)
@@ -107,10 +117,16 @@ def test_project_favorite_and_template_lifecycle_routes_match_openapi(monkeypatc
     client.create_empty_template(name="workflow", description="description")
     client.complete_template(7, tplId=8, info={"name": "workflow"})
     client.done_end_allow_empty_output(9)
+    client.list_template_ownership_options()
+    client.list_flows_by_project(page=1, pageSize=10, projectId="7")
+    client.list_flow_versions(8)
+    client.save_flow_draft(8, expected_graph_version=1, graph='{"nodes":[],"edges":[]}')
+    client.delete_flow_draft(8)
+    client.publish_flow_draft(8)
 
     assert calls == [
         ("GET", "/api/v1/project", {"params": {"page": 2, "pageSize": 5, "onlyFavorite": True}}),
-        ("POST", "/api/v1/project/42/favorite", {}),
+        ("POST", "/api/v1/project/42/favorite", {"json": {"id": 42}}),
         ("DELETE", "/api/v1/project/42/favorite", {}),
         ("POST", "/api/v1/tpl/wf/batch-get", {"json": {"ids": [7, 8]}}),
         (
@@ -123,5 +139,11 @@ def test_project_favorite_and_template_lifecycle_routes_match_openapi(monkeypatc
             "/api/v1/tpl/wf/7/complete",
             {"json": {"id": 7, "tplId": 8, "info": {"name": "workflow"}}},
         ),
-        ("POST", "/api/v1/hawk/done-end-alert/allow-empty-output/9", {}),
+        ("POST", "/api/v1/hawk/done-end-alert/allow-empty-output/9", {"json": {"batchId": 9}}),
+        ("GET", "/api/v1/tpl/ownership-options", {}),
+        ("GET", "/api/v1/flow/project/list", {"params": {"page": 1, "pageSize": 10, "projectId": "7"}}),
+        ("GET", "/api/v1/flow/draft/8/versions", {}),
+        ("PUT", "/api/v1/flow/draft/8", {"json": {"draftId": 8, "expectedGraphVersion": 1, "graph": '{"nodes":[],"edges":[]}'}}),
+        ("DELETE", "/api/v1/flow/draft/8", {}),
+        ("POST", "/api/v1/flow/draft/8/publish", {"json": {"draftId": 8}}),
     ]

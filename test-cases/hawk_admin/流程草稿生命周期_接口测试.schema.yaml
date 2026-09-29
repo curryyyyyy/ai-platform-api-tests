@@ -1,0 +1,62 @@
+meta:
+  requirement_id: REQ-FLOW-DRAFT-LIFECYCLE
+  requirement_name: flow_draft_lifecycle
+  display_name: 流程草稿生命周期
+  execution_model: api
+  source: biaozhu:test api/flow/v1/flow.proto
+
+cases:
+  - id: REQ-FLOW-DRAFT-LIFECYCLE-API-01
+    source_id: FLOW-DRAFT-01
+    title: 创建项目关联的流程草稿
+    module: 流程管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint: {method: POST, path: /api/v1/flow}
+    expected: [返回草稿 ID, 草稿状态为 99, 关联指定项目]
+  - id: REQ-FLOW-DRAFT-LIFECYCLE-API-02
+    source_id: FLOW-DRAFT-02
+    title: 保存草稿图并校验乐观锁
+    module: 流程管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint: {method: PUT, path: "/api/v1/flow/draft/{draftId}"}
+    expected: [图版本递增, 旧版本保存被拒绝]
+  - id: REQ-FLOW-DRAFT-LIFECYCLE-API-03
+    source_id: FLOW-DRAFT-03
+    title: 发布接口拒绝非法草稿编号
+    module: 流程管理接口
+    priority: P0
+    type: exception
+    execution_model: api
+    endpoint: {method: POST, path: "/api/v1/flow/draft/{draftId}/publish"}
+    expected: [非法草稿编号被拒绝]
+  - id: REQ-FLOW-DRAFT-LIFECYCLE-API-04
+    source_id: FLOW-DRAFT-04
+    title: 删除未发布草稿
+    module: 流程管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint: {method: DELETE, path: "/api/v1/flow/draft/{draftId}"}
+    expected: [删除成功, 后续详情查询被拒绝]
+  - id: REQ-FLOW-DRAFT-LIFECYCLE-API-05
+    source_id: FLOW-DRAFT-05
+    title: 按项目查询草稿
+    module: 流程管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint: {method: GET, path: /api/v1/flow/project/list}
+    expected: [返回关联项目分组, 包含现场草稿]
+  - id: REQ-FLOW-DRAFT-LIFECYCLE-API-06
+    source_id: FLOW-DRAFT-06
+    title: 查询草稿发布版本
+    module: 流程管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint: {method: GET, path: "/api/v1/flow/draft/{draftId}/versions"}
+    expected: [新草稿返回空版本列表, 非法编号被拒绝]

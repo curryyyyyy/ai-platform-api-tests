@@ -120,4 +120,4 @@ def test_requirement_cases_have_platform_coverage() -> None:
             assert _has_requirement_marker(item["test"], requirement["id"]), (
                 f"需求 case 缺少 requirement marker: {item['test']}"
             )
-            assert item["endpoint"].startswith(("GET ", "POST "))
+            assert item["endpoint"].startswith(("GET ", "POST ", "PUT ", "DELETE "))

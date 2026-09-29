@@ -1,36 +1,22 @@
 defaults:
-  alias: "automation-flow"
-  desc: "自动化接口测试流程"
-  schema: '{"input":["image_url"]}'
-  config: '{"stages":[]}'
-  # 测试环境 flow 表对 config_template 实际要求非空；OpenAPI 当前未标出该约束。
-  configTemplate: '{"key":"批次配置","val":[]}'
-  inputFields: '[]'
-  outputFields: '[]'
-  status: 1
+  alias: "automation-flow-draft"
+  desc: "自动化接口测试流程草稿"
 
 cases:
   create:
     - id: valid
-      config: '{"stages":[{"name":"Stage1", "type":"manual"}]}'
+      desc: "创建流程草稿"
 
-  invalid_config:
-    - id: malformed_json
-      flowName: "TC-04-02-invalid-flow"
-      config: "{stages:"
-      schema: "{}"
-      status: 1
-    - id: malformed_array
-      flowName: "TC-04-02-invalid-array"
-      config: "[stages:"
-      schema: "{}"
-      status: 1
+  invalid_create:
+    - id: missing_project_id
+      projectId: ""
+    - id: invalid_project_id
+      projectId: "not-a-number"
 
   update:
     - id: standard
       alias: "flow01-updated"
       desc: "更新流程"
-      status: 1
 
   read:
     - id: stage_status_sort
