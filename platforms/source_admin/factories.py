@@ -188,4 +188,13 @@ class SourceAdminDataFactory:
         return link_id, payload
 
     def _terminate_share_link(self, link_id: str) -> None:
-        assert_envelope(self.client.terminate_share_link(link_id))
+        response = self.client.terminate_share_link(link_id)
+        body = self.client.json(response)
+        # 生命周期用例可在断言阶段终止链接；重复终止的“链接不存在”是幂等清理成功。
+        if (
+            response.status_code == 200
+            and body.get("code") != 0
+            and "链接不存在" in str(body.get("msg", ""))
+        ):
+            return
+        assert_envelope(response)

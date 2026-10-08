@@ -51,6 +51,14 @@ class FakeClient(SourceAdminClient):
         self.calls.append(("DELETE", f"/api/v1/nodes/{node_id}", {}))
         return self._response({"code": 0, "msg": "ok", "data": {}})
 
+    def create_share_link(self, **payload: Any) -> Response:
+        self.calls.append(("POST", "/api/v1/share/link", {"json": payload}))
+        return self._response({"code": 0, "msg": "ok", "data": {"id": 115}})
+
+    def terminate_share_link(self, link_id: Any) -> Response:
+        self.calls.append(("PUT", f"/api/v1/share/link/{link_id}/terminate", {}))
+        return self._response({"code": 1, "msg": "链接不存在", "data": {}})
+
 
 def test_source_factory_registers_schema_cleanup() -> None:
     client = FakeClient()
@@ -88,4 +96,19 @@ def test_source_factory_registers_rowkeys_collection_node_cleanup() -> None:
         ("POST", "/api/v1/collections/create-from-rowkeys"),
         ("GET", "/api/v1/collections/42/node-path"),
         ("DELETE", "/api/v1/nodes/2187"),
+    ]
+
+
+def test_source_factory_treats_missing_terminated_share_link_as_cleaned() -> None:
+    """用例已终止分享链接时，teardown 的重复终止不应报告清理失败。"""
+    client = FakeClient()
+    scope = DataScope("TC-SOURCE-SHARE-DELETE-001")
+    factory = SourceAdminDataFactory(client, scope)
+
+    link_id, _ = factory.create_share_link(collection_id=7)
+    scope.cleanup()
+
+    assert [(method, path) for method, path, _ in client.calls] == [
+        ("POST", "/api/v1/share/link"),
+        ("PUT", f"/api/v1/share/link/{link_id}/terminate"),
     ]

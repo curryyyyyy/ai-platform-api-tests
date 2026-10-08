@@ -98,6 +98,13 @@ class HawkDataFactory:
     def _delete_flow_draft(self, flow_id: str) -> None:
         response = self.client.delete_flow_draft(flow_id)
         body = self.client.json(response)
+        # 用例可能已在业务断言中删除草稿；此时已达到清理的目标状态。
+        if (
+            response.status_code == 200
+            and body.get("code") != 0
+            and "记录不存在" in str(body.get("message", ""))
+        ):
+            return
         if response.status_code != 200 or body.get("code") != 0:
             raise AssertionError(f"删除测试流程草稿失败: {response.status_code} {body}")
 

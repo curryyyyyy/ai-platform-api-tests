@@ -159,6 +159,9 @@ def test_hawk_07_05_get_feishu_project_info_rejects_invalid_link(platform_client
 def test_hawk_10_06_project_favorite_lifecycle(platform_client, platform_data_factory, data_scope):
     """收藏、重复操作和取消收藏都应幂等，并同步反映到详情和列表。"""
     project_id, payload = platform_data_factory.create_project()
+    # 收藏初态不是本需求的契约。先以幂等取消操作归一化测试资源，避免
+    # 环境默认收藏策略影响后续收藏/取消收藏状态机验证。
+    assert_envelope(platform_client.unfavorite_project(project_id))
     detail = assert_envelope(platform_client.get_project(project_id), required_keys=("data",))["data"]
     assert detail.get("isFavorite") is False
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from framework.data.scope import DataScope
+from framework.data.scope import DataScope, DataScopeCleanupError
 
 
 @pytest.mark.contract
@@ -25,3 +25,23 @@ def test_data_scope_cleans_in_reverse_registration_order() -> None:
     scope.track("second", lambda: calls.append("second"))
     scope.cleanup()
     assert calls == ["second", "first"]
+
+
+@pytest.mark.contract
+def test_data_scope_reports_cleanup_failures_after_running_remaining_actions() -> None:
+    """清理失败必须使 pytest teardown 失败，且不能阻断其他已登记资源的清理。"""
+    calls: list[str] = []
+    scope = DataScope("TC-003")
+    scope.track("first", lambda: calls.append("first"))
+
+    def failing_cleanup() -> None:
+        calls.append("second")
+        raise RuntimeError("delete rejected")
+
+    scope.track("second", failing_cleanup)
+
+    with pytest.raises(DataScopeCleanupError, match="second.*delete rejected") as exc_info:
+        scope.cleanup()
+
+    assert calls == ["second", "first"]
+    assert exc_info.value.case_id == "TC-003"

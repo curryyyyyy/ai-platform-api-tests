@@ -6,8 +6,20 @@ import logging
 import re
 import secrets
 from collections.abc import Callable
-
 LOG = logging.getLogger(__name__)
+
+
+class DataScopeCleanupError(AssertionError):
+    """测试资源未能清理时抛出，阻止用例被错误报告为通过。"""
+
+    def __init__(self, case_id: str, failures: list[tuple[str, Exception]]) -> None:
+        self.case_id = case_id
+        self.failures = failures
+        details = "; ".join(
+            f"{description}: {type(error).__name__}: {error}"
+            for description, error in failures
+        )
+        super().__init__(f"测试数据清理失败 [{case_id}]: {details}")
 
 
 class DataScope:
@@ -29,9 +41,16 @@ class DataScope:
         self._cleanups.append((description, cleanup))
 
     def cleanup(self) -> None:
-        for description, cleanup in reversed(self._cleanups):
-            try:
-                cleanup()
-            except Exception:  # pragma: no cover - cleanup failures are environment-dependent
-                LOG.warning("测试数据清理失败: %s", description, exc_info=True)
-        self._cleanups.clear()
+        failures: list[tuple[str, Exception]] = []
+        try:
+            for description, cleanup in reversed(self._cleanups):
+                try:
+                    cleanup()
+                except Exception as exc:  # cleanup must continue for the remaining resources
+                    failures.append((description, exc))
+                    LOG.error("测试数据清理失败: %s", description, exc_info=True)
+        finally:
+            self._cleanups.clear()
+
+        if failures:
+            raise DataScopeCleanupError(self.case_id, failures)
