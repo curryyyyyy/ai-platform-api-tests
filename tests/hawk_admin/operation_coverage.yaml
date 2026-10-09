@@ -28,7 +28,7 @@ entries:
   - {id: Credential_UpdateCredential, operations: [Credential_UpdateCredential], tests: [tests/hawk_admin/test_credential_api.py::test_hawk_07_12_missing_credential_operations_are_rejected]}
   - {id: Batch_GenTosDownloadURL, operations: [Batch_GenTosDownloadURL], tests: [tests/hawk_admin/test_tools_file_api.py::test_hawk_07_14_missing_file_operations_are_rejected]}
   - {id: Batch_ListTempFiles, operations: [Batch_ListTempFiles], tests: [tests/hawk_admin/test_tools_file_api.py::test_hawk_07_06_list_temp_files]}
-  - {id: Flow_ListFlow, operations: [Flow_ListFlow], tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_03_list_flows_by_stage_status_and_calls]}
+  - {id: Flow_ListFlow, operations: [Flow_ListFlow], tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_03_list_flows_by_stage_status_and_calls, tests/hawk_admin/test_flow_read_api.py::test_hawk_10_17_list_flows_filters_multiple_statuses, tests/hawk_admin/test_flow_read_api.py::test_hawk_10_18_list_flows_prioritizes_exact_alias]}
   - {id: Flow_CreateFlow, operations: [Flow_CreateFlow], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_01_create_flow]}
   - {id: Flow_DeleteFlow, operations: [Flow_DeleteFlow], tests: [tests/hawk_admin/test_flow_api.py::test_hawk_04_05_delete_flow_then_get]}
   - {id: Flow_GetFlow, operations: [Flow_GetFlow], tests: [tests/hawk_admin/test_flow_read_api.py::test_hawk_04_07_get_existing_flow]}
@@ -63,7 +63,7 @@ entries:
   - {id: Project_DeleteProject, operations: [Project_DeleteProject], tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_08_delete_project_then_get]}
   - {id: Project_GetProject, operations: [Project_GetProject], tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_02_get_project_matches_create]}
   - {id: Project_UpdateProject, operations: [Project_UpdateProject], tests: [tests/hawk_admin/test_project_api.py::test_hawk_02_04_update_project]}
-  - {id: Stage_ListStage, operations: [Stage_ListStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_02_list_stage_filters]}
+  - {id: Stage_ListStage, operations: [Stage_ListStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_02_list_stage_filters, tests/hawk_admin/test_stage_api.py::test_hawk_10_19_list_stages_prioritizes_exact_alias]}
   - {id: Stage_CreateStage, operations: [Stage_CreateStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_01_create_stage]}
   - {id: Stage_DeleteStage, operations: [Stage_DeleteStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_05_delete_stage_then_get]}
   - {id: Stage_GetStage, operations: [Stage_GetStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_04_get_missing_stage]}

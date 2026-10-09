@@ -9,6 +9,7 @@ from framework.data.dataset import case_payload, dataset_case_map, dataset_cases
 pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
 STAGE_CREATE_CASES = dataset_cases("hawk_admin", "stage", "create")
 STAGE_UPDATE_CASES = dataset_case_map("hawk_admin", "stage", "update")
+STAGE_QUERY_CASES = dataset_case_map("hawk_admin", "stage", "query")
 
 
 def test_hawk_03_01_create_stage(platform_data_factory):
@@ -56,3 +57,23 @@ def test_hawk_03_05_delete_stage_then_get(platform_client, platform_data_factory
     stage_id, _ = platform_data_factory.create_stage(**case_payload(STAGE_CREATE_CASES[0]))
     assert_envelope(platform_client.delete_stage(stage_id))
     assert_rejected(platform_client.get_stage(stage_id))
+
+
+@pytest.mark.core
+@pytest.mark.requirement(id="REQ-FLOW-QUERY-ENHANCEMENTS", name="flow_query_enhancements")
+@pytest.mark.case_id("REQ-FLOW-QUERY-ENHANCEMENTS-API-03", title="阶段关键词精确别名优先于描述包含")
+def test_hawk_10_19_list_stages_prioritizes_exact_alias(
+    platform_client, platform_data_factory, data_scope
+):
+    """keywords 非空时，阶段别名精确命中必须排在描述包含命中之前。"""
+    keyword = data_scope.unique_name("stage-keyword", max_length=36)
+    exact_id, _ = platform_data_factory.create_stage(alias=keyword, desc="exact alias")
+    metadata_id, _ = platform_data_factory.create_stage(
+        alias=data_scope.unique_name("stage-metadata", max_length=40), desc=keyword
+    )
+    query = {**case_payload(STAGE_QUERY_CASES["keyword_priority"]), "keywords": keyword}
+    data = assert_envelope(platform_client.list_stages(**query), required_keys=("data",))["data"]
+    items = data.get("list")
+    assert isinstance(items, list), f"阶段列表 data.list 应为数组: {data}"
+    matched = [item for item in items if str(item.get("id")) in {exact_id, metadata_id}]
+    assert [str(item.get("id")) for item in matched] == [exact_id, metadata_id], data

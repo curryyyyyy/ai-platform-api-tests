@@ -17,3 +17,10 @@ cases:
       alias: "stage01-updated"
       desc: "更新阶段"
       status: 1
+
+  query:
+    - id: keyword_priority
+      page: 1
+      pageSize: 50
+      sortField: "createdAt"
+      sortOrder: "desc"

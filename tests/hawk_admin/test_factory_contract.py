@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -21,7 +22,7 @@ def _success_response() -> Response:
 
 def _response_with_body(body: dict[str, Any]) -> Response:
     response = _success_response()
-    response._factory_body = body  # type: ignore[attr-defined]
+    response._content = json.dumps(body).encode("utf-8")
     return response
 
 
@@ -42,8 +43,10 @@ class FakeClient(HawkAdminClient):
 
     @staticmethod
     def json(response: Response) -> dict[str, Any]:
-        if hasattr(response, "_factory_body"):
-            return response._factory_body  # type: ignore[attr-defined]
+        if response.content:
+            value = response.json()
+            assert isinstance(value, dict)
+            return value
         return {"code": 0, "id": "project-1"} if response.status_code == 200 else {}
 
 

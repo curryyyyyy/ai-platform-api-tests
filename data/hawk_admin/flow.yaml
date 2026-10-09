@@ -25,10 +25,21 @@ cases:
       stageName: "kuaishou_ip_delivery.extract"
       sortField: "callCnt30d"
       sortOrder: "desc"
-      status: 2
+      status: [2]
     - id: call_count_sort
       page: 1
       pageSize: 30
       sortField: "callCnt30d"
       sortOrder: "desc"
       canOffline: false
+
+  query:
+    - id: status_array
+      page: 1
+      pageSize: 50
+      status: [2, 99]
+    - id: keyword_priority
+      page: 1
+      pageSize: 50
+      sortField: "createdAt"
+      sortOrder: "desc"

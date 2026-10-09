@@ -147,3 +147,25 @@ def test_project_favorite_and_template_lifecycle_routes_match_openapi(monkeypatc
         ("DELETE", "/api/v1/flow/draft/8", {}),
         ("POST", "/api/v1/flow/draft/8/publish", {"json": {"draftId": 8}}),
     ]
+
+
+@pytest.mark.requirement(id="REQ-FLOW-QUERY-ENHANCEMENTS", name="flow_query_enhancements")
+@pytest.mark.case_id("REQ-FLOW-QUERY-ENHANCEMENTS-API-04", title="发布草稿支持可选流程元数据")
+def test_publish_flow_draft_forwards_optional_metadata(monkeypatch):
+    """发布成功会留下版本资源，本用例只验证客户端对新增请求字段的契约。"""
+    client = HawkAdminClient("http://hawk.invalid", retries=0)
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    def fake_post(path: str, **kwargs: Any) -> None:
+        calls.append((path, kwargs))
+
+    monkeypatch.setattr(client, "post", fake_post)
+
+    client.publish_flow_draft(9, alias="alias", desc="description", domain="domain", type="type")
+
+    assert calls == [
+        (
+            "/api/v1/flow/draft/9/publish",
+            {"json": {"draftId": 9, "alias": "alias", "desc": "description", "domain": "domain", "type": "type"}},
+        )
+    ]

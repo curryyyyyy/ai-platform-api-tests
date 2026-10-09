@@ -14,6 +14,7 @@ Hawk 子平台的接口测试、数据集、Schema 覆盖和 CI 前置均在本�
 | 阶段管理 | `test_stage_api.py` | `stage.yaml` | 创建、列表筛选、更新、缺失查询、删除 |
 | 流程草稿生命周期（写入类） | `test_flow_api.py` | `flow.yaml` | 创建关联项目的草稿、图乐观锁保存、草稿列表/版本、删除、非法发布编号 |
 | 流程只读查询类 | `test_flow_read_api.py` | `flow.yaml` | 详情、缺失查询、Stage/状态筛选、调用次数排序、`canOffline` 条件 |
+| 流程与阶段查询增强需求 | `test_flow_read_api.py`、`test_stage_api.py`、`test_client_contract.py` | `flow.yaml`、`stage.yaml` | Flow 多状态筛选、Flow/Stage 关键词命中优先级、发布元数据请求契约 |
 | 批次管理 | `test_batch_api.py` | `batch.yaml` | 创建、CID、引用校验、名称、列表、元数据/输入/状态更新、删除 |
 | 执行与统计 | `test_hawk_execution_api.py` | `execution.yaml` | 状态操作、任务流、统计、字段、错误日志、导出 |
 | 批次辅助能力 | `test_batch_api.py` | `batch.yaml` | 流程图、复制、统计批次、文件上传负向校验 |

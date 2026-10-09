@@ -95,8 +95,25 @@ class HawkAdminClient(ApiClient):
     def delete_flow_draft(self, draft_id):
         return self.delete(f"/api/v1/flow/draft/{draft_id}")
 
-    def publish_flow_draft(self, draft_id):
-        return self.post(f"/api/v1/flow/draft/{draft_id}/publish", json={"draftId": draft_id})
+    def publish_flow_draft(
+        self,
+        draft_id,
+        *,
+        alias=None,
+        desc=None,
+        domain=None,
+        type=None,
+    ):
+        payload = {"draftId": draft_id}
+        for field, value in {
+            "alias": alias,
+            "desc": desc,
+            "domain": domain,
+            "type": type,
+        }.items():
+            if value is not None:
+                payload[field] = value
+        return self.post(f"/api/v1/flow/draft/{draft_id}/publish", json=payload)
 
     # 批次
     def list_batches(self, **params):

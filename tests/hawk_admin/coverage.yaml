@@ -113,6 +113,16 @@ requirements:
       - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-04, source_id: FLOW-DRAFT-04, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_04_05_delete_flow_then_get, endpoint: "DELETE /api/v1/flow/draft/{draftId}"}
       - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-05, source_id: FLOW-DRAFT-05, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_10_12_list_flow_drafts_by_project, endpoint: "GET /api/v1/flow/project/list"}
       - {id: REQ-FLOW-DRAFT-LIFECYCLE-API-06, source_id: FLOW-DRAFT-06, priority: P0, test: tests/hawk_admin/test_flow_api.py::test_hawk_10_13_list_flow_draft_versions, endpoint: "GET /api/v1/flow/draft/{draftId}/versions"}
+  - id: REQ-FLOW-QUERY-ENHANCEMENTS
+    name: flow_query_enhancements
+    display_name: 流程与阶段查询增强
+    marker: requirement
+    source_schema: test-cases/hawk_admin/流程查询增强_接口测试.schema.yaml
+    cases:
+      - {id: REQ-FLOW-QUERY-ENHANCEMENTS-API-01, source_id: FLOW-QUERY-01, priority: P0, test: tests/hawk_admin/test_flow_read_api.py::test_hawk_10_17_list_flows_filters_multiple_statuses, endpoint: "GET /api/v1/flow?status"}
+      - {id: REQ-FLOW-QUERY-ENHANCEMENTS-API-02, source_id: FLOW-QUERY-02, priority: P0, test: tests/hawk_admin/test_flow_read_api.py::test_hawk_10_18_list_flows_prioritizes_exact_alias, endpoint: "GET /api/v1/flow?keywords"}
+      - {id: REQ-FLOW-QUERY-ENHANCEMENTS-API-03, source_id: FLOW-QUERY-03, priority: P0, test: tests/hawk_admin/test_stage_api.py::test_hawk_10_19_list_stages_prioritizes_exact_alias, endpoint: "GET /api/v1/stage?keywords"}
+      - {id: REQ-FLOW-QUERY-ENHANCEMENTS-API-04, source_id: FLOW-PUBLISH-01, priority: P0, test: tests/hawk_admin/test_client_contract.py::test_publish_flow_draft_forwards_optional_metadata, endpoint: "POST /api/v1/flow/draft/{draftId}/publish"}
   - id: REQ-TEMPLATE-WORKFLOW-OWNERSHIP
     name: template_workflow_ownership
     display_name: 模板工作流归属

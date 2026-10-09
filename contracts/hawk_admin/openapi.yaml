@@ -509,8 +509,10 @@ paths:
                 - name: status
                   in: query
                   schema:
-                    type: integer
-                    format: int32
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
                 - name: keywords
                   in: query
                   schema:
@@ -3060,6 +3062,14 @@ components:
             type: object
             properties:
                 draftId:
+                    type: string
+                alias:
+                    type: string
+                desc:
+                    type: string
+                domain:
+                    type: string
+                type:
                     type: string
         api.flow.v1.SaveFlowDraftData:
             type: object

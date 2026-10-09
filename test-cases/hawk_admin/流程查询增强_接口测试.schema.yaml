@@ -1,0 +1,44 @@
+meta:
+  requirement_id: REQ-FLOW-QUERY-ENHANCEMENTS
+  requirement_name: flow_query_enhancements
+  display_name: 流程与阶段查询增强
+  execution_model: api
+  source: biaozhu:test openapi.yaml and docs/superpowers/specs/2026-10-08-list-flow-*-design.md
+
+cases:
+  - id: REQ-FLOW-QUERY-ENHANCEMENTS-API-01
+    source_id: FLOW-QUERY-01
+    title: Flow 列表支持多状态数组筛选
+    module: 流程管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint: {method: GET, path: /api/v1/flow}
+    expected: [重复 status 参数按多状态集合筛选, 返回项状态均属于请求集合, 现场草稿状态可命中]
+  - id: REQ-FLOW-QUERY-ENHANCEMENTS-API-02
+    source_id: FLOW-QUERY-02
+    title: Flow 关键词精确别名优先于描述包含
+    module: 流程管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint: {method: GET, path: /api/v1/flow}
+    expected: [关键词过滤命中精确别名与描述包含, 精确别名结果优先返回]
+  - id: REQ-FLOW-QUERY-ENHANCEMENTS-API-03
+    source_id: FLOW-QUERY-03
+    title: Stage 关键词精确别名优先于描述包含
+    module: 阶段管理接口
+    priority: P0
+    type: functional
+    execution_model: api
+    endpoint: {method: GET, path: /api/v1/stage}
+    expected: [关键词过滤命中精确别名与描述包含, 精确别名结果优先返回]
+  - id: REQ-FLOW-QUERY-ENHANCEMENTS-API-04
+    source_id: FLOW-PUBLISH-01
+    title: 发布草稿支持可选流程元数据
+    module: 流程管理接口
+    priority: P0
+    type: contract
+    execution_model: contract
+    endpoint: {method: POST, path: "/api/v1/flow/draft/{draftId}/publish"}
+    expected: [客户端传递 alias、desc、domain、type 时，请求体保留所有字段]
