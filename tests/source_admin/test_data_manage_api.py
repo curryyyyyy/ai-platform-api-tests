@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 
 import pytest
@@ -7,7 +8,7 @@ import pytest
 from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_cases, dataset_defaults
 from platforms.source_admin.factories import SourceAdminDataFactory
-from tests.source_admin.helpers import data, required_collection_id, required_root_node_id, required_schema
+from tests.source_admin.helpers import data, required_collection_id, required_root_node_id
 
 
 pytestmark = [pytest.mark.live, pytest.mark.source_admin]
@@ -56,15 +57,63 @@ def test_source_02_01_collection_read_chain(platform_client):
 
 @pytest.mark.core
 def test_source_02_02_build_selection_query(platform_client):
-    """使用现有 Schema 构建空条件圈选 SQL，不提交异步任务。"""
-    _, table_name = required_schema(platform_client)
+    """普通 Schema 使用其物理 source_table 构建空条件圈选 SQL。"""
+    schemas = data(assert_envelope(
+        platform_client.list_schemas(page=1, page_size=100), required_keys=("data",)
+    ))
+    if not isinstance(schemas, list):
+        raise AssertionError(f"Schema 列表 data 应为数组: {schemas}")
+    schema = next(
+        (
+            item
+            for item in schemas
+            if isinstance(item, dict)
+            and item.get("name")
+            and item.get("source_table") not in {"composite", "aigc_dataset_composite"}
+        ),
+        None,
+    )
+    if schema is None:
+        pytest.skip("当前环境没有非复合类型 Schema，无法验证 source_table 物理表映射")
+    table_name = str(schema["name"])
+    source_table = str(schema.get("source_table") or table_name)
+    physical_table = source_table.removeprefix("aigc_dataset_")
     body = data(assert_envelope(platform_client.build_selection_query(
         table_name=table_name,
         conditions={"logical_op": 1, "conditions": [], "groups": []},
         order_by=[],
     ), required_keys=("data",)))
-    assert isinstance(body.get("sql"), str) and table_name in body["sql"]
+    assert isinstance(body.get("sql"), str) and physical_table in body["sql"]
     assert body.get("sql_id")
+
+
+@pytest.mark.core
+@pytest.mark.requirement(id="REQ-COMPOSITE-SQL-ISOLATION", name="composite_sql_isolation")
+@pytest.mark.case_id(
+    "REQ-COMPOSITE-SQL-ISOLATION-API-01",
+    title="复合类型查询固定物理表并附加 node_type 隔离条件",
+)
+def test_source_02_23_composite_selection_query_uses_node_type_guard(platform_client):
+    """复合类型共享 composite 表时，SQL 必须按 node_type 隔离不同数据形态。"""
+    table_env = DATA_DEFAULTS["composite_table_env"]
+    node_type_env = DATA_DEFAULTS["composite_node_type_env"]
+    table_name = os.getenv(table_env, "").strip()
+    raw_node_type = os.getenv(node_type_env, "").strip()
+    if not table_name or not raw_node_type:
+        pytest.skip(f"需同时配置 {table_env} 和 {node_type_env}")
+    try:
+        node_type = int(raw_node_type)
+    except ValueError:
+        raise AssertionError(f"{node_type_env} 必须是整数，当前值: {raw_node_type!r}") from None
+
+    body = data(assert_envelope(platform_client.build_selection_query(
+        table_name=table_name,
+        conditions={"logical_op": 1, "conditions": [], "groups": []},
+        order_by=[],
+    ), required_keys=("data",)))
+    sql = body.get("sql")
+    assert isinstance(sql, str) and "composite" in sql
+    assert "node_type" in sql and str(node_type) in sql
 
 
 @pytest.mark.core

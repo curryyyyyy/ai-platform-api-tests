@@ -57,6 +57,44 @@ def test_new_operation_is_blocked_until_inventory_and_case_mapping_are_added(tmp
     assert report["missing_inventory"] == ["GET /items/{id}"]
 
 
+def test_code_route_operation_is_allowed_without_openapi_snapshot(tmp_path: Path) -> None:
+    openapi = tmp_path / "openapi.yaml"
+    inventory = tmp_path / "inventory.json"
+    coverage = tmp_path / "coverage.yaml"
+    openapi.write_text(
+        yaml.safe_dump(
+            {"openapi": "3.0.3", "paths": {"/items": {"get": {"responses": {"200": {"description": "ok"}}}}}},
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    inventory.write_text(
+        json.dumps(
+            {
+                "operations": [
+                    {"id": "LIST", "method": "GET", "path": "/items"},
+                    {
+                        "id": "PUBLIC", "method": "GET", "path": "/public/items/{id}",
+                        "source_type": "code_route",
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    coverage.write_text(
+        "entries:\n"
+        "  - id: TC-01\n"
+        "    operations: [LIST, PUBLIC]\n"
+        "    tests: [tests/test_items.py::test_list]\n",
+        encoding="utf-8",
+    )
+
+    report = validate_coverage([openapi], inventory, coverage)
+
+    assert report["ok"] is True
+
+
 def test_stale_test_function_reference_is_blocked(tmp_path: Path) -> None:
     openapi = tmp_path / "openapi.yaml"
     inventory = tmp_path / "inventory.json"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from typing import Any, Mapping
+from urllib.parse import urlparse
 
 from framework.assertions import assert_envelope
 from framework.data.dataset import dataset_defaults
@@ -24,6 +25,17 @@ def _resource_id(body: Mapping[str, Any], resource_name: str) -> str:
     if isinstance(value, Mapping) and value.get("id") is not None:
         return str(value["id"])
     raise AssertionError(f"创建 {resource_name} 响应缺少 id: {body}")
+
+
+def _share_token(body: Mapping[str, Any]) -> str:
+    value = _payload_data(body)
+    url = value.get("url") if isinstance(value, Mapping) else None
+    if not isinstance(url, str):
+        raise AssertionError("创建分享链接响应缺少 URL，无法进行公开访问测试")
+    token = urlparse(url).path.rstrip("/").rsplit("/", maxsplit=1)[-1]
+    if not token:
+        raise AssertionError("创建分享链接响应的 URL 不含分享 token")
+    return token
 
 
 def make_schema(scope: DataScope, **overrides: Any) -> dict[str, Any]:
@@ -181,11 +193,24 @@ class SourceAdminDataFactory:
         return node_id, payload
 
     def create_share_link(self, *, collection_id: int | str, **overrides: Any) -> tuple[str, dict[str, Any]]:
+        link_id, payload, _ = self._create_share_link(collection_id=collection_id, **overrides)
+        return link_id, payload
+
+    def create_share_link_with_token(
+        self, *, collection_id: int | str, **overrides: Any
+    ) -> tuple[str, str, dict[str, Any]]:
+        """创建临时分享链接，并只在内存中解析用于公开接口测试的 token。"""
+        link_id, payload, body = self._create_share_link(collection_id=collection_id, **overrides)
+        return link_id, _share_token(body), payload
+
+    def _create_share_link(
+        self, *, collection_id: int | str, **overrides: Any
+    ) -> tuple[str, dict[str, Any], Mapping[str, Any]]:
         payload = make_share_link(self.scope, collection_id=collection_id, **overrides)
         body = assert_envelope(self.client.create_share_link(**payload), required_keys=("data",))
         link_id = _resource_id(body, "分享链接")
         self.scope.track(f"终止分享链接 {link_id}", lambda: self._terminate_share_link(link_id))
-        return link_id, payload
+        return link_id, payload, body
 
     def _terminate_share_link(self, link_id: str) -> None:
         response = self.client.terminate_share_link(link_id)

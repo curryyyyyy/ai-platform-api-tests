@@ -19,6 +19,13 @@ RCB_RESOURCE_FIELDS = (
 )
 
 
+def _assert_new_cost_resource_labels(resources) -> None:
+    for resource in resources:
+        if resource.get("resource") == "cdn_url" and resource.get("metric") == "object_bytes":
+            assert resource.get("resourceLabel") == "CDN 链接"
+            assert resource.get("metricLabel") == "关联数据体积"
+
+
 def _operation(name: str) -> int:
     return int(EXECUTION_OPERATIONS[name]["operation"])
 
@@ -210,6 +217,7 @@ def test_hawk_10_04_rcb_batch_cost_detail(platform_client, platform_context):
     assert int(data["batchId"]) == batch_id
     assert_amount_yuan(data.get("amountYuan"))
     assert_cost_resources(data.get("resources"), RCB_RESOURCE_FIELDS)
+    _assert_new_cost_resource_labels(data["resources"])
 
 
 @pytest.mark.requirement(id="REQ-RCB-20260910", name="资源成本看板")
@@ -229,6 +237,7 @@ def test_hawk_10_05_rcb_stage_cost_detail(platform_client, platform_context):
     )
     assert_amount_yuan(data.get("amountYuan"))
     assert_cost_resources(data.get("resources"), RCB_RESOURCE_FIELDS)
+    _assert_new_cost_resource_labels(data["resources"])
 
 
 def test_hawk_07_03_get_system_load(platform_client):

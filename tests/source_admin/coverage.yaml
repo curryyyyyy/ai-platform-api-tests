@@ -33,6 +33,13 @@ entries:
     level: full
     operations: [DM-03]
     tests: [tests/source_admin/test_data_manage_api.py::test_source_02_02_build_selection_query]
+  - id: TC-02-22
+    priority: P0
+    level: partial
+    note: "普通 Schema 物理表映射已覆盖；复合类型需要显式提供可访问的表名和 node_type"
+    env: SOURCE_ADMIN_COMPOSITE_TABLE_NAME,SOURCE_ADMIN_COMPOSITE_NODE_TYPE
+    operations: [DM-03]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_23_composite_selection_query_uses_node_type_guard]
   - id: TC-02-03
     priority: P0
     level: full
@@ -212,6 +219,18 @@ entries:
     level: full
     operations: [SH-02, SH-04]
     tests: [tests/source_admin/test_share_api.py::test_source_05_03_missing_share_link_operations_are_rejected]
+  - id: TC-05-04
+    priority: P0
+    level: full
+    operations: [PS-01, PS-02, PS-03, PS-04]
+    tests: [tests/source_admin/test_share_api.py::test_source_05_04_public_collection_requires_valid_share_token, tests/source_admin/test_share_api.py::test_source_05_05_public_share_collection_read_lifecycle]
+  - id: TC-05-05
+    priority: P1
+    level: partial
+    note: "媒体公开分享脱敏依赖含 tos_path/tos_path_url 数据行的隔离图片或视频集合"
+    env: SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID
+    operations: [PS-04]
+    tests: [tests/source_admin/test_share_api.py::test_source_05_06_public_share_hides_sensitive_paths_for_media_collection]
   - id: TC-06-01
     priority: P0
     level: full
@@ -261,6 +280,12 @@ entries:
     note: "服务端没有供应商删除接口，覆盖不会落库的非法创建请求；正向创建需服务端提供回收能力"
     operations: [SP-02]
     tests: [tests/source_admin/test_supplier_api.py::test_source_07_04_invalid_supplier_create_is_rejected]
+  - id: TC-07-05
+    priority: P0
+    level: partial
+    note: "负责人和多归属方筛选需要环境中存在对应供应商；测试只读发现，避免创建无法回收的供应商"
+    operations: [SP-01]
+    tests: [tests/source_admin/test_supplier_api.py::test_source_07_05_supplier_manager_and_multi_category_filters]
 
 # 需求级差异与平台常规用例共用覆盖矩阵。需求用例放入所属业务域脚本，
 # 稳定 requirement/case ID 仅用于筛选、报告和变更追溯。
@@ -288,3 +313,53 @@ requirements:
         level: full
         test: tests/source_admin/test_data_manage_api.py::test_source_02_19_create_collection_from_rowkeys_lifecycle
         endpoint: "POST /api/v1/collections/create-from-rowkeys"
+  - id: REQ-COMPOSITE-SQL-ISOLATION
+    name: composite_sql_isolation
+    display_name: 复合类型 SQL 隔离
+    marker: requirement
+    cases:
+      - id: REQ-COMPOSITE-SQL-ISOLATION-API-01
+        source_id: DM-03-COMPOSITE-NODE-TYPE
+        priority: P0
+        level: partial
+        note: "依赖可访问的复合类型 Schema 名称和其 node_type"
+        env: SOURCE_ADMIN_COMPOSITE_TABLE_NAME,SOURCE_ADMIN_COMPOSITE_NODE_TYPE
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_23_composite_selection_query_uses_node_type_guard
+        endpoint: "POST /api/v1/query/build-selection"
+  - id: REQ-PUBLIC-SHARE-DATA-GUARD
+    name: public_share_data_guard
+    display_name: 公开分享数据访问保护
+    marker: requirement
+    cases:
+      - id: REQ-PUBLIC-SHARE-DATA-GUARD-API-01
+        source_id: PS-02-04-TOKEN-AUTH
+        priority: P0
+        level: full
+        test: tests/source_admin/test_share_api.py::test_source_05_04_public_collection_requires_valid_share_token
+        endpoint: "POST /api/v1/public/collections/{collection_id}/data"
+      - id: REQ-PUBLIC-SHARE-DATA-GUARD-API-02
+        source_id: PS-01-04-PUBLIC-READ
+        priority: P0
+        level: full
+        test: tests/source_admin/test_share_api.py::test_source_05_05_public_share_collection_read_lifecycle
+        endpoint: "GET /api/v1/public/share/{token}"
+      - id: REQ-PUBLIC-SHARE-DATA-GUARD-API-03
+        source_id: PS-04-SENSITIVE-PATHS
+        priority: P1
+        level: partial
+        note: "依赖含敏感路径字段的数据行"
+        env: SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID
+        test: tests/source_admin/test_share_api.py::test_source_05_06_public_share_hides_sensitive_paths_for_media_collection
+        endpoint: "POST /api/v1/public/collections/{collection_id}/data"
+  - id: REQ-SUPPLIER-MULTI-OWNER
+    name: supplier_multi_owner
+    display_name: 供应商负责人和多归属方
+    marker: requirement
+    cases:
+      - id: REQ-SUPPLIER-MULTI-OWNER-API-01
+        source_id: SP-01-MANAGER-CATEGORY
+        priority: P0
+        level: partial
+        note: "依赖环境中的负责人和多归属方供应商，测试只读发现"
+        test: tests/source_admin/test_supplier_api.py::test_source_07_05_supplier_manager_and_multi_category_filters
+        endpoint: "GET /api/v1/suppliers"

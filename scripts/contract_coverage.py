@@ -12,29 +12,40 @@ import yaml
 try:
     from scripts.contract_diff import _load_openapi_bundle, _operations
 except ModuleNotFoundError:  # pragma: no cover - direct script execution
-    from contract_diff import _load_openapi_bundle, _operations
+    from contract_diff import _load_openapi_bundle, _operations  # pyright: ignore[reportImplicitRelativeImport]
 
 
 OperationKey = Tuple[str, str]
 Operation = Tuple[str, str, str]
 
 
-def _load_inventory(path: Path) -> List[Dict[str, str]]:
+def _load_inventory(path: Path) -> List[Dict[str, Any]]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise ValueError(f"接口清单读取失败: {path}: {exc}") from exc
     if not isinstance(value, dict) or not isinstance(value.get("operations"), list):
         raise ValueError(f"接口清单缺少 operations 数组: {path}")
-    records: List[Dict[str, str]] = []
+    records: List[Dict[str, Any]] = []
     for index, item in enumerate(value["operations"]):
         if not isinstance(item, dict):
             raise ValueError(f"接口清单 operations[{index}] 必须是对象: {path}")
         method, route = item.get("method"), item.get("path")
         identifier = item.get("id") or item.get("operationId")
-        if not all(isinstance(part, str) and part.strip() for part in (method, route, identifier)):
+        if not isinstance(method, str) or not method.strip():
             raise ValueError(f"接口清单 operations[{index}] 缺少有效 id/method/path: {path}")
-        records.append({"id": identifier, "method": method.upper(), "path": route})
+        if not isinstance(route, str) or not route.strip():
+            raise ValueError(f"接口清单 operations[{index}] 缺少有效 id/method/path: {path}")
+        if not isinstance(identifier, str) or not identifier.strip():
+            raise ValueError(f"接口清单 operations[{index}] 缺少有效 id/method/path: {path}")
+        records.append(
+            {
+                "id": identifier,
+                "method": method.upper(),
+                "path": route,
+                "source_type": item.get("source_type"),
+            }
+        )
     return records
 
 
@@ -100,7 +111,8 @@ def validate_coverage(
 
     Inventory IDs are platform-owned business identifiers.  The comparison to
     OpenAPI uses method + path so documents without ``operationId`` are handled
-    correctly as well.
+    correctly as well. Inventory operations explicitly marked ``code_route``
+    may be covered before their upstream OpenAPI document is published.
     """
     records = _operation_records(openapi_paths)
     contract_keys: Set[OperationKey] = {(method, path) for method, path, _ in records}
@@ -143,12 +155,18 @@ def validate_coverage(
         inventory_by_key[key] = item["id"]
         inventory_ids_seen[item["id"]] = key
     inventory_keys = set(inventory_by_key)
+    code_route_keys = {
+        (item["method"], item["path"])
+        for item in inventory_records
+        if item.get("source_type") == "code_route"
+    }
     report["inventory_operations"] = len(inventory_records)
     report["missing_inventory"] = [
         f"{method} {path}" for method, path in sorted(contract_keys - inventory_keys)
     ]
     report["extra_inventory"] = [
-        f"{method} {path}" for method, path in sorted(inventory_keys - contract_keys)
+        f"{method} {path}"
+        for method, path in sorted(inventory_keys - contract_keys - code_route_keys)
     ]
 
     inventory_ids = set(inventory_by_key.values())

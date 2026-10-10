@@ -10,6 +10,13 @@ cases:
       type: "机构供应商"
       page: 1
       page_size: 10
+  enhanced_filters:
+    - id: manager
+      filter: manager
+    - id: category_csv
+      filter: category_csv
+    - id: category_json_array
+      filter: category_json_array
   external_list:
     - id: default_page
       page: 1

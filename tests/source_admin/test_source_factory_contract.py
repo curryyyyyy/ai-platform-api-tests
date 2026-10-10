@@ -22,7 +22,7 @@ class FakeClient(SourceAdminClient):
     def _response(self, payload: dict[str, Any]) -> Response:
         response = SimpleNamespace(status_code=200)
         response.json = lambda: payload
-        return cast(Response, response)
+        return cast(Response, cast(object, response))
 
     def create_schema(self, **payload: Any) -> Response:
         self.calls.append(("POST", "/api/v1/schema", {"json": payload}))
@@ -53,7 +53,11 @@ class FakeClient(SourceAdminClient):
 
     def create_share_link(self, **payload: Any) -> Response:
         self.calls.append(("POST", "/api/v1/share/link", {"json": payload}))
-        return self._response({"code": 0, "msg": "ok", "data": {"id": 115}})
+        return self._response({
+            "code": 0,
+            "msg": "ok",
+            "data": {"id": 115, "url": "https://share.invalid/s/share-token"},
+        })
 
     def terminate_share_link(self, link_id: Any) -> Response:
         self.calls.append(("PUT", f"/api/v1/share/link/{link_id}/terminate", {}))
@@ -111,4 +115,20 @@ def test_source_factory_treats_missing_terminated_share_link_as_cleaned() -> Non
     assert [(method, path) for method, path, _ in client.calls] == [
         ("POST", "/api/v1/share/link"),
         ("PUT", f"/api/v1/share/link/{link_id}/terminate"),
+    ]
+
+
+def test_source_factory_extracts_public_share_token_without_tracking_it() -> None:
+    client = FakeClient()
+    scope = DataScope("TC-SOURCE-PUBLIC-SHARE-001")
+    factory = SourceAdminDataFactory(client, scope)
+
+    link_id, token, _ = factory.create_share_link_with_token(collection_id=7)
+
+    assert link_id == "115"
+    assert token == "share-token"
+    scope.cleanup()
+    assert [(method, path) for method, path, _ in client.calls] == [
+        ("POST", "/api/v1/share/link"),
+        ("PUT", "/api/v1/share/link/115/terminate"),
     ]

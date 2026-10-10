@@ -23,6 +23,13 @@ RCB_RESOURCE_FIELDS = (
 )
 
 
+def _assert_new_cost_resource_labels(resources) -> None:
+    for resource in resources:
+        if resource.get("resource") == "cdn_url" and resource.get("metric") == "object_bytes":
+            assert resource.get("resourceLabel") == "CDN 链接"
+            assert resource.get("metricLabel") == "关联数据体积"
+
+
 def _assert_forbidden(response) -> None:
     """Hawk 权限失败可能使用 HTTP 401/403，也可能以 HTTP 200 + 业务错误返回。"""
     if response.status_code in {401, 403}:
@@ -216,3 +223,4 @@ def test_hawk_10_01_rcb_project_cost_detail(platform_client, platform_context):
     assert int(data["projectId"]) == project_id
     assert_amount_yuan(data.get("amountYuan"))
     assert_cost_resources(data.get("resources"), RCB_RESOURCE_FIELDS)
+    _assert_new_cost_resource_labels(data["resources"])

@@ -67,7 +67,13 @@
           },
           "category": {
             "type": "string",
-            "description": "成品服务/众包平台"
+            "description": "归属方 多选，逗号分隔存储（如 成品服务,众包平台）；写入兼容 JSON 数组字符串",
+            "example": "成品服务,众包平台"
+          },
+          "manager": {
+            "type": "string",
+            "description": "负责人姓名 非必填，支持搜索",
+            "example": "张三"
           },
           "phone": {
             "type": "string",
@@ -331,7 +337,7 @@
           "Supplier"
         ],
         "summary": "供应商列表",
-        "description": "3 Tab + 关键词（name/phone/directions/note）+ category + updated_from/to 分页。产品 四、供应商列表。",
+        "description": "3 Tab + 关键词（name/phone/directions/note）+ category（归属方多选，逗号分隔传多个命中任一）+ updated_from/to 分页。产品 四、供应商列表。",
         "operationId": "ListSuppliers",
         "parameters": [
           {
@@ -355,7 +361,18 @@
             "in": "query",
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "归属方筛选 多选，逗号分隔传多个命中任一（如 成品服务,众包平台），兼容 JSON 数组字符串",
+            "example": "成品服务,众包平台"
+          },
+          {
+            "name": "manager",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "负责人姓名 模糊匹配",
+            "example": "张三"
           },
           {
             "name": "updated_from",
@@ -486,7 +503,14 @@
                     "example": "机构供应商"
                   },
                   "category": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "归属方 多选，逗号分隔（如 成品服务,众包平台），兼容 JSON 数组字符串",
+                    "example": "成品服务,众包平台"
+                  },
+                  "manager": {
+                    "type": "string",
+                    "description": "负责人姓名 非必填",
+                    "example": "张三"
                   },
                   "phone": {
                     "type": "string"
@@ -576,7 +600,7 @@
                 "name": "供应商A",
                 "type": "机构供应商",
                 "phone": "13800000001",
-                "category": "成品服务",
+                "category": "成品服务,众包平台",
                 "alias": "别名",
                 "account_type": "银行卡",
                 "settlement_account": "6220000000000000"
@@ -698,7 +722,14 @@
                     "type": "string"
                   },
                   "category": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "归属方 多选，逗号分隔（如 成品服务,众包平台），兼容 JSON 数组字符串",
+                    "example": "成品服务,众包平台"
+                  },
+                  "manager": {
+                    "type": "string",
+                    "description": "负责人姓名 非必填",
+                    "example": "张三"
                   },
                   "phone": {
                     "type": "string"

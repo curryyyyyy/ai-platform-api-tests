@@ -36,13 +36,13 @@
 
 ## 接入范围
 
-主文档 `docs/api.md` 包含 47 个操作；上游结构化 OpenAPI JSON 和代码路由确认共 66 个操作，另有 19 个接口未写入主文档，已在接口清单中标注。认证域还包括登录 Token、分享 Token 和 HBase 专用凭证，后续不能复用同一个认证 fixture。
+主文档 `docs/api.md` 包含 47 个操作；上游结构化 OpenAPI JSON 和代码路由确认共 70 个操作，另有 23 个接口未写入主文档，已在接口清单中标注。公开分享的 4 个集合读取路由尚未进入 OpenAPI JSON，因此以 `router.go` 代码路由来源登记。认证域还包括登录 Token、分享 Token 和 HBase 专用凭证，后续不能复用同一个认证 fixture。
 
 ## 运行前置
 
 认证复用机器标注平台的总平台 SSO，客户端自动发送 `Authorization: Bearer <central_token>`。测试 Base URL 已配置为 `https://src-admin.tucdev.com/api/v1`，也可通过 `PLATFORM_SOURCE_ADMIN_BASE_URL` 或 `SOURCE_ADMIN_BASE_URL` 覆盖。
 
-分享链接测试优先使用 `SOURCE_ADMIN_COLLECTION_ID`，未设置时从圈选集列表动态发现；不得把共享环境资源 ID 写入仓库。文件夹测试默认使用根节点 `1`，如环境根节点不同，修改 `data/source_admin/node.yaml` 的 `root_id`。
+分享链接测试优先使用 `SOURCE_ADMIN_COLLECTION_ID`，未设置时从圈选集列表动态发现；不得把共享环境资源 ID 写入仓库。公开分享脱敏验证需要显式提供 `SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID`，复合 SQL 隔离验证需要提供 `SOURCE_ADMIN_COMPOSITE_TABLE_NAME` 和 `SOURCE_ADMIN_COMPOSITE_NODE_TYPE`。文件夹测试默认使用根节点 `1`，如环境根节点不同，修改 `data/source_admin/node.yaml` 的 `root_id`。
 
 ```bash
 .venv/bin/pytest -m 'contract and source_admin' -q
@@ -51,7 +51,7 @@
 .venv/bin/pytest -m 'live and source_admin and core' -q
 ```
 
-覆盖矩阵中的 66 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。临时查询提交和转正依赖 Spark 异步任务，当前仅覆盖参数、缺失资源和关系查询反向链路，待确认异步资源清理后补正向生命周期。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
+覆盖矩阵中的 70 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。临时查询提交和转正依赖 Spark 异步任务，当前仅覆盖参数、缺失资源和关系查询反向链路，待确认异步资源清理后补正向生命周期。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
 
 需求级用例继续归入业务域脚本，不按需求名新建测试文件。需求 ID、稳定 case ID 与接口映射统一登记在 `coverage.yaml` 的 `requirements` 节，可通过以下方式按需求执行：
 

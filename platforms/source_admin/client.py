@@ -78,6 +78,10 @@ OPERATION_ROUTES: dict[str, tuple[str, str]] = {
     "SP-03": ("GET", "/api/v1/suppliers/{id}"),
     "SP-04": ("PUT", "/api/v1/suppliers/{id}"),
     "SP-05": ("GET", "/api/v1/public/suppliers"),
+    "PS-01": ("GET", "/api/v1/public/share/{token}"),
+    "PS-02": ("GET", "/api/v1/public/collections/{collection_id}"),
+    "PS-03": ("GET", "/api/v1/public/collections/{collection_id}/labels"),
+    "PS-04": ("POST", "/api/v1/public/collections/{collection_id}/data"),
 }
 
 OPERATION_METHODS: dict[str, str] = {
@@ -147,6 +151,10 @@ OPERATION_METHODS: dict[str, str] = {
     "SP-03": "get_supplier",
     "SP-04": "update_supplier",
     "SP-05": "list_external_suppliers",
+    "PS-01": "get_public_share",
+    "PS-02": "get_public_collection",
+    "PS-03": "get_public_collection_labels",
+    "PS-04": "get_public_collection_data",
 }
 
 
@@ -155,7 +163,7 @@ def _compact(values: Mapping[str, Any]) -> dict[str, Any]:
 
 
 class SourceAdminClient(ApiClient):
-    """资源管理平台 66 个已确认操作的客户端封装。"""
+    """资源管理平台已确认操作的客户端封装。"""
 
     def _operation(
         self,
@@ -445,3 +453,39 @@ class SourceAdminClient(ApiClient):
 
     def list_external_suppliers(self, **params: Any):
         return self._operation("SP-05", params=_compact(params))
+
+    # 公开分享。调用方应使用不带总平台 Bearer Token 的客户端。
+    def get_public_share(self, token: str):
+        return self._operation("PS-01", path_params={"token": token})
+
+    def get_public_collection(self, collection_id: Any, *, share_token: str | None = None):
+        return self._operation(
+            "PS-02",
+            path_params={"collection_id": collection_id},
+            params=_compact({"share_token": share_token}),
+        )
+
+    def get_public_collection_labels(self, collection_id: Any, *, share_token: str | None = None):
+        return self._operation(
+            "PS-03",
+            path_params={"collection_id": collection_id},
+            params=_compact({"share_token": share_token}),
+        )
+
+    def get_public_collection_data(
+        self,
+        collection_id: Any,
+        *,
+        fields: list[dict[str, Any]],
+        share_token: str | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+    ):
+        body = {"fields": fields, "page": page, "page_size": page_size}
+        return self._operation(
+            "PS-04",
+            path_params={"collection_id": collection_id},
+            params=_compact({"share_token": share_token}),
+            json=_compact(body),
+            has_json=True,
+        )

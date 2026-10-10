@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://gitlab.ituchong.com/ai-dataset/ai-source-admin",
     "branch": "test",
-    "commit": "ae1b340",
+    "commit": "ee196ca281009500062a0be549867cea7f52167f",
     "primary_document": "docs/api.md",
     "structured_documents": [
       "docs/data-manage-api.json",
@@ -15,12 +15,14 @@
       "docs/contract-api.json",
       "docs/supplier-api.json"
     ],
-    "analyzed_at": "2026-09-22"
+    "analyzed_at": "2026-10-10"
   },
   "counts": {
     "primary_document_operations": 47,
     "structured_contract_operations": 66,
-    "primary_document_gaps": 19
+    "code_route_operations": 4,
+    "confirmed_operations": 70,
+    "primary_document_gaps": 23
   },
   "common_contract": {
     "login_header": "Authorization",
@@ -662,7 +664,7 @@
       "path": "/api/v1/suppliers",
       "source": "docs/supplier-api.json#/paths/~1api~1v1~1suppliers",
       "documented_in_primary": false,
-      "inputs": {"query_optional": ["type", "keyword", "category", "updated_from", "updated_to", "page", "page_size"]},
+      "inputs": {"query_optional": ["type", "keyword", "category", "manager", "updated_from", "updated_to", "page", "page_size"]},
       "summary": "供应商列表"
     },
     {
@@ -672,7 +674,7 @@
       "path": "/api/v1/suppliers",
       "source": "docs/supplier-api.json#/paths/~1api~1v1~1suppliers",
       "documented_in_primary": false,
-      "inputs": {"body_required": ["name", "alias", "type"], "body_optional": ["category", "phone", "region", "directions", "purpose", "available", "weekly_capacity", "gender", "birth_date", "job_title", "employment_status", "work_experience", "education", "school", "major", "resume_file_name", "resume_url", "resume_tos_path", "note", "certifications", "domains", "work_histories", "account_type", "settlement_account"]},
+      "inputs": {"body_required": ["name", "alias", "type"], "body_optional": ["category", "manager", "phone", "region", "directions", "purpose", "available", "weekly_capacity", "gender", "birth_date", "job_title", "employment_status", "work_experience", "education", "school", "major", "resume_file_name", "resume_url", "resume_tos_path", "note", "certifications", "domains", "work_histories", "account_type", "settlement_account"]},
       "summary": "创建供应商"
     },
     {
@@ -692,7 +694,7 @@
       "path": "/api/v1/suppliers/{id}",
       "source": "docs/supplier-api.json#/paths/~1api~1v1~1suppliers~1{id}",
       "documented_in_primary": false,
-      "inputs": {"path_required": ["id"], "body_optional": ["name", "alias", "category", "phone", "region", "directions", "purpose", "available", "weekly_capacity", "gender", "birth_date", "job_title", "employment_status", "work_experience", "education", "school", "major", "resume_file_name", "resume_url", "resume_tos_path", "note", "certifications", "domains", "work_histories", "account_type", "settlement_account"]},
+      "inputs": {"path_required": ["id"], "body_optional": ["name", "alias", "category", "manager", "phone", "region", "directions", "purpose", "available", "weekly_capacity", "gender", "birth_date", "job_title", "employment_status", "work_experience", "education", "school", "major", "resume_file_name", "resume_url", "resume_tos_path", "note", "certifications", "domains", "work_histories", "account_type", "settlement_account"]},
       "summary": "更新供应商"
     },
     {
@@ -704,6 +706,50 @@
       "documented_in_primary": false,
       "inputs": {"query_optional": ["keyword", "page", "page_size"]},
       "summary": "外部供应商列表（无鉴权）"
+    },
+    {
+      "id": "PS-01",
+      "module": "share",
+      "method": "GET",
+      "path": "/api/v1/public/share/{token}",
+      "source": "router.go:20",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["token"]},
+      "summary": "通过 token 获取公开分享链接元数据（无需总平台登录）"
+    },
+    {
+      "id": "PS-02",
+      "module": "share",
+      "method": "GET",
+      "path": "/api/v1/public/collections/{collection_id}",
+      "source": "router.go:23",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["collection_id"], "query_required": ["share_token"]},
+      "summary": "读取公开分享绑定的圈选集元数据"
+    },
+    {
+      "id": "PS-03",
+      "module": "share",
+      "method": "GET",
+      "path": "/api/v1/public/collections/{collection_id}/labels",
+      "source": "router.go:24",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["collection_id"], "query_required": ["share_token"]},
+      "summary": "读取公开分享绑定的圈选集标签"
+    },
+    {
+      "id": "PS-04",
+      "module": "share",
+      "method": "POST",
+      "path": "/api/v1/public/collections/{collection_id}/data",
+      "source": "router.go:25",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["collection_id"], "query_required": ["share_token"], "body_required": ["fields"], "body_optional": ["page", "page_size"]},
+      "summary": "读取公开分享绑定的圈选集数据并按媒体类型屏蔽敏感路径"
     }
   ],
   "documented_gaps": [
@@ -725,7 +771,11 @@
     "SP-02",
     "SP-03",
     "SP-04",
-    "SP-05"
+    "SP-05",
+    "PS-01",
+    "PS-02",
+    "PS-03",
+    "PS-04"
   ],
   "resolved_decisions": [
     "认证已裁决为复用总平台 SSO 的 central_token，并沿用 Bearer Token",

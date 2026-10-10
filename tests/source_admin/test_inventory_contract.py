@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -14,18 +15,18 @@ INVENTORY = ROOT / "contracts/source_admin/api_inventory.json"
 pytestmark = [pytest.mark.contract, pytest.mark.source_admin]
 
 
-def _inventory() -> dict:
+def _inventory() -> dict[str, Any]:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-def test_source_admin_inventory_has_66_unique_operations() -> None:
+def test_source_admin_inventory_has_70_unique_operations() -> None:
     inventory = _inventory()
     operations = inventory["operations"]
-    assert len(operations) == 66
-    assert len({item["id"] for item in operations}) == 66
-    assert len({(item["method"], item["path"]) for item in operations}) == 66
+    assert len(operations) == 70
+    assert len({item["id"] for item in operations}) == 70
+    assert len({(item["method"], item["path"]) for item in operations}) == 70
     assert sum(item["documented_in_primary"] for item in operations) == 47
-    assert len(inventory["documented_gaps"]) == 19
+    assert len(inventory["documented_gaps"]) == 23
 
 
 def test_source_admin_client_methods_cover_inventory() -> None:
@@ -52,7 +53,7 @@ def test_source_admin_client_routes_match_inventory() -> None:
 
 def test_source_admin_client_uses_bearer_token_and_formats_path(monkeypatch) -> None:
     client = SourceAdminClient("http://source-admin.invalid", token="central-token", retries=0)
-    calls: list[tuple[str, str, dict]] = []
+    calls: list[tuple[str, str, dict[str, object]]] = []
 
     def fake_request(method: str, path: str, **kwargs):
         calls.append((method, path, kwargs))
@@ -73,7 +74,7 @@ def test_source_admin_client_uses_bearer_token_and_formats_path(monkeypatch) -> 
 
 def test_source_admin_client_uses_latest_collection_and_search_inputs(monkeypatch) -> None:
     client = SourceAdminClient("http://source-admin.invalid", retries=0)
-    calls: list[tuple[str, str, dict]] = []
+    calls: list[tuple[str, str, dict[str, object]]] = []
 
     def fake_request(method: str, path: str, **kwargs):
         calls.append((method, path, kwargs))
@@ -135,5 +136,46 @@ def test_source_admin_client_uses_latest_collection_and_search_inputs(monkeypatc
             "GET",
             "/api/v1/nodes/search",
             {"params": {"q": "folder", "scope": "path", "parents_node_id": 7}},
+        ),
+    ]
+
+
+def test_source_admin_client_transmits_supplier_and_public_share_inputs(monkeypatch) -> None:
+    client = SourceAdminClient("http://source-admin.invalid", retries=0)
+    calls: list[tuple[str, str, dict[str, object]]] = []
+
+    def fake_request(method: str, path: str, **kwargs):
+        calls.append((method, path, kwargs))
+        return object()
+
+    monkeypatch.setattr(client, "request", fake_request)
+    client.list_suppliers(manager="张三", category='["成品服务", "众包平台"]')
+    client.create_supplier(name="supplier", alias="supplier-alias", type="机构供应商", manager="张三")
+    client.update_supplier(7, manager="李四")
+    client.get_public_share("share-token")
+    client.get_public_collection(7, share_token="share-token")
+    client.get_public_collection_labels(7, share_token="share-token")
+    client.get_public_collection_data(
+        7,
+        fields=[{"name": "rowkey", "source": 2}],
+        share_token="share-token",
+        page=1,
+    )
+
+    assert "Authorization" not in client.session.headers
+    assert calls == [
+        ("GET", "/api/v1/suppliers", {"params": {"manager": "张三", "category": '["成品服务", "众包平台"]'}}),
+        ("POST", "/api/v1/suppliers", {"json": {"name": "supplier", "alias": "supplier-alias", "type": "机构供应商", "manager": "张三"}}),
+        ("PUT", "/api/v1/suppliers/7", {"json": {"manager": "李四"}}),
+        ("GET", "/api/v1/public/share/share-token", {}),
+        ("GET", "/api/v1/public/collections/7", {"params": {"share_token": "share-token"}}),
+        ("GET", "/api/v1/public/collections/7/labels", {"params": {"share_token": "share-token"}}),
+        (
+            "POST",
+            "/api/v1/public/collections/7/data",
+            {
+                "params": {"share_token": "share-token"},
+                "json": {"fields": [{"name": "rowkey", "source": 2}], "page": 1},
+            },
         ),
     ]

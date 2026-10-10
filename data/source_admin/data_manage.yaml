@@ -4,6 +4,8 @@ defaults:
   missing_task_id: 999999999
   invalid_node_type: 99
   valid_table_env: "SOURCE_ADMIN_TABLE_NAME"
+  composite_table_env: "SOURCE_ADMIN_COMPOSITE_TABLE_NAME"
+  composite_node_type_env: "SOURCE_ADMIN_COMPOSITE_NODE_TYPE"
   writable_collection_env: "SOURCE_ADMIN_WRITABLE_COLLECTION_ID"
   query_collection_env: "SOURCE_ADMIN_QUERY_COLLECTION_ID"
 

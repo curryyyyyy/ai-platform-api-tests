@@ -8,6 +8,11 @@ cases:
   lifecycle:
     - id: standard
       max_count: 10
+  public_access:
+    - id: missing_token
+      share_token:
+    - id: invalid_token
+      share_token: "not-a-valid-share-token"
   invalid_create:
     - id: expired_link
       expire_at: 1
