@@ -24,3 +24,11 @@ cases:
       pageSize: 50
       sortField: "createdAt"
       sortOrder: "desc"
+
+  validation:
+    - id: missing_online_metadata
+      alias: ""
+      desc: ""
+      domain: ""
+      type: ""
+      status: 1

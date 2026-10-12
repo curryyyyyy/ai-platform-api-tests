@@ -1,0 +1,17 @@
+meta:
+  requirement_id: REQ-STAGE-ONLINE-VALIDATION
+  requirement_name: stage_online_validation
+  display_name: 阶段上线前置校验
+  execution_model: api
+  source: biaozhu:test internal/biz/stage.go internal/service/stage.go
+
+cases:
+  - id: REQ-STAGE-ONLINE-VALIDATION-API-01
+    source_id: STAGE-ONLINE-01
+    title: Stage 上线前拒绝缺少必填元数据
+    module: 阶段管理接口
+    priority: P0
+    type: exception
+    execution_model: api
+    endpoint: {method: PUT, path: "/api/v1/stage/{id}"}
+    expected: [返回业务码 40903, 错误信息包含名称描述领域行为类型缺失原因]

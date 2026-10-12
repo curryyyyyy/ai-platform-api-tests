@@ -123,6 +123,13 @@ requirements:
       - {id: REQ-FLOW-QUERY-ENHANCEMENTS-API-02, source_id: FLOW-QUERY-02, priority: P0, test: tests/hawk_admin/test_flow_read_api.py::test_hawk_10_18_list_flows_prioritizes_exact_alias, endpoint: "GET /api/v1/flow?keywords"}
       - {id: REQ-FLOW-QUERY-ENHANCEMENTS-API-03, source_id: FLOW-QUERY-03, priority: P0, test: tests/hawk_admin/test_stage_api.py::test_hawk_10_19_list_stages_prioritizes_exact_alias, endpoint: "GET /api/v1/stage?keywords"}
       - {id: REQ-FLOW-QUERY-ENHANCEMENTS-API-04, source_id: FLOW-PUBLISH-01, priority: P0, test: tests/hawk_admin/test_client_contract.py::test_publish_flow_draft_forwards_optional_metadata, endpoint: "POST /api/v1/flow/draft/{draftId}/publish"}
+  - id: REQ-STAGE-ONLINE-VALIDATION
+    name: stage_online_validation
+    display_name: 阶段上线前置校验
+    marker: requirement
+    source_schema: test-cases/hawk_admin/阶段上线校验_接口测试.schema.yaml
+    cases:
+      - {id: REQ-STAGE-ONLINE-VALIDATION-API-01, source_id: STAGE-ONLINE-01, priority: P0, test: tests/hawk_admin/test_stage_api.py::test_hawk_03_06_online_stage_requires_metadata, endpoint: "PUT /api/v1/stage/{id}"}
   - id: REQ-TEMPLATE-WORKFLOW-OWNERSHIP
     name: template_workflow_ownership
     display_name: 模板工作流归属

@@ -10,6 +10,7 @@ pytestmark = [pytest.mark.live, pytest.mark.hawk_admin]
 STAGE_CREATE_CASES = dataset_cases("hawk_admin", "stage", "create")
 STAGE_UPDATE_CASES = dataset_case_map("hawk_admin", "stage", "update")
 STAGE_QUERY_CASES = dataset_case_map("hawk_admin", "stage", "query")
+STAGE_VALIDATION_CASES = dataset_case_map("hawk_admin", "stage", "validation")
 
 
 def test_hawk_03_01_create_stage(platform_data_factory):
@@ -57,6 +58,25 @@ def test_hawk_03_05_delete_stage_then_get(platform_client, platform_data_factory
     stage_id, _ = platform_data_factory.create_stage(**case_payload(STAGE_CREATE_CASES[0]))
     assert_envelope(platform_client.delete_stage(stage_id))
     assert_rejected(platform_client.get_stage(stage_id))
+
+
+@pytest.mark.core
+@pytest.mark.requirement(id="REQ-STAGE-ONLINE-VALIDATION", name="stage_online_validation")
+@pytest.mark.case_id("REQ-STAGE-ONLINE-VALIDATION-API-01", title="Stage 上线前拒绝缺少必填元数据")
+def test_hawk_03_06_online_stage_requires_metadata(platform_client, platform_data_factory):
+    """Stage 缺少名称、描述、领域和行为类型时，上线应返回稳定业务码。"""
+    stage_id, _ = platform_data_factory.create_stage(
+        **case_payload(STAGE_VALIDATION_CASES["missing_online_metadata"])
+    )
+
+    response = platform_client.update_stage(stage_id, status=2)
+    body = assert_envelope(response, expected_code=None, required_keys=("message",))
+
+    assert body["code"] == 40903, f"Stage 上线校验业务码异常: {body}"
+    message = body["message"]
+    assert isinstance(message, str) and message.strip()
+    for field in ("名称", "描述", "领域", "行为类型"):
+        assert field in message, f"上线校验错误信息缺少字段 {field!r}: {body}"
 
 
 @pytest.mark.core

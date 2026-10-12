@@ -67,7 +67,7 @@ entries:
   - {id: Stage_CreateStage, operations: [Stage_CreateStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_01_create_stage]}
   - {id: Stage_DeleteStage, operations: [Stage_DeleteStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_05_delete_stage_then_get]}
   - {id: Stage_GetStage, operations: [Stage_GetStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_04_get_missing_stage]}
-  - {id: Stage_UpdateStage, operations: [Stage_UpdateStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_03_update_stage]}
+  - {id: Stage_UpdateStage, operations: [Stage_UpdateStage], tests: [tests/hawk_admin/test_stage_api.py::test_hawk_03_03_update_stage, tests/hawk_admin/test_stage_api.py::test_hawk_03_06_online_stage_requires_metadata]}
   - {id: Tools_CsvFirstRow, operations: [Tools_CsvFirstRow], tests: [tests/hawk_admin/test_tools_file_api.py::test_hawk_07_15_tools_validate_inputs_and_trigger_commands]}
   - {id: Tools_TriggerDailyMetrics, operations: [Tools_TriggerDailyMetrics], tests: [tests/hawk_admin/test_tools_file_api.py::test_hawk_07_15_tools_validate_inputs_and_trigger_commands]}
   - {id: Tools_GetHBaseDDL, operations: [Tools_GetHBaseDDL], tests: [tests/hawk_admin/test_tools_file_api.py::test_hawk_07_15_tools_validate_inputs_and_trigger_commands]}

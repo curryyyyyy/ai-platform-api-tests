@@ -11,7 +11,7 @@ Hawk 子平台的接口测试、数据集、Schema 覆盖和 CI 前置均在本�
 | 认证与权限 | `test_auth.py`、`test_project_api.py` | `auth.yaml`、`project.yaml` | Token、查看者写入/读取/更新越权 |
 | 项目管理 | `test_project_api.py` | `project.yaml` | 创建、查询、列表、更新、OWNER、通知级别、删除 |
 | 项目收藏需求 | `test_project_api.py` | `project.yaml` | 收藏/取消收藏幂等、详情 `isFavorite`、`onlyFavorite` 筛选 |
-| 阶段管理 | `test_stage_api.py` | `stage.yaml` | 创建、列表筛选、更新、缺失查询、删除 |
+| 阶段管理 | `test_stage_api.py` | `stage.yaml` | 创建、列表筛选、更新、上线前置校验、缺失查询、删除 |
 | 流程草稿生命周期（写入类） | `test_flow_api.py` | `flow.yaml` | 创建关联项目的草稿、图乐观锁保存、草稿列表/版本、删除、非法发布编号 |
 | 流程只读查询类 | `test_flow_read_api.py` | `flow.yaml` | 详情、缺失查询、Stage/状态筛选、调用次数排序、`canOffline` 条件 |
 | 流程与阶段查询增强需求 | `test_flow_read_api.py`、`test_stage_api.py`、`test_client_contract.py` | `flow.yaml`、`stage.yaml` | Flow 多状态筛选、Flow/Stage 关键词命中优先级、发布元数据请求契约 |
