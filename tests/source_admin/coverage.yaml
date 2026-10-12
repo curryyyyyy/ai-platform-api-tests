@@ -231,6 +231,12 @@ entries:
     env: SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID
     operations: [PS-04]
     tests: [tests/source_admin/test_share_api.py::test_source_05_06_public_share_hides_sensitive_paths_for_media_collection]
+  - id: TC-05-06
+    priority: P1
+    level: full
+    note: "分享页路由从 CDN 拉取并缓存 HTML；覆盖匿名访问、HTML 响应和 no-cache 响应头"
+    operations: [PS-05]
+    tests: [tests/source_admin/test_share_api.py::test_source_05_07_share_page_returns_html_without_login]
   - id: TC-06-01
     priority: P0
     level: full
@@ -363,3 +369,14 @@ requirements:
         note: "依赖环境中的负责人和多归属方供应商，测试只读发现"
         test: tests/source_admin/test_supplier_api.py::test_source_07_05_supplier_manager_and_multi_category_filters
         endpoint: "GET /api/v1/suppliers"
+  - id: REQ-PUBLIC-SHARE-PAGE-CACHE
+    name: public_share_page_cache
+    display_name: 公开分享页缓存与匿名访问
+    marker: requirement
+    cases:
+      - id: REQ-PUBLIC-SHARE-PAGE-CACHE-API-01
+        source_id: PS-05-SHARE-PAGE
+        priority: P1
+        level: full
+        test: tests/source_admin/test_share_api.py::test_source_05_07_share_page_returns_html_without_login
+        endpoint: "GET /s/{token}"

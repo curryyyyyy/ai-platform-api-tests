@@ -82,6 +82,7 @@ OPERATION_ROUTES: dict[str, tuple[str, str]] = {
     "PS-02": ("GET", "/api/v1/public/collections/{collection_id}"),
     "PS-03": ("GET", "/api/v1/public/collections/{collection_id}/labels"),
     "PS-04": ("POST", "/api/v1/public/collections/{collection_id}/data"),
+    "PS-05": ("GET", "/s/{token}"),
 }
 
 OPERATION_METHODS: dict[str, str] = {
@@ -155,6 +156,7 @@ OPERATION_METHODS: dict[str, str] = {
     "PS-02": "get_public_collection",
     "PS-03": "get_public_collection_labels",
     "PS-04": "get_public_collection_data",
+    "PS-05": "get_share_page",
 }
 
 
@@ -489,3 +491,7 @@ class SourceAdminClient(ApiClient):
             json=_compact(body),
             has_json=True,
         )
+
+    def get_share_page(self, token: str):
+        """获取公开分享页 HTML；该路由不经过总平台登录认证。"""
+        return self._operation("PS-05", path_params={"token": token})
