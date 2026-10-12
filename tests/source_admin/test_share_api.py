@@ -16,6 +16,7 @@ pytestmark = [pytest.mark.live, pytest.mark.source_admin]
 SHARE_CASES = dataset_case_map("source_admin", "share", "lifecycle")
 INVALID_SHARE_CASES = dataset_cases("source_admin", "share", "invalid_create")
 PUBLIC_ACCESS_CASES = dataset_cases("source_admin", "share", "public_access")
+SHARE_PAGE_CASES = dataset_cases("source_admin", "share", "page")
 SHARE_DEFAULTS = dataset_defaults("source_admin", "share")
 
 
@@ -197,3 +198,23 @@ def test_source_05_06_public_share_hides_sensitive_paths_for_media_collection(
     if not isinstance(items, list) or not items:
         pytest.skip("指定媒体集合没有可用于脱敏验证的数据行")
     assert all("tos_path" not in item and "tos_path_url" not in item for item in items)
+
+
+@pytest.mark.requirement(id="REQ-PUBLIC-SHARE-PAGE-CACHE", name="public_share_page_cache")
+@pytest.mark.case_id(
+    "REQ-PUBLIC-SHARE-PAGE-CACHE-API-01",
+    title="公开分享页无需登录返回 HTML 并声明不缓存",
+)
+@pytest.mark.parametrize("case", SHARE_PAGE_CASES, ids=_case_id)
+def test_source_05_07_share_page_returns_html_without_login(
+    case: Mapping[str, Any], anonymous_platform_client: SourceAdminClient
+) -> None:
+    """分享页由独立路由提供，不能被总平台登录中间件或 JSON 信封约束阻断。"""
+    response = anonymous_platform_client.get_share_page(str(case["path_token"]))
+
+    assert response.status_code == 200, response.text[:500]
+    content_type = response.headers.get("Content-Type", "").lower()
+    assert str(case["expected_content_type"]) in content_type
+    assert response.headers.get("Cache-Control") == case["expected_cache_control"]
+    assert response.content.strip()
+    assert b"<html" in response.content.lower()

@@ -13,6 +13,11 @@ cases:
       share_token:
     - id: invalid_token
       share_token: "not-a-valid-share-token"
+  page:
+    - id: share_page_html
+      path_token: "share-page-test-token"
+      expected_content_type: "text/html"
+      expected_cache_control: "no-cache"
   invalid_create:
     - id: expired_link
       expire_at: 1

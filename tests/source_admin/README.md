@@ -1,6 +1,6 @@
 # 资源管理平台测试接入
 
-资源管理平台（`source_admin`）的接口基线和测试代码已接入；当前包含客户端契约、认证/只读冒烟，以及基于 `DataScope` 的 Schema、文件夹节点、项目节点和分享链接写入生命周期测试，并覆盖合同和供应商的安全读/反向链路。
+资源管理平台（`source_admin`）的接口基线和测试代码已接入；当前包含客户端契约、认证/只读冒烟，以及基于 `DataScope` 的 Schema、文件夹节点、项目节点和分享链接写入生命周期测试，并覆盖合同和供应商的安全读/反向链路。最新 `test` 分支还覆盖分享页 `/s/{token}` 的 CDN 拉取回归：匿名访问、HTML 响应和 `Cache-Control: no-cache`。
 
 ## 当前产物
 
@@ -24,7 +24,7 @@
 - 上游仓库：`https://gitlab.ituchong.com/ai-dataset/ai-source-admin`
 - 当前契约分支：`test`；日常测试使用仓库内已提交的多文件快照，快照更新前先拉取上游 `test` 分支并人工审核
 
-资源管理平台没有单一 OpenAPI 文件，本地契约文件由 [`../../platforms/source_admin/contract.yaml`](../../platforms/source_admin/contract.yaml) 声明；当前纳入 `audit`、`contract`、`data-manage`、`filesystem`、`scheme`、`share`、`supplier` 7 份独立快照，不把不同文档的同名组件强行合并。`coverage.yaml` 将每个接口清单 ID 映射到 testcase。
+资源管理平台没有单一 OpenAPI 文件，本地契约文件由 [`../../platforms/source_admin/contract.yaml`](../../platforms/source_admin/contract.yaml) 声明；当前纳入 `audit`、`contract`、`data-manage`、`filesystem`、`scheme`、`share`、`supplier` 7 份独立快照，不把不同文档的同名组件强行合并。`coverage.yaml` 将每个接口清单 ID 映射到 testcase；除 66 条结构化 OpenAPI 操作外，接口清单还登记 5 条代码路由，其中包括分享页 `/s/{token}`。
 
 日常执行仓库快照测试：
 

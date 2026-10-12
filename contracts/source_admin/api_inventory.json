@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://gitlab.ituchong.com/ai-dataset/ai-source-admin",
     "branch": "test",
-    "commit": "ee196ca281009500062a0be549867cea7f52167f",
+    "commit": "a062459a2bebdb94e0266e527d81dd43668ee968",
     "primary_document": "docs/api.md",
     "structured_documents": [
       "docs/data-manage-api.json",
@@ -15,14 +15,14 @@
       "docs/contract-api.json",
       "docs/supplier-api.json"
     ],
-    "analyzed_at": "2026-10-10"
+    "analyzed_at": "2026-10-12"
   },
   "counts": {
     "primary_document_operations": 47,
     "structured_contract_operations": 66,
-    "code_route_operations": 4,
-    "confirmed_operations": 70,
-    "primary_document_gaps": 23
+    "code_route_operations": 5,
+    "confirmed_operations": 71,
+    "primary_document_gaps": 24
   },
   "common_contract": {
     "login_header": "Authorization",
@@ -750,6 +750,17 @@
       "documented_in_primary": false,
       "inputs": {"path_required": ["collection_id"], "query_required": ["share_token"], "body_required": ["fields"], "body_optional": ["page", "page_size"]},
       "summary": "读取公开分享绑定的圈选集数据并按媒体类型屏蔽敏感路径"
+    },
+    {
+      "id": "PS-05",
+      "module": "share",
+      "method": "GET",
+      "path": "/s/{token}",
+      "source": "router.go:30",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"path_required": ["token"]},
+      "summary": "获取公开分享页 HTML（按访问域名从 CDN 拉取并缓存，无需总平台登录）"
     }
   ],
   "documented_gaps": [
@@ -775,7 +786,8 @@
     "PS-01",
     "PS-02",
     "PS-03",
-    "PS-04"
+    "PS-04",
+    "PS-05"
   ],
   "resolved_decisions": [
     "认证已裁决为复用总平台 SSO 的 central_token，并沿用 Bearer Token",

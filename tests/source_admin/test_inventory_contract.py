@@ -19,14 +19,14 @@ def _inventory() -> dict[str, Any]:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-def test_source_admin_inventory_has_70_unique_operations() -> None:
+def test_source_admin_inventory_has_71_unique_operations() -> None:
     inventory = _inventory()
     operations = inventory["operations"]
-    assert len(operations) == 70
-    assert len({item["id"] for item in operations}) == 70
-    assert len({(item["method"], item["path"]) for item in operations}) == 70
+    assert len(operations) == 71
+    assert len({item["id"] for item in operations}) == 71
+    assert len({(item["method"], item["path"]) for item in operations}) == 71
     assert sum(item["documented_in_primary"] for item in operations) == 47
-    assert len(inventory["documented_gaps"]) == 23
+    assert len(inventory["documented_gaps"]) == 24
 
 
 def test_source_admin_client_methods_cover_inventory() -> None:
@@ -161,6 +161,7 @@ def test_source_admin_client_transmits_supplier_and_public_share_inputs(monkeypa
         share_token="share-token",
         page=1,
     )
+    client.get_share_page("share-token")
 
     assert "Authorization" not in client.session.headers
     assert calls == [
@@ -178,4 +179,5 @@ def test_source_admin_client_transmits_supplier_and_public_share_inputs(monkeypa
                 "json": {"fields": [{"name": "rowkey", "source": 2}], "page": 1},
             },
         ),
+        ("GET", "/s/share-token", {}),
     ]
