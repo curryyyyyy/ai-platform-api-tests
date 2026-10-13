@@ -8,6 +8,7 @@ defaults:
   composite_node_type_env: "SOURCE_ADMIN_COMPOSITE_NODE_TYPE"
   writable_collection_env: "SOURCE_ADMIN_WRITABLE_COLLECTION_ID"
   query_collection_env: "SOURCE_ADMIN_QUERY_COLLECTION_ID"
+  download_collection_env: "SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID"
 
 cases:
   invalid_original_download:

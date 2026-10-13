@@ -86,6 +86,13 @@ entries:
     note: "仅覆盖缺失集合；正向全量下载依赖外部数据和异步任务"
     operations: [DM-14]
     tests: [tests/source_admin/test_data_manage_api.py::test_source_02_10_collection_download_missing_resource_is_rejected]
+  - id: TC-02-23
+    priority: P1
+    level: partial
+    note: "下载响应新增 tos_path；执行会在 TOS 生成 CSV，必须显式提供隔离圈选集"
+    env: SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID
+    operations: [DM-14]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_24_collection_download_returns_full_tos_path]
   - id: TC-02-11
     priority: P1
     level: full
@@ -380,3 +387,16 @@ requirements:
         level: full
         test: tests/source_admin/test_share_api.py::test_source_05_07_share_page_returns_html_without_login
         endpoint: "GET /s/{token}"
+  - id: REQ-COLLECTION-DOWNLOAD-TOS-PATH
+    name: collection_download_tos_path
+    display_name: 圈选集下载完整 TOS 路径
+    marker: requirement
+    cases:
+      - id: REQ-COLLECTION-DOWNLOAD-TOS-PATH-API-01
+        source_id: DM-14-TOS-PATH
+        priority: P1
+        level: partial
+        note: "执行会在 TOS 生成 CSV，必须使用隔离圈选集"
+        env: SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_24_collection_download_returns_full_tos_path
+        endpoint: "POST /api/v1/collections/{collection_id}/download"

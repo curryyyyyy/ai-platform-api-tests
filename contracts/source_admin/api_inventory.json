@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://gitlab.ituchong.com/ai-dataset/ai-source-admin",
     "branch": "test",
-    "commit": "a062459a2bebdb94e0266e527d81dd43668ee968",
+    "commit": "1842130dea37f8f3498608f2cc22fa2161c77353",
     "primary_document": "docs/api.md",
     "structured_documents": [
       "docs/data-manage-api.json",
@@ -15,7 +15,7 @@
       "docs/contract-api.json",
       "docs/supplier-api.json"
     ],
-    "analyzed_at": "2026-10-12"
+    "analyzed_at": "2026-10-13"
   },
   "counts": {
     "primary_document_operations": 47,
@@ -185,7 +185,7 @@
       "source": "docs/data-manage-api.json#/paths/~1api~1v1~1collections~1{collection_id}~1download",
       "documented_in_primary": false,
       "inputs": {"path_required": ["collection_id"]},
-      "summary": "下载圈选集全量数据"
+      "summary": "下载圈选集全量数据，返回 tos_key、完整 tos_path 和预签名 URL"
     },
     {
       "id": "DM-15",

@@ -177,6 +177,32 @@ def test_source_02_10_collection_download_missing_resource_is_rejected(platform_
     assert_rejected(platform_client.download_collection(DATA_DEFAULTS["missing_collection_id"]))
 
 
+@pytest.mark.requirement(id="REQ-COLLECTION-DOWNLOAD-TOS-PATH", name="collection_download_tos_path")
+@pytest.mark.case_id(
+    "REQ-COLLECTION-DOWNLOAD-TOS-PATH-API-01",
+    title="圈选集下载同时返回完整 TOS 路径和对象 key",
+)
+def test_source_02_24_collection_download_returns_full_tos_path(platform_client):
+    """下载文件的完整 TOS 路径应保留 bucket 信息，供外部工具复制和后续处理。"""
+    env_name = DATA_DEFAULTS["download_collection_env"]
+    raw_collection_id = os.getenv(env_name, "").strip()
+    if not raw_collection_id:
+        pytest.skip(f"需配置 {env_name} 为允许生成下载文件的隔离圈选集")
+    try:
+        collection_id = int(raw_collection_id)
+    except ValueError:
+        raise AssertionError(f"{env_name} 必须是整数，当前值: {raw_collection_id!r}") from None
+
+    body = data(assert_envelope(
+        platform_client.download_collection(collection_id), required_keys=("data",)
+    ))
+    tos_key = body.get("tos_key")
+    tos_path = body.get("tos_path")
+    assert isinstance(tos_key, str) and tos_key.startswith("download/")
+    assert isinstance(tos_path, str) and tos_path.startswith("tos://")
+    assert tos_path.removeprefix("tos://").partition("/")[2] == tos_key
+
+
 def test_source_02_11_csv_upload_url(platform_client):
     filename = f"api-test-{int(time.time() * 1000)}.csv"
     body = data(assert_envelope(platform_client.get_csv_upload_url(file_name=filename), required_keys=("data",)))
