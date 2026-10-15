@@ -20,14 +20,14 @@ from pathlib import Path
 from typing import Any, Iterable, List, Optional, Tuple
 
 try:  # Supports both ``python scripts/contract_pipeline.py`` and module imports.
-    from scripts.contract_diff import compare_contracts
+    from scripts.contract_diff import compare_with_engine
     from scripts.contract_manifest import (
         discover_manifests,
         relative_paths,
         select_manifests,
     )
 except ModuleNotFoundError:  # pragma: no cover - exercised by the CLI entry point
-    from contract_diff import compare_contracts
+    from contract_diff import compare_with_engine
     from contract_manifest import (
         discover_manifests,
         relative_paths,
@@ -128,6 +128,7 @@ def run_platform(
     base_ref: str,
     report_root: Path,
     source_root: Optional[Path] = None,
+    engine: str = "auto",
 ) -> dict[str, Any]:
     if not base_ref and source_root is None:
         raise ValueError("契约比较必须提供 Git 基线 base_ref 或本地服务仓库 source_root")
@@ -156,11 +157,12 @@ def run_platform(
         if isinstance(inventory_value, str) and inventory_value.strip():
             baseline_inventory = baseline_root / inventory_value
             _copy_from_git(root, Path(inventory_value), baseline_inventory, base_ref)
-        report = compare_contracts(
+        report = compare_with_engine(
             baseline_openapi,
             current_openapi,
             baseline_inventory=baseline_inventory,
             current_inventory=current_inventory,
+            engine=engine,
         )
         report["platform"] = platform
         report_root.mkdir(parents=True, exist_ok=True)
@@ -181,6 +183,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-root", type=Path, help="已拉取的服务代码工作树，仅从本地读取契约")
     parser.add_argument("--report-root", type=Path, default=Path("reports/contracts"))
     parser.add_argument("--fail-on-breaking", action="store_true")
+    parser.add_argument(
+        "--engine",
+        choices=("auto", "oasdiff"),
+        default=os.getenv("CONTRACT_DIFF_ENGINE", "auto"),
+        help="OpenAPI 比较引擎；CI 应使用 oasdiff",
+    )
     return parser
 
 
@@ -210,6 +218,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                         base_ref=args.base_ref,
                         report_root=(args.report_root if args.report_root.is_absolute() else root / args.report_root),
                         source_root=(args.source_root if not args.source_root or args.source_root.is_absolute() else root / args.source_root),
+                        engine=args.engine,
                     ),
                 )
             )

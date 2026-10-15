@@ -36,11 +36,14 @@ contract:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
   script:
     - python -m pip install .
+    - apt-get update -qq && apt-get install -y -qq nodejs npm
+    - npm ci --ignore-scripts --no-audit --no-fund
+    - npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @oasdiff-js/oasdiff-linux-x64@1.15.0
     # 只使用仓库内已审核并提交的契约快照，不访问上游 GitLab。
     - ./scripts/run_tests.sh -m contract
     - |
       if [ -n "${CONTRACT_BASE_SHA:-}" ]; then
-        python scripts/contract_pipeline.py --base-ref "$CONTRACT_BASE_SHA" --fail-on-breaking
+        python scripts/contract_pipeline.py --base-ref "$CONTRACT_BASE_SHA" --engine oasdiff --fail-on-breaking
       else
         echo "当前流水线没有 Git 比较基线，仅执行已提交快照校验。"
       fi

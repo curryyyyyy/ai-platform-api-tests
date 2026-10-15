@@ -63,6 +63,7 @@ pytest -m "core and live" -v
 | `API_CONNECT_TIMEOUT` / `API_READ_TIMEOUT` | 可选：分别覆盖 HTTP 连接和读取超时；未设置时使用 `API_TIMEOUT` |
 | `FEISHU_WEBHOOK_URL` | GitLab 定时流水线的飞书机器人 Webhook，仅配置在 CI/CD Secret |
 | `CONTRACT_BASE_SHA` | 契约变更检测使用的 Git 基线；PR/MR 和主分支推送由 CI 自动注入 |
+| `CONTRACT_DIFF_ENGINE` | 本地管线的 OpenAPI 比较引擎，默认 `auto`；CI 固定使用 `oasdiff` |
 | `CONTRACT_DIFF_ALLOW_BREAKING` | 经维护者确认后临时放行契约破坏性变更，仅限受保护 CI 变量 |
 
 配置优先级为：环境变量 > 平台/根目录 `*.local.yaml` > 平台/根目录 `*.yaml`。不得提交真实账号、密码或 Token。
@@ -92,7 +93,9 @@ GitLab 项目可使用 [`.gitlab-ci.yml`](.gitlab-ci.yml) 接入 Merge Request �
 
 ### 契约变更检测
 
-契约更新由维护者在对应服务代码仓库拉取目标分支到本地后完成，再运行 [`scripts/contract_diff.py`](scripts/contract_diff.py) 或 [`scripts/contract_pipeline.py`](scripts/contract_pipeline.py)。工具支持单文件和多文件 OpenAPI bundle，检测接口删除、`operationId` 变化、必填参数增加、请求/响应类型变化、枚举收窄、响应字段删除和共享 Schema 变化等破坏性变更。覆盖一致性由 contract 测试调用 [`scripts/contract_coverage.py`](scripts/contract_coverage.py)，检查每个最新接口是否有 inventory 和 testcase 映射。普通测试和 CI 不访问远程服务仓库；PR/MR 和推送的基线比较只读取当前 CI checkout 中的 Git 历史。
+契约更新由维护者在对应服务代码仓库拉取目标分支到本地后完成，再运行 [`scripts/contract_diff.py`](scripts/contract_diff.py) 或 [`scripts/contract_pipeline.py`](scripts/contract_pipeline.py)。OpenAPI 兼容性语义由锁定版本的成熟工具 `oasdiff` 判定，覆盖接口删除、必填参数增加、请求/响应 Schema 变化和共享 Schema 变化等；项目脚本只负责 Git 基线、多平台多文件 bundle、统一 JSON 报告及 inventory/coverage/AST 追溯。覆盖一致性由 contract 测试调用 [`scripts/contract_coverage.py`](scripts/contract_coverage.py)，检查每个最新接口是否有 inventory 和 testcase 映射。普通测试和 CI 不访问远程服务仓库；PR/MR 和推送的基线比较只读取当前 CI checkout 中的 Git 历史。
+
+本地首次使用成熟引擎先执行 `npm ci --ignore-scripts --no-audit --no-fund`，再安装当前平台原生包；Apple Silicon macOS 使用 `npm install --no-save --package-lock=false @oasdiff-js/oasdiff-darwin-arm64@1.15.0`，Linux x64 使用 `@oasdiff-js/oasdiff-linux-x64@1.15.0`。`auto`（默认）是 `oasdiff` 的本地别名，不再回退到重复的自研 Schema 规则；缺少工具会直接失败，避免兼容性判断静默降级。CI 使用 `--engine oasdiff`。
 
 破坏性变更、新增接口没有覆盖映射、接口清单不一致或 testcase 引用失效，都会阻止门禁通过，并输出 diff/coverage 报告；维护者完成客户端和 case 回流后再提交新的快照。工具不会自动生成或修改业务 case，避免把未经审核的断言带入门禁。
 
@@ -117,13 +120,14 @@ python scripts/contract_diff.py \
   --baseline-inventory /path/to/old/api_inventory.json \
   --current-inventory contracts/<platform>/api_inventory.json \
   --report reports/contracts/<platform>-diff.json \
+  --engine oasdiff \
   --fail-on-breaking
 ```
 
 比较当前快照与 Git 基线（不替换本地快照）可直接运行：
 
 ```bash
-python scripts/contract_pipeline.py --base-ref "$BASE_SHA" --fail-on-breaking
+python scripts/contract_pipeline.py --base-ref "$BASE_SHA" --engine oasdiff --fail-on-breaking
 ```
 
 `--base-ref` 指向的提交或其中任一契约文件不可读取时命令会失败，不会退回当前快照。未提供 `--base-ref` 和 `--source-root` 时同样拒绝执行，避免把当前快照与自身比较后产生无变化的假结果。

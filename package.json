@@ -1,0 +1,8 @@
+{
+  "name": "ai-platform-api-contract-tooling",
+  "private": true,
+  "description": "Pinned OpenAPI compatibility tooling for contract gates",
+  "devDependencies": {
+    "@oasdiff-js/oasdiff-js": "1.0.0"
+  }
+}
