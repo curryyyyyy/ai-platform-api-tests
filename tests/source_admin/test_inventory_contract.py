@@ -19,14 +19,14 @@ def _inventory() -> dict[str, Any]:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-def test_source_admin_inventory_has_71_unique_operations() -> None:
+def test_source_admin_inventory_has_76_unique_operations() -> None:
     inventory = _inventory()
     operations = inventory["operations"]
-    assert len(operations) == 71
-    assert len({item["id"] for item in operations}) == 71
-    assert len({(item["method"], item["path"]) for item in operations}) == 71
+    assert len(operations) == 76
+    assert len({item["id"] for item in operations}) == 76
+    assert len({(item["method"], item["path"]) for item in operations}) == 76
     assert sum(item["documented_in_primary"] for item in operations) == 47
-    assert len(inventory["documented_gaps"]) == 24
+    assert len(inventory["documented_gaps"]) == 29
 
 
 def test_source_admin_client_methods_cover_inventory() -> None:
@@ -180,4 +180,52 @@ def test_source_admin_client_transmits_supplier_and_public_share_inputs(monkeypa
             },
         ),
         ("GET", "/s/share-token", {}),
+    ]
+
+
+def test_source_admin_client_transmits_statistics_inputs(monkeypatch) -> None:
+    client = SourceAdminClient("http://source-admin.invalid", retries=0)
+    calls: list[tuple[str, str, dict[str, object]]] = []
+
+    def fake_request(method: str, path: str, **kwargs):
+        calls.append((method, path, kwargs))
+        return object()
+
+    monkeypatch.setattr(client, "request", fake_request)
+    fields = [{"qualifier": "width", "operation": "avg"}]
+    client.submit_selection_statistics(collection_id=7, fields=fields)
+    client.preview_selection_statistics_sql(collection_id=7, fields=fields, fast=True)
+    client.get_selection_statistics("a" * 32, offset=10, limit=20)
+    client.export_selection_statistics("a" * 32)
+    client.get_selection_statistics_page()
+
+    assert calls == [
+        (
+            "POST",
+            "/api/v1/devtools/statistics/submit",
+            {"json": {"collection_id": 7, "data_version": "", "fields": fields}},
+        ),
+        (
+            "POST",
+            "/api/v1/devtools/statistics/sql-preview",
+            {
+                "json": {
+                    "collection_id": 7,
+                    "data_version": "",
+                    "fast": True,
+                    "fields": fields,
+                }
+            },
+        ),
+        (
+            "GET",
+            "/api/v1/devtools/statistics/query",
+            {"params": {"query_id": "a" * 32, "offset": 10, "limit": 20}},
+        ),
+        (
+            "GET",
+            "/api/v1/devtools/statistics/export",
+            {"params": {"query_id": "a" * 32}},
+        ),
+        ("GET", "/devtools/statistics", {}),
     ]

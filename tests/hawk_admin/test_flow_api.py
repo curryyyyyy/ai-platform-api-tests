@@ -31,7 +31,8 @@ def test_hawk_04_01_create_flow(platform_data_factory: HawkDataFactory):
     assert int(data["source"]) == 1
     assert str(payload["projectId"]) in {str(value) for value in data["projectIds"]}
     assert int(data["graphVersion"]) >= 1
-    assert json.loads(data["graph"]) == {"nodes": [], "edges": []}
+    # 服务端创建草稿时以空 JSON 对象初始化 graph，节点数组在首次保存草稿图时写入。
+    assert json.loads(data["graph"]) == {}
 
 
 @pytest.mark.parametrize("case", INVALID_CREATE_CASES, ids=lambda case: case["id"])

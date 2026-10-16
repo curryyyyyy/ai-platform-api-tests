@@ -37,6 +37,11 @@ OPERATION_ROUTES: dict[str, tuple[str, str]] = {
     "DM-23": ("POST", "/api/v1/collections/{collection_id}/promote"),
     "DM-24": ("GET", "/api/v1/collections/{collection_id}/temporary-children"),
     "DM-25": ("GET", "/api/v1/collections/{collection_id}/derived"),
+    "ST-01": ("POST", "/api/v1/devtools/statistics/submit"),
+    "ST-02": ("POST", "/api/v1/devtools/statistics/sql-preview"),
+    "ST-03": ("GET", "/api/v1/devtools/statistics/query"),
+    "ST-04": ("GET", "/api/v1/devtools/statistics/export"),
+    "ST-05": ("GET", "/devtools/statistics"),
     "FS-01": ("GET", "/api/v1/nodes/{id}/list"),
     "FS-02": ("GET", "/api/v1/nodes/{id}"),
     "FS-03": ("POST", "/api/v1/nodes"),
@@ -111,6 +116,11 @@ OPERATION_METHODS: dict[str, str] = {
     "DM-23": "promote_temporary_collection",
     "DM-24": "get_temporary_children",
     "DM-25": "get_derived_collections",
+    "ST-01": "submit_selection_statistics",
+    "ST-02": "preview_selection_statistics_sql",
+    "ST-03": "get_selection_statistics",
+    "ST-04": "export_selection_statistics",
+    "ST-05": "get_selection_statistics_page",
     "FS-01": "list_nodes",
     "FS-02": "get_node",
     "FS-03": "create_node",
@@ -294,6 +304,62 @@ class SourceAdminClient(ApiClient):
 
     def get_derived_collections(self, collection_id: Any):
         return self._operation("DM-25", path_params={"collection_id": collection_id})
+
+    # 圈选集统计工具
+    def submit_selection_statistics(
+        self,
+        *,
+        collection_id: int,
+        data_version: str = "",
+        fields: list[Mapping[str, Any]],
+    ):
+        return self._operation(
+            "ST-01",
+            json={
+                "collection_id": collection_id,
+                "data_version": data_version,
+                "fields": fields,
+            },
+            has_json=True,
+        )
+
+    def preview_selection_statistics_sql(
+        self,
+        *,
+        collection_id: int,
+        data_version: str = "",
+        fields: list[Mapping[str, Any]],
+        fast: bool = False,
+    ):
+        return self._operation(
+            "ST-02",
+            json={
+                "collection_id": collection_id,
+                "data_version": data_version,
+                "fast": fast,
+                "fields": fields,
+            },
+            has_json=True,
+        )
+
+    def get_selection_statistics(
+        self,
+        query_id: str,
+        *,
+        offset: int | None = None,
+        limit: int | None = None,
+    ):
+        return self._operation(
+            "ST-03",
+            params=_compact({"query_id": query_id, "offset": offset, "limit": limit}),
+        )
+
+    def export_selection_statistics(self, query_id: str):
+        return self._operation("ST-04", params={"query_id": query_id})
+
+    def get_selection_statistics_page(self):
+        """获取统计工具 HTML 壳；该页面不经过总平台登录认证。"""
+        return self._operation("ST-05")
 
     # 文件系统
     def list_nodes(self, node_id: Any, *, type: str | None = None):

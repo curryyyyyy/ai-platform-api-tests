@@ -9,6 +9,9 @@ defaults:
   writable_collection_env: "SOURCE_ADMIN_WRITABLE_COLLECTION_ID"
   query_collection_env: "SOURCE_ADMIN_QUERY_COLLECTION_ID"
   download_collection_env: "SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID"
+  statistics_collection_env: "SOURCE_ADMIN_STATISTICS_COLLECTION_ID"
+  statistics_timeout_env: "SOURCE_ADMIN_STATISTICS_TIMEOUT"
+  statistics_poll_interval_env: "SOURCE_ADMIN_STATISTICS_POLL_INTERVAL"
 
 cases:
   invalid_original_download:
@@ -84,3 +87,29 @@ cases:
       config_snapshot: "{}"
       table_name: "image"
       from_collection_id: 0
+  statistics_auth:
+    - id: submit_requires_login
+      endpoint: submit
+    - id: preview_requires_login
+      endpoint: preview
+    - id: query_requires_login
+      endpoint: query
+    - id: export_requires_login
+      endpoint: export
+    - id: page_without_login
+      endpoint: page
+  invalid_statistics:
+    - id: submit_missing_fields
+      endpoint: submit
+      collection_id: 0
+      fields: []
+    - id: preview_missing_fields
+      endpoint: preview
+      collection_id: 0
+      fields: []
+    - id: query_missing_id
+      endpoint: query
+      query_id: ""
+    - id: export_missing_id
+      endpoint: export
+      query_id: ""

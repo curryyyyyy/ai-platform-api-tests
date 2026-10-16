@@ -18,6 +18,7 @@ class FakeClient(SourceAdminClient):
     def __init__(self) -> None:
         super().__init__("http://source-admin.invalid", retries=0)
         self.calls: list[tuple[str, str, dict[str, Any]]] = []
+        self.system_node = False
 
     def _response(self, payload: dict[str, Any]) -> Response:
         response = SimpleNamespace(status_code=200)
@@ -45,6 +46,14 @@ class FakeClient(SourceAdminClient):
                 {"id": 1, "name": "/", "type": 1},
                 {"id": 2187, "name": "TC-SOURCE-ROWKEY-001-rowkey-collection-abc123", "type": 2},
             ]},
+        })
+
+    def get_node(self, node_id: Any) -> Response:
+        self.calls.append(("GET", f"/api/v1/nodes/{node_id}", {}))
+        return self._response({
+            "code": 0,
+            "msg": "ok",
+            "data": {"node": {"id": node_id, "is_system": self.system_node}},
         })
 
     def delete_node(self, node_id: Any) -> Response:
@@ -99,7 +108,29 @@ def test_source_factory_registers_rowkeys_collection_node_cleanup() -> None:
     assert [(method, path) for method, path, _ in client.calls] == [
         ("POST", "/api/v1/collections/create-from-rowkeys"),
         ("GET", "/api/v1/collections/42/node-path"),
+        ("GET", "/api/v1/nodes/2187"),
         ("DELETE", "/api/v1/nodes/2187"),
+    ]
+
+
+def test_source_factory_does_not_register_cleanup_for_system_node() -> None:
+    client = FakeClient()
+    scope = DataScope("TC-SOURCE-ROWKEY-SYSTEM-001")
+    factory = SourceAdminDataFactory(client, scope)
+
+    client.system_node = True
+    factory.create_collection_from_rowkeys(
+        parent_node_id=1,
+        source_collection_id=7,
+        rowkeys=["rk-001"],
+        name="TC-SOURCE-ROWKEY-001-rowkey-collection-abc123",
+    )
+
+    scope.cleanup()
+    assert [(method, path) for method, path, _ in client.calls] == [
+        ("POST", "/api/v1/collections/create-from-rowkeys"),
+        ("GET", "/api/v1/collections/42/node-path"),
+        ("GET", "/api/v1/nodes/2187"),
     ]
 
 

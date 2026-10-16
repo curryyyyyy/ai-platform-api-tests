@@ -1,14 +1,25 @@
 from __future__ import annotations
 
-import os
 import time
+import csv
+import io
 
 import pytest
 
 from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_cases, dataset_defaults
 from platforms.source_admin.factories import SourceAdminDataFactory
-from tests.source_admin.helpers import data, required_collection_id, required_root_node_id
+from tests.source_admin.helpers import (
+    assert_html_page,
+    data,
+    required_composite_schema,
+    required_collection_id,
+    required_media_collection_id,
+    required_root_node_id,
+    statistics_numeric_candidates,
+    statistics_query_data,
+    wait_for_statistics_completion,
+)
 
 
 pytestmark = [pytest.mark.live, pytest.mark.source_admin]
@@ -23,6 +34,8 @@ INVALID_ROWKEY_COLLECTION_CASES = dataset_cases(
 INVALID_TEMPORARY_QUERY_CASES = dataset_cases(
     "source_admin", "data_manage", "invalid_temporary_query"
 )
+STATISTICS_AUTH_CASES = dataset_cases("source_admin", "data_manage", "statistics_auth")
+INVALID_STATISTICS_CASES = dataset_cases("source_admin", "data_manage", "invalid_statistics")
 
 
 @pytest.mark.core
@@ -97,14 +110,9 @@ def test_source_02_23_composite_selection_query_uses_node_type_guard(platform_cl
     """复合类型共享 composite 表时，SQL 必须按 node_type 隔离不同数据形态。"""
     table_env = DATA_DEFAULTS["composite_table_env"]
     node_type_env = DATA_DEFAULTS["composite_node_type_env"]
-    table_name = os.getenv(table_env, "").strip()
-    raw_node_type = os.getenv(node_type_env, "").strip()
-    if not table_name or not raw_node_type:
-        pytest.skip(f"需同时配置 {table_env} 和 {node_type_env}")
-    try:
-        node_type = int(raw_node_type)
-    except ValueError:
-        raise AssertionError(f"{node_type_env} 必须是整数，当前值: {raw_node_type!r}") from None
+    table_name, node_type = required_composite_schema(
+        platform_client, table_env=table_env, node_type_env=node_type_env
+    )
 
     body = data(assert_envelope(platform_client.build_selection_query(
         table_name=table_name,
@@ -185,13 +193,7 @@ def test_source_02_10_collection_download_missing_resource_is_rejected(platform_
 def test_source_02_24_collection_download_returns_full_tos_path(platform_client):
     """下载文件的完整 TOS 路径应保留 bucket 信息，供外部工具复制和后续处理。"""
     env_name = DATA_DEFAULTS["download_collection_env"]
-    raw_collection_id = os.getenv(env_name, "").strip()
-    if not raw_collection_id:
-        pytest.skip(f"需配置 {env_name} 为允许生成下载文件的隔离圈选集")
-    try:
-        collection_id = int(raw_collection_id)
-    except ValueError:
-        raise AssertionError(f"{env_name} 必须是整数，当前值: {raw_collection_id!r}") from None
+    collection_id = required_media_collection_id(platform_client, env_name=env_name)
 
     body = data(assert_envelope(
         platform_client.download_collection(collection_id), required_keys=("data",)
@@ -302,7 +304,7 @@ def test_source_02_19_create_collection_from_rowkeys_lifecycle(
     platform_data_factory: SourceAdminDataFactory,
     data_scope,
 ):
-    """新圈选集同步写入 rowkey、可读回，并在用例结束后删除关联节点。"""
+    """新圈选集同步写入 rowkey、可读回；系统节点按设计由平台统一管理。"""
     client = platform_data_factory.client
     rowkey = data_scope.unique_name("rowkey", max_length=64)
     collection_id, payload, created = platform_data_factory.create_collection_from_rowkeys(
@@ -358,3 +360,124 @@ def test_source_02_22_temporary_collection_relation_semantics(platform_client):
         platform_client.get_derived_collections(collection_id), required_keys=("data",)
     ))
     assert derived["collections"] == []
+
+
+@pytest.mark.requirement(
+    id="REQ-COLLECTION-STATISTICS-TOOL", name="collection_statistics_tool"
+)
+@pytest.mark.case_id(
+    "REQ-COLLECTION-STATISTICS-TOOL-API-01",
+    title="圈选集统计工具 API 受登录保护且页面壳允许匿名访问",
+)
+@pytest.mark.parametrize("case", STATISTICS_AUTH_CASES, ids=lambda item: item["id"])
+def test_source_02_25_statistics_routes_auth_boundary(
+    case, anonymous_platform_client
+):
+    """统计业务 API 需要总平台登录，独立 HTML 页面保持匿名可加载。"""
+    api_calls = {
+        "submit": lambda: anonymous_platform_client.submit_selection_statistics(
+            collection_id=0, fields=[]
+        ),
+        "preview": lambda: anonymous_platform_client.preview_selection_statistics_sql(
+            collection_id=0, fields=[]
+        ),
+        "query": lambda: anonymous_platform_client.get_selection_statistics(""),
+        "export": lambda: anonymous_platform_client.export_selection_statistics(""),
+    }
+    endpoint = case["endpoint"]
+    if endpoint == "page":
+        assert_html_page(anonymous_platform_client.get_selection_statistics_page())
+        return
+    response = api_calls[endpoint]()
+    assert response.status_code in {401, 403}, (
+        f"统计 API 未登录时应拒绝访问: {case['id']}, "
+        f"status={response.status_code}, body={response.text[:500]}"
+    )
+
+
+@pytest.mark.requirement(
+    id="REQ-COLLECTION-STATISTICS-TOOL", name="collection_statistics_tool"
+)
+@pytest.mark.case_id(
+    "REQ-COLLECTION-STATISTICS-TOOL-API-02",
+    title="圈选集统计工具拒绝空字段和缺失查询 ID",
+)
+@pytest.mark.parametrize("case", INVALID_STATISTICS_CASES, ids=lambda item: item["id"])
+def test_source_02_26_invalid_statistics_inputs_are_rejected(case, platform_client):
+    """统计业务参数应在访问外部 Lance/Spark 依赖前被拒绝。"""
+    payload = case_payload(case)
+    endpoint = payload.pop("endpoint")
+    api_calls = {
+        "submit": lambda values: platform_client.submit_selection_statistics(**values),
+        "preview": lambda values: platform_client.preview_selection_statistics_sql(**values),
+        "query": lambda values: platform_client.get_selection_statistics(**values),
+        "export": lambda values: platform_client.export_selection_statistics(**values),
+    }
+    try:
+        response = api_calls[endpoint](payload)
+    except KeyError:
+        raise AssertionError(f"未知统计接口场景: {endpoint}") from None
+    assert_rejected(response)
+
+
+@pytest.mark.requirement(
+    id="REQ-COLLECTION-STATISTICS-TOOL", name="collection_statistics_tool"
+)
+@pytest.mark.case_id(
+    "REQ-COLLECTION-STATISTICS-TOOL-API-03",
+    title="圈选集统计支持预览、提交、查询和 CSV 导出",
+)
+def test_source_02_27_selection_statistics_lifecycle(platform_client):
+    """统计任务使用现场发现的可用集合，完成后返回分页结果并导出 CSV。"""
+    preview: dict[str, object] | None = None
+    selected: tuple[int, dict[str, str]] | None = None
+    for collection_id, fields in statistics_numeric_candidates(
+        platform_client,
+        collection_id_env=DATA_DEFAULTS["statistics_collection_env"],
+    ):
+        response = platform_client.preview_selection_statistics_sql(
+            collection_id=collection_id, fields=[fields]
+        )
+        body = platform_client.json(response)
+        if response.status_code == 200 and body.get("code") == 0:
+            payload = data(body)
+            if isinstance(payload, dict):
+                preview = payload
+                selected = (collection_id, fields)
+                break
+    if preview is None or selected is None:
+        pytest.skip("未发现可完成统计 SQL 预览的圈选集")
+
+    assert isinstance(preview.get("sql"), str) and preview["sql"]
+    assert isinstance(preview.get("data_version"), str)
+    assert isinstance(preview.get("columns"), list) and preview["columns"]
+
+    collection_id, fields = selected
+    submitted = statistics_query_data(platform_client.submit_selection_statistics(
+        collection_id=collection_id,
+        data_version=preview["data_version"],
+        fields=[fields],
+    ))
+    query_id = submitted.get("query_id")
+    assert isinstance(query_id, str) and len(query_id) == 32
+
+    completed = wait_for_statistics_completion(
+        platform_client,
+        query_id,
+        timeout_env=DATA_DEFAULTS["statistics_timeout_env"],
+        poll_interval_env=DATA_DEFAULTS["statistics_poll_interval_env"],
+    )
+    assert isinstance(completed.get("preview"), list)
+    assert isinstance(completed.get("total"), int) and completed["total"] > 0
+    assert completed.get("offset", 0) == 0
+    assert completed.get("limit") == 1
+    assert completed.get("has_more", False) is False
+    assert isinstance(completed.get("columns"), list) and completed["columns"]
+
+    export = platform_client.export_selection_statistics(query_id)
+    assert export.status_code == 200, export.text[:500]
+    assert "text/csv" in export.headers.get("Content-Type", "").lower()
+    assert "attachment;" in export.headers.get("Content-Disposition", "").lower()
+    rows = list(csv.reader(io.StringIO(export.content.decode("utf-8"))))
+    assert rows and rows[0] == completed["columns"]
+    assert len(rows) > 1

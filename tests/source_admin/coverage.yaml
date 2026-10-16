@@ -36,7 +36,7 @@ entries:
   - id: TC-02-22
     priority: P0
     level: partial
-    note: "普通 Schema 物理表映射已覆盖；复合类型需要显式提供可访问的表名和 node_type"
+    note: "普通 Schema 物理表映射已覆盖；默认从复合 Schema 的实际 SQL 结果发现 table_name/node_type，也支持显式固定"
     env: SOURCE_ADMIN_COMPOSITE_TABLE_NAME,SOURCE_ADMIN_COMPOSITE_NODE_TYPE
     operations: [DM-03]
     tests: [tests/source_admin/test_data_manage_api.py::test_source_02_23_composite_selection_query_uses_node_type_guard]
@@ -89,7 +89,7 @@ entries:
   - id: TC-02-23
     priority: P1
     level: partial
-    note: "下载响应新增 tos_path；执行会在 TOS 生成 CSV，必须显式提供隔离圈选集"
+    note: "下载响应新增 tos_path；默认发现含有效媒体路径的已完成集合，也可显式固定；执行会在 TOS 生成 CSV"
     env: SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID
     operations: [DM-14]
     tests: [tests/source_admin/test_data_manage_api.py::test_source_02_24_collection_download_returns_full_tos_path]
@@ -155,6 +155,25 @@ entries:
     note: "覆盖子临时查询的缺失资源拒绝和直接衍生查询的合法空结果；正向关系数据依赖临时查询异步链路"
     operations: [DM-24, DM-25]
     tests: [tests/source_admin/test_data_manage_api.py::test_source_02_22_temporary_collection_relation_semantics]
+  - id: TC-02-25
+    priority: P1
+    level: full
+    operations: [ST-01, ST-02, ST-03, ST-04, ST-05]
+    note: "统计业务 API 需要总平台登录；统计工具页面是匿名可加载的 HTML shell"
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_25_statistics_routes_auth_boundary]
+  - id: TC-02-26
+    priority: P1
+    level: full
+    operations: [ST-01, ST-02, ST-03, ST-04]
+    note: "覆盖统计字段为空和 query_id 缺失；正向统计依赖 LanceDB/Spark 外部服务及隔离圈选集"
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_26_invalid_statistics_inputs_are_rejected]
+  - id: TC-02-27
+    priority: P1
+    level: full
+    operations: [ST-01, ST-02, ST-03, ST-04]
+    note: "自动发现可用数值字段；可通过 SOURCE_ADMIN_STATISTICS_COLLECTION_ID 固定隔离圈选集"
+    env: SOURCE_ADMIN_STATISTICS_COLLECTION_ID,SOURCE_ADMIN_STATISTICS_TIMEOUT,SOURCE_ADMIN_STATISTICS_POLL_INTERVAL
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_27_selection_statistics_lifecycle]
   - id: TC-03-01
     priority: P0
     level: full
@@ -234,7 +253,7 @@ entries:
   - id: TC-05-05
     priority: P1
     level: partial
-    note: "媒体公开分享脱敏依赖含 tos_path/tos_path_url 数据行的隔离图片或视频集合"
+    note: "自动发现含 tos_path/tos_path_url 数据行的已完成媒体集合，也可显式固定隔离集合"
     env: SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID
     operations: [PS-04]
     tests: [tests/source_admin/test_share_api.py::test_source_05_06_public_share_hides_sensitive_paths_for_media_collection]
@@ -335,7 +354,7 @@ requirements:
         source_id: DM-03-COMPOSITE-NODE-TYPE
         priority: P0
         level: partial
-        note: "依赖可访问的复合类型 Schema 名称和其 node_type"
+        note: "默认从可访问复合 Schema 的实际 SQL 结果发现名称和 node_type，也可显式固定"
         env: SOURCE_ADMIN_COMPOSITE_TABLE_NAME,SOURCE_ADMIN_COMPOSITE_NODE_TYPE
         test: tests/source_admin/test_data_manage_api.py::test_source_02_23_composite_selection_query_uses_node_type_guard
         endpoint: "POST /api/v1/query/build-selection"
@@ -360,7 +379,7 @@ requirements:
         source_id: PS-04-SENSITIVE-PATHS
         priority: P1
         level: partial
-        note: "依赖含敏感路径字段的数据行"
+        note: "自动发现含敏感路径字段数据行的已完成集合，也可显式固定"
         env: SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID
         test: tests/source_admin/test_share_api.py::test_source_05_06_public_share_hides_sensitive_paths_for_media_collection
         endpoint: "POST /api/v1/public/collections/{collection_id}/data"
@@ -396,7 +415,33 @@ requirements:
         source_id: DM-14-TOS-PATH
         priority: P1
         level: partial
-        note: "执行会在 TOS 生成 CSV，必须使用隔离圈选集"
+        note: "默认发现含有效媒体路径的已完成集合，也可显式固定；执行会在 TOS 生成 CSV"
         env: SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID
         test: tests/source_admin/test_data_manage_api.py::test_source_02_24_collection_download_returns_full_tos_path
         endpoint: "POST /api/v1/collections/{collection_id}/download"
+  - id: REQ-COLLECTION-STATISTICS-TOOL
+    name: collection_statistics_tool
+    display_name: 圈选集统计工具
+    marker: requirement
+    cases:
+      - id: REQ-COLLECTION-STATISTICS-TOOL-API-01
+        source_id: ST-01-05-AUTH
+        priority: P1
+        level: full
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_25_statistics_routes_auth_boundary
+        endpoint: "POST /api/v1/devtools/statistics/submit"
+      - id: REQ-COLLECTION-STATISTICS-TOOL-API-02
+        source_id: ST-01-04-VALIDATION
+        priority: P1
+        level: full
+        note: "正向统计依赖真实隔离圈选集及 LanceDB/Spark 外部服务"
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_26_invalid_statistics_inputs_are_rejected
+        endpoint: "POST /api/v1/devtools/statistics/sql-preview"
+      - id: REQ-COLLECTION-STATISTICS-TOOL-API-03
+        source_id: ST-01-04-LIFECYCLE
+        priority: P1
+        level: full
+        note: "自动发现候选集合，支持通过环境变量固定隔离圈选集和轮询窗口"
+        env: SOURCE_ADMIN_STATISTICS_COLLECTION_ID,SOURCE_ADMIN_STATISTICS_TIMEOUT,SOURCE_ADMIN_STATISTICS_POLL_INTERVAL
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_27_selection_statistics_lifecycle
+        endpoint: "POST /api/v1/devtools/statistics/submit"

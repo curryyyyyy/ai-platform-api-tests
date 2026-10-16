@@ -179,7 +179,18 @@ class SourceAdminDataFactory:
             self.client.get_collection_node_path(collection_id), required_keys=("data",)
         )
         node_id = _collection_node_id(path_body, expected_name=str(payload["name"]))
-        self.scope.track(f"删除 rowkeys 圈选集节点 {node_id}", lambda: self._delete_node(node_id))
+        # rowkeys 接口可能返回由其他平台创建的系统节点。此类节点按产品设计不可删除；
+        # 只有明确标记为非系统节点时才登记删除，避免 teardown 把预期行为报告为失败。
+        node_body = assert_envelope(self.client.get_node(node_id), required_keys=("data",))
+        node_data = _payload_data(node_body)
+        node = node_data.get("node") if isinstance(node_data, Mapping) else None
+        if not isinstance(node, Mapping) or node.get("id") is None:
+            raise AssertionError(f"节点详情缺少 node.id: {node_body}")
+        is_system = node.get("is_system", False)
+        if isinstance(is_system, str):
+            is_system = is_system.strip().lower() in {"1", "true", "yes"}
+        if not is_system:
+            self.scope.track(f"删除 rowkeys 圈选集节点 {node_id}", lambda: self._delete_node(node_id))
         return collection_id, payload, value
 
     def create_project_node(self, **overrides: Any) -> tuple[str, dict[str, Any]]:

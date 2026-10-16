@@ -24,7 +24,7 @@
 - 上游仓库：`https://gitlab.ituchong.com/ai-dataset/ai-source-admin`
 - 当前契约分支：`test`；日常测试使用仓库内已提交的多文件快照，快照更新前先拉取上游 `test` 分支并人工审核
 
-资源管理平台没有单一 OpenAPI 文件，本地契约文件由 [`../../platforms/source_admin/contract.yaml`](../../platforms/source_admin/contract.yaml) 声明；当前纳入 `audit`、`contract`、`data-manage`、`filesystem`、`scheme`、`share`、`supplier` 7 份独立快照，不把不同文档的同名组件强行合并。`coverage.yaml` 将每个接口清单 ID 映射到 testcase；除 66 条结构化 OpenAPI 操作外，接口清单还登记 5 条代码路由，其中包括分享页 `/s/{token}`。
+资源管理平台没有单一 OpenAPI 文件，本地契约文件由 [`../../platforms/source_admin/contract.yaml`](../../platforms/source_admin/contract.yaml) 声明；当前纳入 `audit`、`contract`、`data-manage`、`filesystem`、`scheme`、`share`、`supplier` 7 份独立快照，不把不同文档的同名组件强行合并。`coverage.yaml` 将每个接口清单 ID 映射到 testcase；除 66 条结构化 OpenAPI 操作外，接口清单还登记 10 条代码路由，包括分享页 `/s/{token}` 和圈选集统计工具 4 个 API 及其页面入口。
 
 日常执行仓库快照测试：
 
@@ -42,9 +42,9 @@
 
 认证复用机器标注平台的总平台 SSO，客户端自动发送 `Authorization: Bearer <central_token>`。测试 Base URL 已配置为 `https://src-admin.tucdev.com/api/v1`，也可通过 `PLATFORM_SOURCE_ADMIN_BASE_URL` 或 `SOURCE_ADMIN_BASE_URL` 覆盖。
 
-分享链接测试优先使用 `SOURCE_ADMIN_COLLECTION_ID`，未设置时从圈选集列表动态发现；不得把共享环境资源 ID 写入仓库。公开分享脱敏验证需要显式提供 `SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID`，复合 SQL 隔离验证需要提供 `SOURCE_ADMIN_COMPOSITE_TABLE_NAME` 和 `SOURCE_ADMIN_COMPOSITE_NODE_TYPE`。文件夹测试默认使用根节点 `1`，如环境根节点不同，修改 `data/source_admin/node.yaml` 的 `root_id`。
+分享链接测试优先使用 `SOURCE_ADMIN_COLLECTION_ID`，未设置时从圈选集列表动态发现；不得把共享环境资源 ID 写入仓库。公开分享脱敏和复合 SQL 隔离用例默认通过 API 动态发现符合条件的资源，也可分别用 `SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID` 或 `SOURCE_ADMIN_COMPOSITE_TABLE_NAME`/`SOURCE_ADMIN_COMPOSITE_NODE_TYPE` 固定隔离资源。文件夹测试默认使用根节点 `1`，如环境根节点不同，修改 `data/source_admin/node.yaml` 的 `root_id`。
 
-下载响应的 `tos_path` 回归需要 `SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID`。该接口会在 TOS 创建 CSV 文件，因此该变量必须指向允许写入下载产物的隔离圈选集。
+下载响应的 `tos_path` 回归默认动态选择已完成且含有效 TOS 媒体路径的集合，也可用 `SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID` 固定资源。该接口会在 TOS 创建 CSV 文件，因此固定值或自动发现到的集合都必须允许写入下载产物。
 
 ```bash
 .venv/bin/pytest -m 'contract and source_admin' -q
@@ -53,7 +53,7 @@
 .venv/bin/pytest -m 'live and source_admin and core' -q
 ```
 
-覆盖矩阵中的 71 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。临时查询提交和转正依赖 Spark 异步任务，当前仅覆盖参数、缺失资源和关系查询反向链路，待确认异步资源清理后补正向生命周期。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
+覆盖矩阵中的 76 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。统计工具已覆盖匿名鉴权、参数拒绝及“SQL 预览 -> 提交 -> 查询 -> CSV 导出”正向链路；用例默认只读发现候选圈选集，也可通过 `SOURCE_ADMIN_STATISTICS_COLLECTION_ID` 指定隔离集合，轮询可通过 `SOURCE_ADMIN_STATISTICS_TIMEOUT` 和 `SOURCE_ADMIN_STATISTICS_POLL_INTERVAL` 调整。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。临时查询提交和转正依赖 Spark 异步任务，当前仅覆盖参数、缺失资源和关系查询反向链路，待确认异步资源清理后补正向生命周期。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
 
 需求级用例继续归入业务域脚本，不按需求名新建测试文件。需求 ID、稳定 case ID 与接口映射统一登记在 `coverage.yaml` 的 `requirements` 节，可通过以下方式按需求执行：
 
@@ -64,7 +64,7 @@
 
 ## 暂未执行的链路
 
-圈选 SQL、集合运算、原始下载、CSV/TOS 导入和集合数据查询依赖 Hive/LanceDB/HBase/RPC/TOS 及异步任务状态；合同归档/供应商关联依赖可控业务数据，合同手动同步依赖飞书服务，供应商创建当前缺少删除接口。待测试环境确认轮询阈值、样例资源和清理能力后，再补现场造数、轮询和写入校验，不使用虚构资源或固定任务 ID。
+圈选 SQL、集合运算、原始下载、CSV/TOS 导入和集合数据查询依赖 Hive/LanceDB/HBase/RPC/TOS 及异步任务状态；合同归档/供应商关联依赖可控业务数据，合同手动同步依赖飞书服务，供应商创建当前缺少删除接口。按 rowkeys 创建圈选集后，节点详情中的 `is_system=true` 表示该节点由其他平台创建、由平台统一管理，测试工厂不会登记删除动作；只有 `is_system=false` 的节点才会进入严格删除清理。待测试环境确认轮询阈值、样例资源和清理能力后，再补现场造数、轮询和写入校验，不使用虚构资源或固定任务 ID。
 
 当前 live 验证发现 Schema 创建接口返回 `Error 1364: Field 'node_type' doesn't have a default value`。请求模型和接口文档均未暴露 `node_type`，因此测试不会偷偷补充未被接口接受的字段；需先修复服务端数据库迁移/默认值或同步更新 API 契约后再恢复 Schema 写入回归。
 

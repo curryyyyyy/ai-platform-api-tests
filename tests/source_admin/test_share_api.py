@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import Any, Mapping
 
 import pytest
@@ -9,7 +8,13 @@ from framework.assertions import assert_envelope, assert_rejected
 from framework.data.dataset import case_payload, dataset_case_map, dataset_cases, dataset_defaults
 from platforms.source_admin.client import SourceAdminClient
 from platforms.source_admin.factories import SourceAdminDataFactory
-from tests.source_admin.helpers import data, required_collection_id
+from tests.source_admin.helpers import (
+    assert_html_page,
+    data,
+    media_collection_fields,
+    required_collection_id,
+    required_media_collection_id,
+)
 
 
 pytestmark = [pytest.mark.live, pytest.mark.source_admin]
@@ -175,19 +180,14 @@ def test_source_05_06_public_share_hides_sensitive_paths_for_media_collection(
     platform_data_factory: SourceAdminDataFactory,
 ) -> None:
     """媒体集合的公开数据响应必须移除 tos_path 和 tos_path_url。"""
-    raw_collection_id = os.getenv("SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID", "").strip()
-    if not raw_collection_id:
-        pytest.skip("需配置 SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID 并提供含媒体行的集合")
-    collection_id = int(raw_collection_id)
+    collection_id = required_media_collection_id(platform_data_factory.client)
+    fields = media_collection_fields(platform_data_factory.client, collection_id)
+    assert fields is not None
     _, token, _ = platform_data_factory.create_share_link_with_token(collection_id=collection_id)
     rows = data(assert_envelope(
         anonymous_platform_client.get_public_collection_data(
             collection_id,
-            fields=[
-                {"name": "rowkey", "source": 2},
-                {"name": "tos_path", "source": 2},
-                {"name": "tos_path_url", "source": 2},
-            ],
+            fields=fields,
             share_token=token,
             page=1,
             page_size=10,
@@ -211,10 +211,8 @@ def test_source_05_07_share_page_returns_html_without_login(
 ) -> None:
     """分享页由独立路由提供，不能被总平台登录中间件或 JSON 信封约束阻断。"""
     response = anonymous_platform_client.get_share_page(str(case["path_token"]))
-
-    assert response.status_code == 200, response.text[:500]
-    content_type = response.headers.get("Content-Type", "").lower()
-    assert str(case["expected_content_type"]) in content_type
-    assert response.headers.get("Cache-Control") == case["expected_cache_control"]
-    assert response.content.strip()
-    assert b"<html" in response.content.lower()
+    assert_html_page(
+        response,
+        expected_content_type=str(case["expected_content_type"]),
+        expected_cache_control=str(case["expected_cache_control"]),
+    )

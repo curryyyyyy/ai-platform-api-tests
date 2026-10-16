@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://gitlab.ituchong.com/ai-dataset/ai-source-admin",
     "branch": "test",
-    "commit": "1842130dea37f8f3498608f2cc22fa2161c77353",
+    "commit": "8d9d598069b3da4ca1263d5a527193e6dfe1dd57",
     "primary_document": "docs/api.md",
     "structured_documents": [
       "docs/data-manage-api.json",
@@ -15,14 +15,14 @@
       "docs/contract-api.json",
       "docs/supplier-api.json"
     ],
-    "analyzed_at": "2026-10-13"
+    "analyzed_at": "2026-10-16"
   },
   "counts": {
     "primary_document_operations": 47,
     "structured_contract_operations": 66,
-    "code_route_operations": 5,
-    "confirmed_operations": 71,
-    "primary_document_gaps": 24
+    "code_route_operations": 10,
+    "confirmed_operations": 76,
+    "primary_document_gaps": 29
   },
   "common_contract": {
     "login_header": "Authorization",
@@ -296,6 +296,61 @@
       "documented_in_primary": true,
       "inputs": {"path_required": ["collection_id"]},
       "summary": "查询直接衍生圈选"
+    },
+    {
+      "id": "ST-01",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/devtools/statistics/submit",
+      "source": "router.go:57",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"body_required": ["collection_id", "fields"], "body_optional": ["data_version"]},
+      "summary": "提交圈选集统计任务"
+    },
+    {
+      "id": "ST-02",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/devtools/statistics/sql-preview",
+      "source": "router.go:58",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"body_required": ["collection_id", "fields"], "body_optional": ["data_version", "fast"]},
+      "summary": "预览圈选集统计 SQL"
+    },
+    {
+      "id": "ST-03",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/devtools/statistics/query",
+      "source": "router.go:59",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"query_required": ["query_id"], "query_optional": ["offset", "limit"]},
+      "summary": "查询圈选集统计任务和结果"
+    },
+    {
+      "id": "ST-04",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/api/v1/devtools/statistics/export",
+      "source": "router.go:60",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {"query_required": ["query_id"]},
+      "summary": "导出圈选集统计 CSV"
+    },
+    {
+      "id": "ST-05",
+      "module": "data_manage",
+      "method": "GET",
+      "path": "/devtools/statistics",
+      "source": "router.go:44",
+      "source_type": "code_route",
+      "documented_in_primary": false,
+      "inputs": {},
+      "summary": "获取圈选集统计工具 HTML 页面"
     },
     {
       "id": "FS-01",
@@ -787,7 +842,12 @@
     "PS-02",
     "PS-03",
     "PS-04",
-    "PS-05"
+    "PS-05",
+    "ST-01",
+    "ST-02",
+    "ST-03",
+    "ST-04",
+    "ST-05"
   ],
   "resolved_decisions": [
     "认证已裁决为复用总平台 SSO 的 central_token，并沿用 Bearer Token",
