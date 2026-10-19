@@ -104,7 +104,8 @@
           "field":      { "type": "integer", "format": "int64", "description": "字段 ID" },
           "operator":   { "$ref": "#/components/schemas/Operator" },
           "value":      { "type": "string", "description": "条件值；BETWEEN 用逗号分隔两端；IN/NOT_IN 用逗号分隔多值；RLIKE_CONTAINS/NOT_RLIKE_CONTAINS 用逗号分隔多值，后端自动转为 v1|v2|v3 正则；LIKE_CONTAINS_ANY/NOT_LIKE_CONTAINS_ALL 用逗号分隔多值（支持 \\, 转义），后端生成多组 LIKE" },
-          "logical_op": { "$ref": "#/components/schemas/LogicalOperator", "description": "与下一条件的逻辑关系，默认取所在组的 logical_op" }
+          "logical_op": { "$ref": "#/components/schemas/LogicalOperator", "description": "与下一条件的逻辑关系，默认取所在组的 logical_op" },
+          "null_as_zero": { "type": "boolean", "default": true, "description": "数字条件是否把 NULL 按 0 比较；未传等同 true，显式 false 保持原有 NULL 语义" }
         }
       },
       "ConditionGroup": {

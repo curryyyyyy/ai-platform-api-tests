@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import logging
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
@@ -10,6 +11,9 @@ from framework.assertions import assert_envelope
 from framework.data.dataset import dataset_defaults
 from framework.data.scope import DataScope
 from platforms.source_admin.client import SourceAdminClient
+
+
+LOG = logging.getLogger(__name__)
 
 
 def _payload_data(body: Mapping[str, Any]) -> Any:
@@ -150,7 +154,18 @@ class SourceAdminDataFactory:
         return node_id, payload
 
     def _delete_node(self, node_id: str) -> None:
-        assert_envelope(self.client.delete_node(node_id))
+        response = self.client.delete_node(node_id)
+        body = self.client.json(response)
+        # create-from-rowkeys 的节点详情可能显示 is_system=false，但删除服务
+        # 仍按系统节点保护；平台当前没有对应的集合删除接口，只能记录托管残留。
+        if (
+            response.status_code == 200
+            and body.get("code") != 0
+            and "不允许删除系统节点" in str(body.get("msg", ""))
+        ):
+            LOG.warning("平台托管节点 %s 不允许删除，跳过测试清理", node_id)
+            return
+        assert_envelope(response)
 
     def create_collection_from_rowkeys(
         self,

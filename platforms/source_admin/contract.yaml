@@ -12,6 +12,7 @@ local:
     - contracts/source_admin/openapi/scheme-api.json
     - contracts/source_admin/openapi/share-api.json
     - contracts/source_admin/openapi/supplier-api.json
+    - contracts/source_admin/openapi/tos-api.json
   inventory: contracts/source_admin/api_inventory.json
   coverage: tests/source_admin/coverage.yaml
 

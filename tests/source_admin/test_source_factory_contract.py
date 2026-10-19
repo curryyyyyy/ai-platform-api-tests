@@ -19,6 +19,8 @@ class FakeClient(SourceAdminClient):
         super().__init__("http://source-admin.invalid", retries=0)
         self.calls: list[tuple[str, str, dict[str, Any]]] = []
         self.system_node = False
+        self.delete_as_system = False
+        self._path_node_name = "TC-SOURCE-ROWKEY-001-rowkey-collection-abc123"
 
     def _response(self, payload: dict[str, Any]) -> Response:
         response = SimpleNamespace(status_code=200)
@@ -35,6 +37,7 @@ class FakeClient(SourceAdminClient):
 
     def create_collection_from_rowkeys(self, **payload: Any) -> Response:
         self.calls.append(("POST", "/api/v1/collections/create-from-rowkeys", {"json": payload}))
+        self._path_node_name = str(payload.get("name", self._path_node_name))
         return self._response({"code": 0, "msg": "ok", "data": {"collection_id": 42, "status": 2}})
 
     def get_collection_node_path(self, collection_id: Any) -> Response:
@@ -44,7 +47,11 @@ class FakeClient(SourceAdminClient):
             "msg": "ok",
             "data": {"path": [
                 {"id": 1, "name": "/", "type": 1},
-                {"id": 2187, "name": "TC-SOURCE-ROWKEY-001-rowkey-collection-abc123", "type": 2},
+                {
+                    "id": 2187,
+                    "name": self._path_node_name,
+                    "type": 2,
+                },
             ]},
         })
 
@@ -58,6 +65,8 @@ class FakeClient(SourceAdminClient):
 
     def delete_node(self, node_id: Any) -> Response:
         self.calls.append(("DELETE", f"/api/v1/nodes/{node_id}", {}))
+        if self.delete_as_system:
+            return self._response({"code": 1, "msg": "DeleteNode failed: code=1 msg=不允许删除系统节点", "data": {}})
         return self._response({"code": 0, "msg": "ok", "data": {}})
 
     def create_share_link(self, **payload: Any) -> Response:
@@ -132,6 +141,22 @@ def test_source_factory_does_not_register_cleanup_for_system_node() -> None:
         ("GET", "/api/v1/collections/42/node-path"),
         ("GET", "/api/v1/nodes/2187"),
     ]
+
+
+def test_source_factory_tolerates_platform_managed_node_delete() -> None:
+    """删除服务将 rowkeys 节点判定为系统节点时，teardown 不应升级为 ERROR。"""
+    client = FakeClient()
+    client.delete_as_system = True
+    scope = DataScope("TC-SOURCE-ROWKEY-MANAGED-001")
+    factory = SourceAdminDataFactory(client, scope)
+
+    factory.create_collection_from_rowkeys(
+        parent_node_id=1,
+        source_collection_id=7,
+        rowkeys=["rk-001"],
+        name="TC-SOURCE-ROWKEY-MANAGED-001-rowkey-collection-abc123",
+    )
+    scope.cleanup()
 
 
 def test_source_factory_treats_missing_terminated_share_link_as_cleaned() -> None:

@@ -37,6 +37,7 @@ OPERATION_ROUTES: dict[str, tuple[str, str]] = {
     "DM-23": ("POST", "/api/v1/collections/{collection_id}/promote"),
     "DM-24": ("GET", "/api/v1/collections/{collection_id}/temporary-children"),
     "DM-25": ("GET", "/api/v1/collections/{collection_id}/derived"),
+    "TOS-01": ("POST", "/api/v1/tos/sign-urls"),
     "ST-01": ("POST", "/api/v1/devtools/statistics/submit"),
     "ST-02": ("POST", "/api/v1/devtools/statistics/sql-preview"),
     "ST-03": ("GET", "/api/v1/devtools/statistics/query"),
@@ -116,6 +117,7 @@ OPERATION_METHODS: dict[str, str] = {
     "DM-23": "promote_temporary_collection",
     "DM-24": "get_temporary_children",
     "DM-25": "get_derived_collections",
+    "TOS-01": "sign_tos_urls",
     "ST-01": "submit_selection_statistics",
     "ST-02": "preview_selection_statistics_sql",
     "ST-03": "get_selection_statistics",
@@ -304,6 +306,22 @@ class SourceAdminClient(ApiClient):
 
     def get_derived_collections(self, collection_id: Any):
         return self._operation("DM-25", path_params={"collection_id": collection_id})
+
+    def sign_tos_urls(
+        self,
+        *,
+        tos_paths: list[str],
+        include_cdn: bool | None = None,
+        include_preview: bool | None = None,
+        expires_in: int | None = None,
+    ):
+        body = {
+            "tos_paths": tos_paths,
+            "include_cdn": include_cdn,
+            "include_preview": include_preview,
+            "expires_in": expires_in,
+        }
+        return self._operation("TOS-01", json=_compact(body), has_json=True)
 
     # 圈选集统计工具
     def submit_selection_statistics(

@@ -8,6 +8,9 @@ defaults:
   composite_node_type_env: "SOURCE_ADMIN_COMPOSITE_NODE_TYPE"
   writable_collection_env: "SOURCE_ADMIN_WRITABLE_COLLECTION_ID"
   query_collection_env: "SOURCE_ADMIN_QUERY_COLLECTION_ID"
+  sql_collection_env: "SOURCE_ADMIN_SQL_COLLECTION_ID"
+  null_as_zero_table_env: "SOURCE_ADMIN_NULL_AS_ZERO_TABLE_NAME"
+  null_as_zero_field_id_env: "SOURCE_ADMIN_NULL_AS_ZERO_FIELD_ID"
   download_collection_env: "SOURCE_ADMIN_DOWNLOAD_COLLECTION_ID"
   statistics_collection_env: "SOURCE_ADMIN_STATISTICS_COLLECTION_ID"
   statistics_timeout_env: "SOURCE_ADMIN_STATISTICS_TIMEOUT"
@@ -32,6 +35,29 @@ cases:
   invalid_csv:
     - id: missing_tos_path
       payload: {}
+  null_as_zero:
+    - id: default_true
+      null_as_zero: null
+      expected_coalesce: true
+    - id: explicit_true
+      null_as_zero: true
+      expected_coalesce: true
+    - id: explicit_false
+      null_as_zero: false
+      expected_coalesce: false
+  invalid_tos_sign_urls:
+    - id: empty_paths
+      tos_paths: []
+    - id: both_url_types_disabled
+      tos_paths: ["tos://bucket/image.jpg"]
+      include_cdn: false
+      include_preview: false
+    - id: expiry_below_minimum
+      tos_paths: ["tos://bucket/image.jpg"]
+      expires_in: 59
+    - id: expiry_above_configured_limit
+      tos_paths: ["tos://bucket/image.jpg"]
+      expires_in: 9223372036854775807
   invalid_create_from_rowkeys:
     - id: blank_name
       parent_node_id: 1

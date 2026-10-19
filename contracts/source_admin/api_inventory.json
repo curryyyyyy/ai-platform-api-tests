@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://gitlab.ituchong.com/ai-dataset/ai-source-admin",
     "branch": "test",
-    "commit": "8d9d598069b3da4ca1263d5a527193e6dfe1dd57",
+    "commit": "556d0b762dcb0960f0f9e50cdd61c58e7cd1235a",
     "primary_document": "docs/api.md",
     "structured_documents": [
       "docs/data-manage-api.json",
@@ -15,13 +15,13 @@
       "docs/contract-api.json",
       "docs/supplier-api.json"
     ],
-    "analyzed_at": "2026-10-16"
+    "analyzed_at": "2026-10-19"
   },
   "counts": {
-    "primary_document_operations": 47,
+    "primary_document_operations": 48,
     "structured_contract_operations": 66,
     "code_route_operations": 10,
-    "confirmed_operations": 76,
+    "confirmed_operations": 77,
     "primary_document_gaps": 29
   },
   "common_contract": {
@@ -296,6 +296,16 @@
       "documented_in_primary": true,
       "inputs": {"path_required": ["collection_id"]},
       "summary": "查询直接衍生圈选"
+    },
+    {
+      "id": "TOS-01",
+      "module": "data_manage",
+      "method": "POST",
+      "path": "/api/v1/tos/sign-urls",
+      "source": "docs/api.md:28",
+      "documented_in_primary": true,
+      "inputs": {"body_required": ["tos_paths"], "body_optional": ["include_cdn", "include_preview", "expires_in"]},
+      "summary": "批量生成 TOS 原图 CDN 和压缩预览签名 URL"
     },
     {
       "id": "ST-01",

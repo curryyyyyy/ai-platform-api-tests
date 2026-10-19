@@ -32,7 +32,12 @@ entries:
     priority: P0
     level: full
     operations: [DM-03]
-    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_02_build_selection_query]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_02_build_selection_query, tests/source_admin/test_data_manage_api.py::test_source_02_30_numeric_condition_null_as_zero_is_data_driven]
+  - id: TC-02-29
+    priority: P1
+    level: full
+    operations: [TOS-01]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_31_tos_sign_urls_reject_invalid_batch, tests/source_admin/test_data_manage_api.py::test_source_02_32_tos_sign_urls_reports_item_validation_errors, tests/source_admin/test_data_manage_api.py::test_source_02_33_tos_sign_urls_require_login, tests/source_admin/test_data_manage_api.py::test_source_02_34_tos_sign_urls_sign_media_path]
   - id: TC-02-22
     priority: P0
     level: partial
@@ -72,9 +77,9 @@ entries:
   - id: TC-02-08
     priority: P1
     level: partial
-    note: "集合详情/标签/节点路径同时有正向链路；SQL、导入状态和错误明细当前仅覆盖缺失资源"
+    note: "集合详情/标签/节点路径同时有正向链路；有效集合的 SQL、导入状态和无失败明细语义已覆盖，失败导入明细仍依赖可控失败任务"
     operations: [DM-07, DM-08, DM-10, DM-13, DM-18, DM-19]
-    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_08_missing_collection_read_endpoints_are_rejected]
+    tests: [tests/source_admin/test_data_manage_api.py::test_source_02_08_missing_collection_read_endpoints_are_rejected, tests/source_admin/test_data_manage_api.py::test_source_02_28_collection_sql_import_status_and_errors]
   - id: TC-02-09
     priority: P1
     level: full
@@ -445,3 +450,60 @@ requirements:
         env: SOURCE_ADMIN_STATISTICS_COLLECTION_ID,SOURCE_ADMIN_STATISTICS_TIMEOUT,SOURCE_ADMIN_STATISTICS_POLL_INTERVAL
         test: tests/source_admin/test_data_manage_api.py::test_source_02_27_selection_statistics_lifecycle
         endpoint: "POST /api/v1/devtools/statistics/submit"
+  - id: REQ-COLLECTION-READ-AUXILIARY
+    name: collection_read_auxiliary
+    display_name: 圈选集 SQL 与导入状态查询
+    marker: requirement
+    cases:
+      - id: REQ-COLLECTION-READ-AUXILIARY-API-01
+        source_id: DM-13-DM-18-DM-19-READBACK
+        priority: P1
+        level: partial
+        note: "动态发现有效 SQL 集合并覆盖导入状态；无失败任务时校验合法的暂无失败明细响应"
+        env: SOURCE_ADMIN_SQL_COLLECTION_ID
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_28_collection_sql_import_status_and_errors
+        endpoint: "GET /api/v1/collections/{collection_id}/preview-sql"
+  - id: REQ-COLLECTION-NULL-AS-ZERO
+    name: collection_null_as_zero
+    display_name: 数字条件 NULL 按 0 查询
+    marker: requirement
+    cases:
+      - id: REQ-COLLECTION-NULL-AS-ZERO-API-01
+        source_id: DM-03-NULL-AS-ZERO
+        priority: P1
+        level: partial
+        note: "自动发现可用数值 Schema 字段，也可通过环境变量固定 table_name 和 field_id"
+        env: SOURCE_ADMIN_NULL_AS_ZERO_TABLE_NAME,SOURCE_ADMIN_NULL_AS_ZERO_FIELD_ID
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_30_numeric_condition_null_as_zero_is_data_driven
+        endpoint: "POST /api/v1/query/build-selection"
+  - id: REQ-TOS-SIGN-URL
+    name: tos_sign_url
+    display_name: TOS 签名 URL
+    marker: requirement
+    cases:
+      - id: REQ-TOS-SIGN-URL-API-01
+        source_id: TOS-01-VALIDATION
+        priority: P1
+        level: full
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_31_tos_sign_urls_reject_invalid_batch
+        endpoint: "POST /api/v1/tos/sign-urls"
+      - id: REQ-TOS-SIGN-URL-API-02
+        source_id: TOS-01-ITEM-ERROR
+        priority: P1
+        level: full
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_32_tos_sign_urls_reports_item_validation_errors
+        endpoint: "POST /api/v1/tos/sign-urls"
+      - id: REQ-TOS-SIGN-URL-API-03
+        source_id: TOS-01-AUTH
+        priority: P1
+        level: full
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_33_tos_sign_urls_require_login
+        endpoint: "POST /api/v1/tos/sign-urls"
+      - id: REQ-TOS-SIGN-URL-API-04
+        source_id: TOS-01-SUCCESS
+        priority: P1
+        level: partial
+        note: "自动发现已完成媒体集合中的有效 tos_path；CDN 或预览签名能力由环境 TOS 配置决定"
+        env: SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID
+        test: tests/source_admin/test_data_manage_api.py::test_source_02_34_tos_sign_urls_sign_media_path
+        endpoint: "POST /api/v1/tos/sign-urls"

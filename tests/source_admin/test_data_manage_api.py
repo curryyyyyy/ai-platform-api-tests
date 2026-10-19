@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 import csv
 import io
+from collections.abc import Mapping
 
 import pytest
 
@@ -14,7 +15,10 @@ from tests.source_admin.helpers import (
     data,
     required_composite_schema,
     required_collection_id,
+    required_collection_with_sql,
     required_media_collection_id,
+    required_media_tos_path,
+    required_numeric_selection_field,
     required_root_node_id,
     statistics_numeric_candidates,
     statistics_query_data,
@@ -33,6 +37,10 @@ INVALID_ROWKEY_COLLECTION_CASES = dataset_cases(
 )
 INVALID_TEMPORARY_QUERY_CASES = dataset_cases(
     "source_admin", "data_manage", "invalid_temporary_query"
+)
+NULL_AS_ZERO_CASES = dataset_cases("source_admin", "data_manage", "null_as_zero")
+INVALID_TOS_SIGN_URL_CASES = dataset_cases(
+    "source_admin", "data_manage", "invalid_tos_sign_urls"
 )
 STATISTICS_AUTH_CASES = dataset_cases("source_admin", "data_manage", "statistics_auth")
 INVALID_STATISTICS_CASES = dataset_cases("source_admin", "data_manage", "invalid_statistics")
@@ -124,6 +132,36 @@ def test_source_02_23_composite_selection_query_uses_node_type_guard(platform_cl
     assert "node_type" in sql and str(node_type) in sql
 
 
+@pytest.mark.requirement(id="REQ-COLLECTION-NULL-AS-ZERO", name="collection_null_as_zero")
+@pytest.mark.case_id(
+    "REQ-COLLECTION-NULL-AS-ZERO-API-01",
+    title="数字条件的 null_as_zero 默认值和显式开关生成正确 SQL",
+)
+@pytest.mark.parametrize("case", NULL_AS_ZERO_CASES, ids=lambda item: item["id"])
+def test_source_02_30_numeric_condition_null_as_zero_is_data_driven(case, platform_client):
+    """数字字段默认把 NULL 按 0 比较，显式 false 保留原始 NULL 语义。"""
+    table_name, field_id, qualifier = required_numeric_selection_field(
+        platform_client,
+        table_env=DATA_DEFAULTS["null_as_zero_table_env"],
+        field_id_env=DATA_DEFAULTS["null_as_zero_field_id_env"],
+    )
+    condition = {"field": field_id, "operator": 1, "value": "0"}
+    if case.get("null_as_zero") is not None:
+        condition["null_as_zero"] = case["null_as_zero"]
+    body = data(assert_envelope(platform_client.build_selection_query(
+        table_name=table_name,
+        conditions={"logical_op": 1, "conditions": [condition], "groups": []},
+        order_by=[],
+    ), required_keys=("data",)))
+    sql = body.get("sql")
+    assert isinstance(sql, str) and sql
+    if case["expected_coalesce"]:
+        assert f"COALESCE({qualifier}, 0) = 0" in sql
+    else:
+        assert f"{qualifier} = 0" in sql
+        assert f"COALESCE({qualifier}, 0)" not in sql
+
+
 @pytest.mark.core
 def test_source_02_03_collection_filters_and_pagination(platform_client):
     """集合筛选和边界分页应返回稳定的集合列表与总数结构。"""
@@ -173,6 +211,118 @@ def test_source_02_08_missing_collection_read_endpoints_are_rejected(platform_cl
     assert_rejected(platform_client.get_collection_sql(collection_id))
     assert_rejected(platform_client.get_import_status(collection_id))
     assert_rejected(platform_client.get_import_errors(collection_id))
+
+
+@pytest.mark.requirement(
+    id="REQ-COLLECTION-READ-AUXILIARY", name="collection_read_auxiliary"
+)
+@pytest.mark.case_id(
+    "REQ-COLLECTION-READ-AUXILIARY-API-01",
+    title="有效圈选集可读取 SQL 和导入状态，并正确表达无失败明细",
+)
+def test_source_02_28_collection_sql_import_status_and_errors(platform_client):
+    """只读查询不创建任务，并覆盖导入错误接口的合法无错误结果。"""
+    collection_id, discovered_sql = required_collection_with_sql(
+        platform_client, env_name=DATA_DEFAULTS["sql_collection_env"]
+    )
+
+    sql_body = data(assert_envelope(
+        platform_client.get_collection_sql(collection_id), required_keys=("data",)
+    ))
+    sql = sql_body.get("sql")
+    assert isinstance(sql, str) and sql.strip() == discovered_sql.strip()
+    assert sql.upper().startswith("SELECT")
+    assert "rowkey" in sql.lower()
+
+    status_body = data(assert_envelope(
+        platform_client.get_import_status(collection_id), required_keys=("data",)
+    ))
+    assert isinstance(status_body.get("status"), int)
+
+    errors_response = platform_client.get_import_errors(collection_id)
+    errors_envelope = assert_envelope(
+        errors_response, expected_code=None, required_keys=("data",)
+    )
+    errors_body = data(errors_envelope)
+    if errors_envelope["code"] == 0:
+        assert isinstance(errors_body, Mapping)
+        assert errors_body.get("tos_path") or errors_body.get("presigned_url")
+    else:
+        assert "暂无失败明细" in str(errors_envelope.get("msg", ""))
+
+
+@pytest.mark.requirement(id="REQ-TOS-SIGN-URL", name="tos_sign_url")
+@pytest.mark.case_id(
+    "REQ-TOS-SIGN-URL-API-01",
+    title="TOS 签名 URL 批量请求拒绝非法参数",
+)
+@pytest.mark.parametrize("case", INVALID_TOS_SIGN_URL_CASES, ids=lambda item: item["id"])
+def test_source_02_31_tos_sign_urls_reject_invalid_batch(case, platform_client):
+    """批量签名参数错误应在访问 TOS 对象前返回 HTTP 400 和业务错误。"""
+    assert_rejected(
+        platform_client.sign_tos_urls(**case_payload(case)),
+        expected_http=400,
+    )
+
+
+@pytest.mark.requirement(id="REQ-TOS-SIGN-URL", name="tos_sign_url")
+@pytest.mark.case_id(
+    "REQ-TOS-SIGN-URL-API-02",
+    title="TOS 签名 URL 对单项非法路径返回逐项失败结果",
+)
+def test_source_02_32_tos_sign_urls_reports_item_validation_errors(platform_client):
+    """单项路径错误不应把整批请求变成 HTTP 错误，也不应触发外部签名。"""
+    envelope = assert_envelope(
+        platform_client.sign_tos_urls(
+            tos_paths=["not-a-tos-path", "tos://bucket/"],
+            include_cdn=False,
+            include_preview=True,
+        ),
+        required_keys=("data",),
+    )
+    body = data(envelope)
+    assert body["total"] == 2
+    assert body["success"] == 0
+    assert body["partial"] == 0
+    assert body["failed"] == 2
+    assert [item["index"] for item in body["items"]] == [0, 1]
+    assert all(item["status"] == "failed" for item in body["items"])
+    assert all(item["errors"][0]["field"] == "tos_path" for item in body["items"])
+
+
+@pytest.mark.requirement(id="REQ-TOS-SIGN-URL", name="tos_sign_url")
+@pytest.mark.case_id(
+    "REQ-TOS-SIGN-URL-API-03",
+    title="TOS 签名 URL 路由要求总平台登录",
+)
+def test_source_02_33_tos_sign_urls_require_login(anonymous_platform_client):
+    response = anonymous_platform_client.sign_tos_urls(tos_paths=[])
+    assert response.status_code in {401, 403}, (
+        f"TOS 签名接口未登录时应拒绝访问: status={response.status_code}, "
+        f"body={response.text[:500]}"
+    )
+
+
+@pytest.mark.requirement(id="REQ-TOS-SIGN-URL", name="tos_sign_url")
+@pytest.mark.case_id(
+    "REQ-TOS-SIGN-URL-API-04",
+    title="TOS 签名 URL 正向返回媒体路径关联的签名地址",
+)
+def test_source_02_34_tos_sign_urls_sign_media_path(platform_client):
+    """从已完成媒体集合动态发现路径，验证至少一种签名地址可用。"""
+    tos_path = required_media_tos_path(platform_client)
+    envelope = assert_envelope(
+        platform_client.sign_tos_urls(tos_paths=[tos_path], expires_in=60),
+        required_keys=("data",),
+    )
+    body = data(envelope)
+    assert body["total"] == 1
+    assert body["failed"] == 0
+    item = body["items"][0]
+    assert item["index"] == 0
+    assert item["tos_path"] == tos_path
+    assert item["status"] in {"ok", "partial"}
+    assert item["tos_cdn_url"] or item["tos_preview_url"]
 
 
 def test_source_02_09_missing_collection_data_is_rejected(platform_client):

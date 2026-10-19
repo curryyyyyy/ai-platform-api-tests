@@ -281,22 +281,163 @@ def required_media_collection_id(
     pytest.skip("当前环境没有含有效 tos_path 的已完成媒体集合")
 
 
+def required_media_tos_path(
+    client: Any,
+    *,
+    env_name: str = "SOURCE_ADMIN_PUBLIC_SHARE_MEDIA_COLLECTION_ID",
+) -> str:
+    """发现一个可用于签名 URL 正向验证的真实媒体 TOS 路径。"""
+    collection_id = required_media_collection_id(client, env_name=env_name)
+    fields = media_collection_fields(client, collection_id)
+    if fields is None:
+        pytest.skip("媒体圈选集缺少可查询字段")
+    rows_body = assert_envelope(
+        client.get_collection_data(collection_id, fields=fields, page=1, page_size=10),
+        required_keys=("data",),
+    )
+    rows_data = data(rows_body)
+    rows = rows_data.get("data", []) if isinstance(rows_data, Mapping) else []
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, Mapping):
+                continue
+            for key in ("tos_path", "tos_path_url"):
+                path = row.get(key)
+                if isinstance(path, str) and path.strip().startswith("tos://"):
+                    return path.strip()
+    pytest.skip("当前媒体圈选集没有可签名的 TOS 路径")
+
+
 def required_collection_id(client, env_name: str = "SOURCE_ADMIN_COLLECTION_ID") -> int:
     configured = os.getenv(env_name, "").strip()
     if configured:
         return int(configured)
-    body = assert_envelope(client.list_collections(limit=1, offset=0), required_keys=("data",))
+    body = assert_envelope(client.list_collections(limit=100, offset=0), required_keys=("data",))
     listing = data(body)
     collections = listing.get("collections", []) if isinstance(listing, Mapping) else []
     if not isinstance(collections, list) or not collections:
         pytest.skip("当前环境没有可用圈选集，需先准备资源管理平台测试数据")
-    first = collections[0]
-    if not isinstance(first, Mapping) or "id" not in first:
-        raise AssertionError(f"圈选集列表缺少 id: {first!r}")
-    collection_id = first["id"]
-    if not isinstance(collection_id, (int, str)):
-        raise AssertionError(f"圈选集 id 类型异常: {collection_id!r}")
-    return int(collection_id)
+    for item in collections:
+        if not isinstance(item, Mapping) or item.get("id") is None:
+            continue
+        collection_id = item["id"]
+        if not isinstance(collection_id, (int, str)):
+            continue
+        response = client.get_collection_node_path(int(collection_id))
+        payload = client.json(response)
+        value = payload.get("data") if isinstance(payload, Mapping) else None
+        if isinstance(value, Mapping) and set(value) == {"data"}:
+            value = value["data"]
+        path = value.get("path") if isinstance(value, Mapping) else None
+        if response.status_code == 200 and payload.get("code") == 0 and isinstance(path, list) and path:
+            return int(collection_id)
+    pytest.skip("当前环境没有已绑定文件节点的圈选集，无法执行集合读取链路")
+
+
+def required_collection_with_sql(
+    client: Any,
+    env_name: str = "SOURCE_ADMIN_SQL_COLLECTION_ID",
+) -> tuple[int, str]:
+    """发现已有有效圈选 SQL 的集合，不创建异步资源。"""
+    configured = os.getenv(env_name, "").strip()
+    collection_ids: list[int] = []
+    if configured:
+        try:
+            collection_ids.append(int(configured))
+        except ValueError:
+            raise AssertionError(f"{env_name} 必须是整数: {configured!r}") from None
+    else:
+        body = assert_envelope(
+            client.list_collections(status=2, limit=100, offset=0),
+            required_keys=("data",),
+        )
+        listing = data(body)
+        items = listing.get("collections", []) if isinstance(listing, Mapping) else []
+        if isinstance(items, list):
+            for item in items:
+                if isinstance(item, Mapping) and item.get("id") is not None:
+                    try:
+                        collection_ids.append(int(item["id"]))
+                    except (TypeError, ValueError):
+                        continue
+
+    for collection_id in collection_ids:
+        response = client.get_collection_sql(collection_id)
+        payload = client.json(response)
+        if response.status_code != 200 or payload.get("code") != 0:
+            continue
+        value = payload.get("data")
+        if isinstance(value, Mapping) and set(value) == {"data"}:
+            value = value["data"]
+        sql = value.get("sql") if isinstance(value, Mapping) else None
+        if isinstance(sql, str) and sql.strip():
+            return collection_id, sql
+    pytest.skip("当前环境没有可读取圈选 SQL 的已完成集合")
+
+
+def required_numeric_selection_field(
+    client: Any,
+    *,
+    table_env: str = "SOURCE_ADMIN_NULL_AS_ZERO_TABLE_NAME",
+    field_id_env: str = "SOURCE_ADMIN_NULL_AS_ZERO_FIELD_ID",
+) -> tuple[str, int, str]:
+    """发现可用于 build-selection 的数值字段，不创建或修改业务数据。"""
+    configured_table = os.getenv(table_env, "").strip()
+    configured_field_id = os.getenv(field_id_env, "").strip()
+    if bool(configured_table) != bool(configured_field_id):
+        raise AssertionError(f"{table_env} 和 {field_id_env} 必须同时配置")
+    target_table = configured_table or None
+    target_field_id: int | None = None
+    if configured_field_id:
+        try:
+            target_field_id = int(configured_field_id)
+        except ValueError:
+            raise AssertionError(f"{field_id_env} 必须是整数: {configured_field_id!r}") from None
+
+    schemas = data(assert_envelope(
+        client.list_schemas(page=1, page_size=100), required_keys=("data",)
+    ))
+    if not isinstance(schemas, list):
+        pytest.skip("当前环境没有可枚举的 Schema")
+    numeric_tokens = ("int", "float", "double", "decimal", "numeric", "number", "long", "short")
+    for schema in schemas:
+        if not isinstance(schema, Mapping):
+            continue
+        table_name = schema.get("name")
+        if not isinstance(table_name, str) or not table_name.strip():
+            continue
+        if target_table is not None and table_name != target_table:
+            continue
+        if schema.get("source_table") in {"composite", "aigc_dataset_composite"}:
+            continue
+        field_body = data(assert_envelope(
+            client.list_schema_fields(
+                schema_id=schema.get("id"), page=1, page_size=1000, scene="search"
+            ),
+            required_keys=("data",),
+        ))
+        fields = field_body.get("list", []) if isinstance(field_body, Mapping) else []
+        if not isinstance(fields, list):
+            continue
+        for field in fields:
+            if not isinstance(field, Mapping):
+                continue
+            field_id = field.get("id")
+            qualifier = field.get("qualifier")
+            if target_field_id is not None and field_id != target_field_id:
+                continue
+            field_type = str(field.get("type") or field.get("data_type") or field.get("field_type") or "")
+            if (
+                isinstance(field_id, int)
+                and isinstance(qualifier, str)
+                and qualifier.strip()
+                and any(token in field_type.lower() for token in numeric_tokens)
+            ):
+                return table_name, field_id, qualifier
+    pytest.skip(
+        "当前环境没有可用于 null_as_zero 查询语义的数值 Schema 字段；"
+        f"可配置 {table_env} 和 {field_id_env}"
+    )
 
 
 def required_schema(client) -> tuple[int, str]:

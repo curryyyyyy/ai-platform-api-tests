@@ -24,7 +24,7 @@
 - 上游仓库：`https://gitlab.ituchong.com/ai-dataset/ai-source-admin`
 - 当前契约分支：`test`；日常测试使用仓库内已提交的多文件快照，快照更新前先拉取上游 `test` 分支并人工审核
 
-资源管理平台没有单一 OpenAPI 文件，本地契约文件由 [`../../platforms/source_admin/contract.yaml`](../../platforms/source_admin/contract.yaml) 声明；当前纳入 `audit`、`contract`、`data-manage`、`filesystem`、`scheme`、`share`、`supplier` 7 份独立快照，不把不同文档的同名组件强行合并。`coverage.yaml` 将每个接口清单 ID 映射到 testcase；除 66 条结构化 OpenAPI 操作外，接口清单还登记 10 条代码路由，包括分享页 `/s/{token}` 和圈选集统计工具 4 个 API 及其页面入口。
+资源管理平台没有单一 OpenAPI 文件，本地契约文件由 [`../../platforms/source_admin/contract.yaml`](../../platforms/source_admin/contract.yaml) 声明；当前纳入 `audit`、`contract`、`data-manage`、`filesystem`、`scheme`、`share`、`supplier` 和新增的 `tos` 8 份独立快照，不把不同文档的同名组件强行合并。`coverage.yaml` 将每个接口清单 ID 映射到 testcase；TOS 签名接口虽仅在 `docs/api.md` 中描述，已补充本地结构化快照以纳入离线契约门禁。
 
 日常执行仓库快照测试：
 
@@ -36,7 +36,7 @@
 
 ## 接入范围
 
-主文档 `docs/api.md` 包含 47 个操作；上游结构化 OpenAPI JSON 和代码路由确认共 71 个操作，另有 24 个接口未写入主文档，已在接口清单中标注。公开分享的 4 个集合读取路由和分享页路由尚未进入 OpenAPI JSON，因此以 `router.go` 代码路由来源登记。认证域还包括登录 Token、分享 Token 和 HBase 专用凭证，后续不能复用同一个认证 fixture。
+主文档 `docs/api.md` 包含 48 个操作；上游结构化 OpenAPI JSON 和代码路由确认共 72 个操作，另有 25 个接口未写入主文档，已在接口清单中标注。公开分享的 4 个集合读取路由和分享页路由尚未进入 OpenAPI JSON，因此以 `router.go` 代码路由来源登记。认证域还包括登录 Token、分享 Token 和 HBase 专用凭证，后续不能复用同一个认证 fixture。
 
 ## 运行前置
 
@@ -53,7 +53,7 @@
 .venv/bin/pytest -m 'live and source_admin and core' -q
 ```
 
-覆盖矩阵中的 76 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。统计工具已覆盖匿名鉴权、参数拒绝及“SQL 预览 -> 提交 -> 查询 -> CSV 导出”正向链路；用例默认只读发现候选圈选集，也可通过 `SOURCE_ADMIN_STATISTICS_COLLECTION_ID` 指定隔离集合，轮询可通过 `SOURCE_ADMIN_STATISTICS_TIMEOUT` 和 `SOURCE_ADMIN_STATISTICS_POLL_INTERVAL` 调整。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。临时查询提交和转正依赖 Spark 异步任务，当前仅覆盖参数、缺失资源和关系查询反向链路，待确认异步资源清理后补正向生命周期。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
+覆盖矩阵中的 77 个业务操作均已登记并至少映射到一条自动化调用，但 `full` 表示该测试条目的目标面已覆盖，不代表每个接口都完成了正向业务闭环；仅有负向、条件环境或外部依赖的条目已标记为 `partial` 或 `blocked`。标记为 `P0` 的自动化用例均添加了 `@pytest.mark.core`，可用最后一条命令执行核心门禁。统计工具已覆盖匿名鉴权、参数拒绝及“SQL 预览 -> 提交 -> 查询 -> CSV 导出”正向链路；集合 SQL、导入状态和无失败明细语义也通过有效集合动态发现覆盖。最新变更的数字查询 `null_as_zero` 默认值和显式开关已在数据管理脚本中用 YAML 参数化覆盖；TOS 签名 URL 已覆盖批量参数拒绝和单项非法路径结果，不依赖真实 TOS 对象。用例默认只读发现候选圈选集，也可通过 `SOURCE_ADMIN_STATISTICS_COLLECTION_ID`、`SOURCE_ADMIN_SQL_COLLECTION_ID` 或 `SOURCE_ADMIN_NULL_AS_ZERO_TABLE_NAME`/`SOURCE_ADMIN_NULL_AS_ZERO_FIELD_ID` 指定隔离资源，轮询可通过 `SOURCE_ADMIN_STATISTICS_TIMEOUT` 和 `SOURCE_ADMIN_STATISTICS_POLL_INTERVAL` 调整。Schema 创建及其字段版本链路暂以 `skip` 保留用例和覆盖映射，原因是当前服务端返回 `node_type` 数据库默认值错误；只读 Schema 列表、名称查询、缺失资源和批量更新的 `fields=[]` 空操作语义仍纳入回归。临时查询提交和转正依赖 Spark 异步任务，当前仅覆盖参数、缺失资源和关系查询反向链路，待确认异步资源清理后补正向生命周期。合同手动同步会触发全量飞书同步，供应商创建接口没有删除能力，这两类写入分别保留为明确的阻塞用例。
 
 需求级用例继续归入业务域脚本，不按需求名新建测试文件。需求 ID、稳定 case ID 与接口映射统一登记在 `coverage.yaml` 的 `requirements` 节，可通过以下方式按需求执行：
 
